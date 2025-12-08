@@ -1,0 +1,193 @@
+/**
+ * This ruleset enforces a security model for an internal store management system.
+ *
+ * Core Philosophy:
+ * The security model is based on a placeholder for future Role-Based Access Control (RBAC).
+ * The provided application requirements mention roles like 'admin' or 'manager' but do
+ * not define a schema for where these roles are stored. As a temporary measure for
+ * rapid prototyping, this ruleset treats any authenticated (signed-in) user as an
+ * authorized staff member with full permissions to read and write all data. This
+ * prevents public access while allowing developers to build features without a fully
+ * implemented roles system. Anonymous users are denied all access.
+ *
+ * Data Structure:
+ * The data is organized into several top-level collections representing core business
+ * entities: /suppliers, /customers, /products, /purchases, and /sales. Transactional
+ * line items are stored in subcollections (/purchases/{purchaseId}/purchaseItems and
+ * /sales/{saleId}/saleItems) to maintain clear relational context.
+ *
+ * Key Security Decisions:
+ * - Authenticated Access Only: All read and write operations across all collections
+ *   require the user to be signed in. There is no public or anonymous access.
+ * - No User-Specific Data: The data model does not contain user-owned resources (like
+ *   drafts or profiles). Therefore, the rules do not enforce user-ownership checks.
+ * - Relational Integrity: For subcollections like 'purchaseItems', rules enforce that
+ *   the `purchaseId` field within the document must match the parent document's ID in
+ *   the path. This ensures data consistency and prevents items from being associated
+ *   with the wrong transaction. This validation is strictly limited to relational keys.
+ *
+ * Denormalization for Authorization:
+ * The system is designed for a global role model, so denormalization of ownership or
+ * member lists onto individual documents is not necessary. Access is granted based on
+
+ * the user's overall status (signed-in) rather than their relationship to a specific
+ * document.
+ *
+ * Structural Segregation:
+ * Each primary entity (Supplier, Customer, etc.) resides in its own top-level collection.
+ * This separation allows for clean, collection-specific rules and avoids the need for
+ * complex logic to differentiate between document types within a single collection.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --------------------------------------------------------------------
+    // Helper Functions
+    // --------------------------------------------------------------------
+
+    /**
+     * Returns true if the user is authenticated. This is the primary check
+     * for this prototype, acting as a placeholder for a future role system.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the parent purchase document exists.
+     * Ensures purchase items can only be created under a valid purchase.
+     */
+    function parentPurchaseExists(purchaseId) {
+      return exists(/databases/$(database)/documents/purchases/$(purchaseId));
+    }
+
+    /**
+     * Checks if the parent sale document exists.
+     * Ensures sale items can only be created under a valid sale.
+     */
+    function parentSaleExists(saleId) {
+      return exists(/databases/$(database)/documents/sales/$(saleId));
+    }
+
+    /**
+     * Validates that a new purchase item's internal purchaseId matches its path.
+     * This is critical for maintaining relational integrity on document creation.
+     */
+    function hasValidPurchaseItemData(purchaseId) {
+      return request.resource.data.purchaseId == purchaseId;
+    }
+
+    /**
+     * Enforces that the purchaseId within a purchase item cannot be changed after creation.
+     * This prevents an item from being moved between different purchase orders.
+     */
+    function isPurchaseItemImmutable() {
+      return request.resource.data.purchaseId == resource.data.purchaseId;
+    }
+
+    /**
+     * Validates that a new sale item's internal saleId matches its path.
+     * This is critical for maintaining relational integrity on document creation.
+     */
+    function hasValidSaleItemData(saleId) {
+      return request.resource.data.saleId == saleId;
+    }
+
+    /**
+     * Enforces that the saleId within a sale item cannot be changed after creation.
+     * This prevents an item from being moved between different sales.
+     */
+    function isSaleItemImmutable() {
+      return request.resource.data.saleId == resource.data.saleId;
+    }
+
+
+    // --------------------------------------------------------------------
+    // Collection Rules
+    // --------------------------------------------------------------------
+
+    /**
+     * @description Manages supplier data. Any authenticated user (e.g., a store employee) can manage suppliers.
+     * @path /suppliers/{supplierId}
+     * @allow A signed-in user (auth.uid = 'user123') (create) a new supplier document.
+     * @deny An anonymous user (auth = null) (get) a supplier document.
+     * @principle Placeholder for Role-Based Access Control. Any signed-in user is considered an authorized staff member.
+     */
+    match /suppliers/{supplierId} {
+      allow read, write: if isSignedIn();
+    }
+
+    /**
+     * @description Manages customer data. Any authenticated user can manage customer records.
+     * @path /customers/{customerId}
+     * @allow A signed-in user (auth.uid = 'user123') (update) an existing customer's address.
+     * @deny An anonymous user (auth = null) (list) all customers.
+     * @principle Placeholder for Role-Based Access Control. Any signed-in user is considered an authorized staff member.
+     */
+    match /customers/{customerId} {
+      allow read, write: if isSignedIn();
+    }
+
+    /**
+     * @description Manages product inventory. Any authenticated user can manage products.
+     * @path /products/{productId}
+     * @allow A signed-in user (auth.uid = 'user123') (delete) a discontinued product.
+     * @deny An anonymous user (auth = null) (create) a new product.
+     * @principle Placeholder for Role-Based Access Control. Any signed-in user is considered an authorized staff member.
+     */
+    match /products/{productId} {
+      allow read, write: if isSignedIn();
+    }
+
+    /**
+     * @description Manages purchase orders from suppliers. Any authenticated user can manage purchases.
+     * @path /purchases/{purchaseId}
+     * @allow A signed-in user (auth.uid = 'user123') (create) a new purchase order.
+     * @deny An anonymous user (auth = null) (get) a purchase order.
+     * @principle Placeholder for Role-Based Access Control. Any signed-in user is considered an authorized staff member.
+     */
+    match /purchases/{purchaseId} {
+      allow read, write: if isSignedIn();
+
+      /**
+       * @description Manages line items within a purchase order. Access is inherited from the parent purchase.
+       * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
+       * @allow A signed-in user (auth.uid = 'user123') (create) a new item under an existing purchase order.
+       * @deny A signed-in user (auth.uid = 'user123') (create) an item with a `purchaseId` in its body that doesn't match the path.
+       * @principle Enforces relational integrity by ensuring subcollection items correctly reference their parent document.
+       */
+      match /purchaseItems/{purchaseItemId} {
+        allow get, list: if isSignedIn() && parentPurchaseExists(purchaseId);
+        allow create: if isSignedIn() && parentPurchaseExists(purchaseId) && hasValidPurchaseItemData(purchaseId);
+        allow update: if isSignedIn() && parentPurchaseExists(purchaseId) && resource != null && isPurchaseItemImmutable();
+        allow delete: if isSignedIn() && parentPurchaseExists(purchaseId) && resource != null;
+      }
+    }
+
+    /**
+     * @description Manages sales to customers. Any authenticated user can manage sales records.
+     * @path /sales/{saleId}
+     * @allow A signed-in user (auth.uid = 'user123') (create) a new sales record.
+     * @deny An anonymous user (auth = null) (list) all sales.
+     * @principle Placeholder for Role-Based Access Control. Any signed-in user is considered an authorized staff member.
+     */
+    match /sales/{saleId} {
+      allow read, write: if isSignedIn();
+
+      /**
+       * @description Manages line items within a sale. Access is inherited from the parent sale.
+       * @path /sales/{saleId}/saleItems/{saleItemId}
+       * @allow A signed-in user (auth.uid = 'user123') (create) a new item under an existing sale.
+       * @deny A signed-in user (auth.uid = 'user123') (update) an item to change its parent `saleId`.
+       * @principle Enforces relational integrity by ensuring subcollection items correctly reference their parent document.
+       */
+      match /saleItems/{saleItemId} {
+        allow get, list: if isSignedIn() && parentSaleExists(saleId);
+        allow create: if isSignedIn() && parentSaleExists(saleId) && hasValidSaleItemData(saleId);
+        allow update: if isSignedIn() && parentSaleExists(saleId) && resource != null && isSaleItemImmutable();
+        allow delete: if isSignedIn() && parentSaleExists(saleId) && resource != null;
+      }
+    }
+  }
+}

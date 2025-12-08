@@ -1,0 +1,22 @@
+# Netlify configuration file
+# For more information, see https://docs.netlify.com/configure-builds/file-based-configuration/
+
+[build]
+# Command to build the Next.js application
+command = "next build"
+
+# The directory that contains the built site
+publish = ".next"
+
+[dev]
+# Local development server settings
+command = "next dev"
+port = 3000
+publish = ".next"
+targetPort = 3000
+autoLaunch = true
+
+# The functions directory for serverless functions, including Next.js API routes and server components.
+[functions]
+directory = ".netlify/functions-internal"
+

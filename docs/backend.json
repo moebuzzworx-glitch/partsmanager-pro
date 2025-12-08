@@ -1,0 +1,373 @@
+{
+  "entities": {
+    "Supplier": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Supplier",
+      "type": "object",
+      "description": "Represents a supplier of products for the store.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the supplier."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the supplier."
+        },
+        "contactName": {
+          "type": "string",
+          "description": "Contact person's name at the supplier."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the supplier.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number of the supplier."
+        },
+        "address": {
+          "type": "string",
+          "description": "Address of the supplier."
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "Customer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Customer",
+      "type": "object",
+      "description": "Represents a customer of the store.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the customer."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the customer."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the customer.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number of the customer."
+        },
+        "address": {
+          "type": "string",
+          "description": "Address of the customer."
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "Product": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Product",
+      "type": "object",
+      "description": "Represents a product in the store's inventory.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the product."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the product."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the product."
+        },
+        "reference": {
+          "type": "string",
+          "description": "The product reference. Can be empty."
+        },
+        "price": {
+          "type": "number",
+          "description": "Price of the product."
+        },
+        "stockLevel": {
+          "type": "number",
+          "description": "Current stock level of the product."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "price",
+        "stockLevel"
+      ]
+    },
+    "Purchase": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Purchase",
+      "type": "object",
+      "description": "Represents a purchase order from a supplier.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the purchase."
+        },
+        "supplierId": {
+          "type": "string",
+          "description": "Reference to Supplier. (Relationship: Supplier 1:N Purchase)"
+        },
+        "purchaseDate": {
+          "type": "string",
+          "description": "Date of the purchase.",
+          "format": "date-time"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Total ammount for the purchase"
+        }
+      },
+      "required": [
+        "id",
+        "supplierId",
+        "purchaseDate"
+      ]
+    },
+    "PurchaseItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PurchaseItem",
+      "type": "object",
+      "description": "Represents an item within a purchase order.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the purchase item."
+        },
+        "purchaseId": {
+          "type": "string",
+          "description": "Reference to Purchase. (Relationship: Purchase 1:N PurchaseItem)"
+        },
+        "productId": {
+          "type": "string",
+          "description": "Reference to Product. (Relationship: Product 1:N PurchaseItem)"
+        },
+        "quantity": {
+          "type": "number",
+          "description": "Quantity of the product purchased."
+        },
+        "unitPrice": {
+          "type": "number",
+          "description": "Unit price of the product at the time of purchase."
+        }
+      },
+      "required": [
+        "id",
+        "purchaseId",
+        "productId",
+        "quantity",
+        "unitPrice"
+      ]
+    },
+    "Sale": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Sale",
+      "type": "object",
+      "description": "Represents a sale to a customer.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the sale."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to Customer. (Relationship: Customer 1:N Sale)"
+        },
+        "saleDate": {
+          "type": "string",
+          "description": "Date of the sale.",
+          "format": "date-time"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Total ammount for the sale"
+        }
+      },
+      "required": [
+        "id",
+        "customerId",
+        "saleDate"
+      ]
+    },
+    "SaleItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SaleItem",
+      "type": "object",
+      "description": "Represents an item within a sale.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the sale item."
+        },
+        "saleId": {
+          "type": "string",
+          "description": "Reference to Sale. (Relationship: Sale 1:N SaleItem)"
+        },
+        "productId": {
+          "type": "string",
+          "description": "Reference to Product. (Relationship: Product 1:N SaleItem)"
+        },
+        "quantity": {
+          "type": "number",
+          "description": "Quantity of the product sold."
+        },
+        "unitPrice": {
+          "type": "number",
+          "description": "Unit price of the product at the time of sale."
+        }
+      },
+      "required": [
+        "id",
+        "saleId",
+        "productId",
+        "quantity",
+        "unitPrice"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/suppliers/{supplierId}",
+        "definition": {
+          "entityName": "Supplier",
+          "schema": {
+            "$ref": "#/backend/entities/Supplier"
+          },
+          "description": "Stores supplier information.",
+          "params": [
+            {
+              "name": "supplierId",
+              "description": "Unique identifier for the supplier."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/customers/{customerId}",
+        "definition": {
+          "entityName": "Customer",
+          "schema": {
+            "$ref": "#/backend/entities/Customer"
+          },
+          "description": "Stores customer information.",
+          "params": [
+            {
+              "name": "customerId",
+              "description": "Unique identifier for the customer."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/products/{productId}",
+        "definition": {
+          "entityName": "Product",
+          "schema": {
+            "$ref": "#/backend/entities/Product"
+          },
+          "description": "Stores product information.",
+          "params": [
+            {
+              "name": "productId",
+              "description": "Unique identifier for the product."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/purchases/{purchaseId}",
+        "definition": {
+          "entityName": "Purchase",
+          "schema": {
+            "$ref": "#/backend/entities/Purchase"
+          },
+          "description": "Stores purchase order information.",
+          "params": [
+            {
+              "name": "purchaseId",
+              "description": "Unique identifier for the purchase."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/purchases/{purchaseId}/purchaseItems/{purchaseItemId}",
+        "definition": {
+          "entityName": "PurchaseItem",
+          "schema": {
+            "$ref": "#/backend/entities/PurchaseItem"
+          },
+          "description": "Stores individual items within a purchase order.",
+          "params": [
+            {
+              "name": "purchaseId",
+              "description": "Unique identifier for the purchase."
+            },
+            {
+              "name": "purchaseItemId",
+              "description": "Unique identifier for the purchase item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/sales/{saleId}",
+        "definition": {
+          "entityName": "Sale",
+          "schema": {
+            "$ref": "#/backend/entities/Sale"
+          },
+          "description": "Stores sales information.",
+          "params": [
+            {
+              "name": "saleId",
+              "description": "Unique identifier for the sale."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/sales/{saleId}/saleItems/{saleItemId}",
+        "definition": {
+          "entityName": "SaleItem",
+          "schema": {
+            "$ref": "#/backend/entities/SaleItem"
+          },
+          "description": "Stores individual items within a sale.",
+          "params": [
+            {
+              "name": "saleId",
+              "description": "Unique identifier for the sale."
+            },
+            {
+              "name": "saleItemId",
+              "description": "Unique identifier for the sale item."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to manage store data, including suppliers, customers, products, purchases, and sales. It prioritizes authorization independence and supports secure list operations.\n\n**Authorization Independence:**\nAuthorization independence is achieved by avoiding hierarchical authorization dependencies (no `get()` calls in security rules). Since there are no user-owned entities (e.g. drafts, threads), denormalization of authorization data into subcollections is not needed.\n\n**Structural Segregation:**\nEach collection stores a specific type of data with a consistent security posture. For example, suppliers are stored in the `/suppliers` collection, customers in `/customers`, and so on. This simplifies security rules by ensuring that all documents within a collection share the same access requirements.\n\n**Access Modeling:**\n*   **Suppliers, Customers, Products:** These entities are stored in top-level collections (`/suppliers`, `/customers`, `/products`). Access to these collections can be controlled based on user roles or other criteria (not defined in initial request).\n*   **Purchases:** Purchases are stored in the `/purchases` collection. Each purchase document includes the `supplierId`, which references the supplier associated with the purchase. Access can be limited to authorized users or roles.\n*   **Purchase Items:** Purchase items are stored in a subcollection under each purchase document (`/purchases/{purchaseId}/purchaseItems`). Each purchase item includes the `productId`, which references the product being purchased.  Access to purchase items is implicitly controlled by access to the parent purchase document.\n*   **Sales:** Sales are stored in the `/sales` collection. Each sale document includes the `customerId`, which references the customer associated with the sale. Access can be limited to authorized users or roles.\n*   **Sale Items:** Sale items are stored in a subcollection under each sale document (`/sales/{saleId}/saleItems`). Each sale item includes the `productId`, which references the product being sold. Access to sale items is implicitly controlled by access to the parent sale document.\n\n**QAPs (Rules are not Filters):**\nThe structure supports secure `list` operations by segregating data into collections with consistent security requirements. This allows security rules to be written without filtering data based on document content.  For example, listing suppliers requires only checking if the user has permission to view supplier data, without needing to inspect each supplier document.\n\nThe design assumes a flat role-based access control (DBAC) where roles (admin, manager, etc.) are stored separately in the database. Security rules would then check for the existence of these role documents to grant access to specific collections or documents."
+  }
+}
