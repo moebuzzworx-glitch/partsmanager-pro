@@ -2,6 +2,8 @@
 
 A modern stock management application built with Next.js 15, TypeScript, Tailwind CSS, and Firebase.
 
+⚠️ **IMPORTANT**: This software is proprietary. Unauthorized copying, distribution, or use is prohibited. See [LICENSE.md](LICENSE.md) for details.
+
 ## Features
 
 - **User Dashboard**: Overview of inventory, sales, and analytics
@@ -12,6 +14,16 @@ A modern stock management application built with Next.js 15, TypeScript, Tailwin
 - **Customer & Supplier Management**: Manage business relationships
 - **Dark Mode**: Theme switcher for light/dark mode
 - **Role-Based Access**: Admin and User roles with access control
+
+## License
+
+This project is protected under a proprietary license. See [LICENSE.md](LICENSE.md) for details.
+
+**⛔ Do NOT:**
+- Download/scrape this app using tools like SaveWeb2Zip
+- Clone and host on another domain
+- Copy or redistribute without permission
+- Use commercially without a license agreement
 
 ## Getting Started
 
