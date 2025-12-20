@@ -6,6 +6,7 @@
 command = "next build"
 
 # The directory that contains the built site
+# Netlify Edge Runtime automatically handles .next directory
 publish = ".next"
 
 [dev]
@@ -26,9 +27,6 @@ for = "/_next/static/*"
 [headers.values]
   Cache-Control = "public, max-age=31536000, immutable"
 
-# Rewrite dynamic routes to the index for client-side routing
-[[redirects]]
-from = "/*"
-to = "/.netlify/functions/___netlify-handler"
-status = 200
+# Important: Let Next.js handle all routing - don't redirect everything
+# The .next/static folder contains prerendered pages and the runtime
 

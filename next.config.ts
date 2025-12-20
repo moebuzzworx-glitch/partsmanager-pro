@@ -30,15 +30,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Ensure proper SSG/ISR behavior for Netlify
-  onDemandEntries: {
-    maxInactiveAge: 60 * 1000,
-    pagesBufferLength: 5,
-  },
-  // Enable experimental features for better Netlify compatibility
-  experimental: {
-    isrMemoryCacheSize: 0,
-  },
 };
 
 export default nextConfig;
