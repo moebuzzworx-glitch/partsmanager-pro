@@ -69,27 +69,35 @@ export function AdminLayoutClient({
     // Fetch user document from Firestore
     const fetchUserDoc = async () => {
       try {
-        if (!firestore) return;
+        if (!firestore) {
+          console.log('❌ Firestore not available');
+          return;
+        }
 
+        console.log('🔍 Fetching user doc for UID:', user.uid);
         const userDocRef = doc(firestore, 'users', user.uid);
         const userDocSnap = await getDoc(userDocRef);
 
         if (userDocSnap.exists()) {
           const userData = userDocSnap.data() as AppUser;
+          console.log('✅ User document found:', userData);
           setUserDoc(userData);
 
           // Check if user is admin
           if (userData.role !== 'admin') {
             // Not admin, redirect to dashboard
+            console.log('❌ User role is not admin:', userData.role);
             router.push(`/${locale}/dashboard`);
             return;
           }
+          console.log('✅ User is admin, allowing access');
         } else {
           // User document doesn't exist, redirect to admin login
+          console.log('❌ User document does not exist in Firestore');
           router.push(`/${locale}/admin/login`);
         }
       } catch (error) {
-        console.error('Error fetching user document:', error);
+        console.error('❌ Error fetching user document:', error);
         router.push(`/${locale}/admin/login`);
       } finally {
         setIsChecking(false);
