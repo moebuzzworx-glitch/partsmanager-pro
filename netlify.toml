@@ -8,6 +8,12 @@ command = "next build"
 # The directory that contains the built site
 publish = ".next"
 
+# Build environment variables
+[build.environment]
+NODE_ENV = "production"
+# Ensure Git submodules are handled (if any added in future)
+GIT_SUBMODULE_STRATEGY = "recursive"
+
 [dev]
 # Local development server settings
 command = "next dev"
