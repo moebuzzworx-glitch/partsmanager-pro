@@ -28,35 +28,10 @@ export function RootLayoutClient({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Disable right-click context menu
-    const disableContextMenu = (e: MouseEvent) => {
-      if (process.env.NODE_ENV === 'production') {
-        e.preventDefault();
-      }
-    };
+    // Note: Right-click and DevTools blocking removed - this only provides false security
+    // Real security comes from server-side validation, authentication, and API protection
 
-    // Disable keyboard shortcuts for developer tools
-    const disableDevTools = (e: KeyboardEvent) => {
-      if (process.env.NODE_ENV === 'production') {
-        // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
-        if (
-          e.key === 'F12' ||
-          (e.ctrlKey && e.shiftKey && e.key === 'I') ||
-          (e.ctrlKey && e.shiftKey && e.key === 'J') ||
-          (e.ctrlKey && e.shiftKey && e.key === 'C')
-        ) {
-          e.preventDefault();
-        }
-      }
-    };
-
-    document.addEventListener('contextmenu', disableContextMenu);
-    document.addEventListener('keydown', disableDevTools);
-
-    return () => {
-      document.removeEventListener('contextmenu', disableContextMenu);
-      document.removeEventListener('keydown', disableDevTools);
-    };
+    return () => {};
   }, []);
 
   return (
