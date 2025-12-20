@@ -22,7 +22,7 @@ export const adminUserTemplate = {
   emailVerified: true,
   authMethod: "email",
   createdAt: new Date("2025-12-16"), // Current date
-  trialStartDate: new Date("2025-12-16"),
+  // Note: trialStartDate is NOT needed for admins - only for trial users
 };
 
 /**
@@ -39,7 +39,7 @@ export const adminUserTemplate = {
  *    - Click "Start collection" (if users doesn't exist)
  *    - Collection ID: "users"
  *    - Document ID: [paste the User UID from step 1]
- *    - Add fields (use "Auto-ID" or paste UID as ID):
+ *    - Add these 6 fields ONLY:
  *      - email (string): admin@example.com
  *      - role (string): "admin"
  *      - subscription (string): "premium"
@@ -48,7 +48,7 @@ export const adminUserTemplate = {
  *      - createdAt (timestamp): now
  * 
  * 3. Test:
- *    - Try logging in with admin email/password
+ *    - Try logging in with admin email/password at: /en/admin/login
  *    - You should have access to the admin dashboard
  * 
  * Example Firebase CLI command (requires firebase-tools):
@@ -58,7 +58,6 @@ export const adminUserTemplate = {
  *   "subscription": "premium",
  *   "emailVerified": true,
  *   "authMethod": "email",
- *   "createdAt": new Date(),
- *   "trialStartDate": new Date()
+ *   "createdAt": new Date()
  * }'
  */
