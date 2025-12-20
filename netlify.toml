@@ -3,7 +3,7 @@
 
 [build]
 # Command to build the Next.js application
-command = "next build"
+command = "npm run build"
 
 # Publish directory for Netlify Next.js plugin
 # The plugin outputs built files to .netlify/output/public
@@ -19,4 +19,8 @@ autoLaunch = true
 # The functions directory for serverless functions, including Next.js API routes and server components.
 [functions]
 directory = ".netlify/functions"
+
+# Explicitly enable the Next.js plugin for proper output generation
+[[plugins]]
+package = "@netlify/plugin-nextjs"
 
