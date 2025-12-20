@@ -23,3 +23,7 @@ directory = ".netlify/functions"
 [[plugins]]
 package = "@netlify/plugin-nextjs"
 
+[plugins.inputs]
+# Ensure plugin processes correctly
+cacheOnPages = ["/"]
+
