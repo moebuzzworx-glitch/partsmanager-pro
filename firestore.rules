@@ -144,9 +144,27 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Admin can read all user profiles
+    /**
+     * @description Admin user management
+     * Admins have full control over user accounts with restrictions:
+     * - Can create new user accounts
+     * - Can update user subscription (trial/premium), status, role
+     * - Can delete regular users but NOT other admin accounts
+     * - Can read all user profiles
+     */
     match /users/{uid} {
+      // Admins can read all user profiles
       allow read: if isAdmin();
+      
+      // Admins can create new user documents
+      allow create: if isAdmin();
+      
+      // Admins can update any user's details (subscription, status, role)
+      // This allows admins to manage user subscriptions, suspend/activate users, and promote users to admin
+      allow update: if isAdmin();
+      
+      // Admins can delete regular users but NOT other admin accounts (prevents accidental admin deletion)
+      allow delete: if isAdmin() && resource.data.role != 'admin';
     }
 
 
