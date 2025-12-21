@@ -150,12 +150,13 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
 
     try {
       let customerId = selectedCustomer?.id;
+      let customerName = customerInput.trim();
 
       // Create new customer if not selected from list
       if (!selectedCustomer) {
         const customerRef = collection(firestore, 'customers');
         const newCustomerDoc = await addDoc(customerRef, {
-          name: customerInput.trim(),
+          name: customerName,
           email: '',
           phone: '',
           createdAt: serverTimestamp(),
@@ -163,14 +164,21 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
         customerId = newCustomerDoc.id;
       }
 
-      // Here you would save the sale to Firestore
-      // This is where you'd add the sale document with customer and items
-      console.log({
-        customerId,
-        customerName: customerInput,
-        items: saleItems,
-        totalAmount
-      });
+      // Save each sale item to the sales collection
+      const salesRef = collection(firestore, 'sales');
+      for (const item of saleItems) {
+        await addDoc(salesRef, {
+          customerId: customerId,
+          customer: customerName,
+          productId: item.id,
+          product: item.name,
+          quantity: item.saleQuantity,
+          amount: item.price * item.saleQuantity,
+          unitPrice: item.price,
+          reference: item.reference,
+          date: serverTimestamp(),
+        });
+      }
 
       // Reset form
       setOpen(false);
