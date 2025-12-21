@@ -220,13 +220,22 @@ service cloud.firestore {
     }
 
     /**
-     * @description User notifications
+     * @description User notifications and Admin system notifications
      * @access Users can only read/update their own notifications; Admins create all notifications
+     * Notification types: 'info', 'success', 'warning', 'error', 'alert' for users
+     *                    'admin-system' for app manager system notifications
      */
     match /notifications/{notificationId} {
+      // Users can read notifications sent to them (both user notifications and admin system notifications)
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      // Only admins can create notifications (for both users and other admins)
       allow create: if isAdmin();
+      
+      // Users and admins can update their own notifications (to mark as read)
       allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      // Admins or the notification owner can delete notifications
       allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
   }
