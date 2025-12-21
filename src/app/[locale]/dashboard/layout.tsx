@@ -64,14 +64,14 @@ export default function DashboardLayout({
   }, [locale]);
 
   const navItems = [
-    { href: `/${locale}/dashboard`, icon: <Home />, label: dictionary?.dashboard?.title || 'Dashboard' },
-    { href: `/${locale}/dashboard/stock`, icon: <Package />, label: dictionary?.dashboard?.stock || 'Stock' },
-    { href: `/${locale}/dashboard/sales`, icon: <ShoppingCart />, label: dictionary?.dashboard?.sales || 'Sales' },
-    { href: `/${locale}/dashboard/purchases`, icon: <Building />, label: dictionary?.dashboard?.purchases || 'Purchases' },
-    { href: `/${locale}/dashboard/customers`, icon: <Users />, label: dictionary?.dashboard?.customers || 'Customers' },
-    { href: `/${locale}/dashboard/suppliers`, icon: <Users />, label: dictionary?.dashboard?.suppliers || 'Suppliers' },
-    { href: `/${locale}/dashboard/invoices`, icon: <FileText />, label: dictionary?.dashboard?.invoices || 'Invoices' },
-    { href: `/${locale}/dashboard/trash`, icon: <Trash2 />, label: dictionary?.dashboard?.trash || 'Trash' },
+    { href: `/dashboard`, icon: <Home />, label: dictionary?.dashboard?.title || 'Dashboard' },
+    { href: `/dashboard/stock`, icon: <Package />, label: dictionary?.dashboard?.stock || 'Stock' },
+    { href: `/dashboard/sales`, icon: <ShoppingCart />, label: dictionary?.dashboard?.sales || 'Sales' },
+    { href: `/dashboard/purchases`, icon: <Building />, label: dictionary?.dashboard?.purchases || 'Purchases' },
+    { href: `/dashboard/customers`, icon: <Users />, label: dictionary?.dashboard?.customers || 'Customers' },
+    { href: `/dashboard/suppliers`, icon: <Users />, label: dictionary?.dashboard?.suppliers || 'Suppliers' },
+    { href: `/dashboard/invoices`, icon: <FileText />, label: dictionary?.dashboard?.invoices || 'Invoices' },
+    { href: `/dashboard/trash`, icon: <Trash2 />, label: dictionary?.dashboard?.trash || 'Trash' },
   ];
 
   if (!dictionary) {
