@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/table";
 import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, where } from "firebase/firestore";
+import { restoreFromTrash, permanentlyDelete } from "@/lib/trash-utils";
+import { useToast } from "@/hooks/use-toast";
 
 export default function TrashPage({
   params,
@@ -31,6 +33,7 @@ export default function TrashPage({
 }) {
   const { locale } = use(params);
   const { firestore } = useFirebase();
+  const { toast } = useToast();
   const [dictionary, setDictionary] = useState<any>(null);
   const [deletedItems, setDeletedItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,7 +56,7 @@ export default function TrashPage({
         setIsLoading(true);
         const productsRef = collection(firestore, 'products');
         const deletedSnap = await getDocs(
-          query(productsRef, where('deletedAt', '!=', null))
+          query(productsRef, where('isDeleted', '==', true))
         );
 
         const items = deletedSnap.docs.map(doc => ({
@@ -74,6 +77,66 @@ export default function TrashPage({
 
     fetchDeletedItems();
   }, [firestore]);
+
+  const handleRestore = async (productId: string) => {
+    if (!firestore) return;
+    
+    try {
+      const success = await restoreFromTrash(firestore, productId);
+      if (success) {
+        setDeletedItems(deletedItems.filter(item => item.id !== productId));
+        toast({
+          title: 'Success',
+          description: 'Product restored successfully',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to restore product',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error restoring product:', error);
+      toast({
+        title: 'Error',
+        description: 'An error occurred while restoring the product',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handlePermanentDelete = async (productId: string) => {
+    if (!firestore) return;
+    
+    if (!confirm('Are you sure you want to permanently delete this product? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      const success = await permanentlyDelete(firestore, productId);
+      if (success) {
+        setDeletedItems(deletedItems.filter(item => item.id !== productId));
+        toast({
+          title: 'Success',
+          description: 'Product permanently deleted',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to permanently delete product',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error permanently deleting product:', error);
+      toast({
+        title: 'Error',
+        description: 'An error occurred while deleting the product',
+        variant: 'destructive',
+      });
+    }
+  };
 
   if (!dictionary) return <div>Loading...</div>;
 
@@ -118,11 +181,19 @@ export default function TrashPage({
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell className="hidden md:table-cell">{product.reference}</TableCell>
                   <TableCell className="text-right space-x-2">
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleRestore(product.id)}
+                    >
                       <RotateCcw className="mr-2 h-4 w-4" />
                       Restore
                     </Button>
-                    <Button variant="destructive" size="sm">
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={() => handlePermanentDelete(product.id)}
+                    >
                       <Trash className="mr-2 h-4 w-4" />
                       Delete Permanently
                     </Button>

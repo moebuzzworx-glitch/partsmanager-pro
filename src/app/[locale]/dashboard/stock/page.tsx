@@ -39,7 +39,9 @@ import { Locale } from "@/lib/config";
 import { cn } from "@/lib/utils";
 import { AddProductDialog } from "@/components/dashboard/add-product-dialog";
 import { useFirebase } from "@/firebase/provider";
-import { collection, getDocs, query } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { moveToTrash } from "@/lib/trash-utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface Product {
   id: string;
@@ -58,6 +60,7 @@ interface Product {
 export default function StockPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = use(params);
   const { firestore } = useFirebase();
+  const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dictionary, setDictionary] = useState<any>(null);
@@ -80,7 +83,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
       try {
         setIsLoading(true);
         const productsRef = collection(firestore, 'products');
-        const q = query(productsRef);
+        const q = query(productsRef, where('isDeleted', '!=', true));
         const querySnapshot = await getDocs(q);
         
         const fetchedProducts: Product[] = [];
@@ -110,6 +113,34 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
 
     fetchProducts();
   }, [firestore]);
+
+  const handleDeleteProduct = async (productId: string) => {
+    if (!firestore) return;
+    
+    try {
+      const success = await moveToTrash(firestore, productId);
+      if (success) {
+        setProducts(products.filter(p => p.id !== productId));
+        toast({
+          title: 'Success',
+          description: 'Product moved to trash',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to delete product',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      toast({
+        title: 'Error',
+        description: 'An error occurred while deleting the product',
+        variant: 'destructive',
+      });
+    }
+  };
 
   if (!dictionary) {
     return (
@@ -250,7 +281,10 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>{d.actions}</DropdownMenuLabel>
                             <DropdownMenuItem>{d.edit}</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                            <DropdownMenuItem 
+                              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                              onClick={() => handleDeleteProduct(product.id)}
+                            >
                               {d.delete}
                             </DropdownMenuItem>
                           </DropdownMenuContent>

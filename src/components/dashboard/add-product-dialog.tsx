@@ -111,6 +111,7 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
         purchasePrice: parseFloat(formData.purchasePrice),
         price: parseFloat(formData.purchasePrice) * 1.25, // Default 25% markup
         createdAt: new Date(),
+        isDeleted: false,
       });
 
       toast({
@@ -292,6 +293,7 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
               purchasePrice: purchasePrice,
               price: purchasePrice * 1.25, // Default 25% markup
               createdAt: new Date(),
+              isDeleted: false,
             });
 
             successCount++;
