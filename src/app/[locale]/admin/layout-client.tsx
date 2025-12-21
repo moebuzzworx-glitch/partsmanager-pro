@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
@@ -32,12 +32,18 @@ export function AdminLayoutClient({
   locale: Locale;
 }) {
   const router = useRouter();
+  const routerRef = useRef(router);
   const pathname = usePathname();
   const { user, firestore, isUserLoading } = useFirebase();
   const [userDoc, setUserDoc] = useState<AppUser | null>(null);
   const [isChecking, setIsChecking] = useState(true);
   const [dictionary, setDictionary] = useState<any>(null);
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
+
+  // Keep router ref updated
+  useEffect(() => {
+    routerRef.current = router;
+  }, [router]);
 
   // Skip auth checks for login page
   const isLoginPage = pathname?.includes('/admin/login');
@@ -50,9 +56,9 @@ export function AdminLayoutClient({
   // Handle redirects when redirectUrl is set
   useEffect(() => {
     if (redirectUrl) {
-      router.push(redirectUrl);
+      routerRef.current.push(redirectUrl);
     }
-  }, [redirectUrl, router]);
+  }, [redirectUrl]);
 
   // Skip all auth checks for login page and just show children
   if (isLoginPage) {
@@ -144,7 +150,7 @@ export function AdminLayoutClient({
         <div className="text-center">
           <h1 className="text-3xl font-bold text-destructive mb-4">Not Authenticated</h1>
           <p className="text-muted-foreground mb-6">You must be logged in to access the admin area.</p>
-          <Button onClick={() => router.push(`/${locale}/admin/login`)}>
+          <Button onClick={() => routerRef.current.push(`/${locale}/admin/login`)}>
             Go to Admin Login
           </Button>
         </div>
