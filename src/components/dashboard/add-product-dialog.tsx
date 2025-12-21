@@ -194,6 +194,15 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
       return partialKey ? String(row[partialKey] || '').trim() : '';
     };
 
+    // Function to generate unique reference when missing
+    const generateReference = (designation: string, rowIndex: number): string => {
+      // Create a reference from the first 3 letters of designation + timestamp + row index
+      const prefix = designation.substring(0, 3).toUpperCase();
+      const timestamp = Date.now().toString().slice(-5); // Last 5 digits of timestamp
+      const suffix = String(rowIndex).padStart(3, '0');
+      return `${prefix}-${timestamp}-${suffix}`;
+    };
+
     // Function to process products from parsed data
     const processProducts = async (products: ProductRow[]) => {
       let successCount = 0;
@@ -206,7 +215,7 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
           
           // Extract values flexibly (case-insensitive)
           const designation = getColumnValue(row, 'Designation').trim();
-          const reference = getColumnValue(row, 'Reference').trim();
+          let reference = getColumnValue(row, 'Reference').trim();
           const brand = getColumnValue(row, 'Brand').trim();
           const stockStr = getColumnValue(row, 'Stock').trim();
           const priceStr = getColumnValue(row, 'Purchase Price').trim();
@@ -216,6 +225,11 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
             errors.push(`Row ${i + 1}: Missing Designation`);
             errorCount++;
             continue;
+          }
+
+          // Generate reference if missing
+          if (!reference) {
+            reference = generateReference(designation, i + 1);
           }
 
           const stock = parseInt(stockStr) || 0;
@@ -231,7 +245,7 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
           const productsRef = collection(firestore, 'products');
           await addDoc(productsRef, {
             name: designation,
-            reference: reference || null,
+            reference: reference, // Always a string now
             brand: brand || null,
             stock: stock,
             purchasePrice: purchasePrice,
