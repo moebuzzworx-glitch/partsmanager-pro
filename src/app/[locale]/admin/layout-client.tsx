@@ -33,7 +33,6 @@ export function AdminLayoutClient({
 }) {
   const router = useRouter();
   const routerRef = useRef(router);
-  const redirectRef = useRef<string | null>(null);
   const pathname = usePathname();
   const { user, firestore, isUserLoading } = useFirebase();
   const [userDoc, setUserDoc] = useState<AppUser | null>(null);
@@ -53,21 +52,7 @@ export function AdminLayoutClient({
     getDictionary(locale).then(setDictionary);
   }, [locale]);
 
-  // Handle any pending redirects
-  useEffect(() => {
-    if (redirectRef.current) {
-      const url = redirectRef.current;
-      redirectRef.current = null;
-      routerRef.current.push(url);
-    }
-  }, [isChecking]);
-
-  // Skip all auth checks for login page and just show children
-  if (isLoginPage) {
-    return children;
-  }
-
-  // Check if user is admin
+  // Check if user is admin - all auth logic in ONE effect
   useEffect(() => {
     // If loading, wait for Firebase auth
     if (isUserLoading) {
@@ -78,8 +63,8 @@ export function AdminLayoutClient({
     if (!user) {
       // Not authenticated, redirect to login
       console.log('❌ No user found, redirecting to login');
-      redirectRef.current = `/${locale}/admin/login`;
       setIsChecking(false);
+      routerRef.current.push(`/${locale}/admin/login`);
       return;
     }
 
@@ -107,24 +92,24 @@ export function AdminLayoutClient({
           if (userData.role !== 'admin') {
             // Not admin, redirect to dashboard
             console.log('❌ User role is not admin:', userData.role);
-            redirectRef.current = `/${locale}/dashboard`;
+            setIsChecking(false);
+            routerRef.current.push(`/${locale}/dashboard`);
           } else {
             console.log('✅ User is admin, allowing access');
             setUserDoc(userData);
+            setIsChecking(false);
           }
         } else {
           // User document doesn't exist, redirect to admin login
           console.log('❌ User document does not exist in Firestore');
-          redirectRef.current = `/${locale}/admin/login`;
+          setIsChecking(false);
+          routerRef.current.push(`/${locale}/admin/login`);
         }
       } catch (error) {
         console.error('❌ Error fetching user document:', error);
         if (isMounted) {
-          redirectRef.current = `/${locale}/admin/login`;
-        }
-      } finally {
-        if (isMounted) {
           setIsChecking(false);
+          routerRef.current.push(`/${locale}/admin/login`);
         }
       }
     })();
