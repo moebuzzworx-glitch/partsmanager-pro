@@ -11,7 +11,7 @@ import { UserNav } from "@/components/dashboard/user-nav";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Button } from "@/components/ui/button";
-import { Sun, Moon, Bell, Loader2 } from "lucide-react";
+import { Sun, Moon, Bell, Loader2, CheckCircle, AlertCircle, Info } from "lucide-react";
 import { useFirebase } from "@/firebase/provider";
 import { doc, getDoc } from 'firebase/firestore';
 import { User as AppUser } from "@/lib/types";
@@ -23,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useNotifications } from "@/hooks/use-notifications";
 
 export function AdminLayoutClient({
   children,
@@ -38,6 +39,7 @@ export function AdminLayoutClient({
   const [userDoc, setUserDoc] = useState<AppUser | null>(null);
   const [isChecking, setIsChecking] = useState(true);
   const [dictionary, setDictionary] = useState<any>(null);
+  const { notifications, unreadCount, markAsRead } = useNotifications();
 
   // Keep router ref updated
   useEffect(() => {
@@ -193,22 +195,80 @@ export function AdminLayoutClient({
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
-              <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
-                5
-              </span>
+              {unreadCount > 0 && (
+                <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuLabel className="flex justify-between items-center">
+              <span>Notifications</span>
+              {unreadCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto p-0 text-xs"
+                  onClick={() => {
+                    // Mark all as read
+                  }}
+                >
+                  Mark all as read
+                </Button>
+              )}
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <div className="flex flex-col">
-                <span className="font-medium">System Update Available</span>
-                <span className="text-xs text-muted-foreground">
-                  A new system update is available. Please review.
-                </span>
+            {notifications.length > 0 ? (
+              <div className="max-h-96 overflow-y-auto space-y-2 p-2">
+                {notifications.map((notification) => {
+                  const getIcon = () => {
+                    switch (notification.type) {
+                      case 'success':
+                        return <CheckCircle className="h-4 w-4 text-green-600" />;
+                      case 'error':
+                      case 'alert':
+                        return <AlertCircle className="h-4 w-4 text-red-600" />;
+                      default:
+                        return <Info className="h-4 w-4 text-blue-600" />;
+                    }
+                  };
+
+                  return (
+                    <DropdownMenuItem
+                      key={notification.id}
+                      className="flex flex-col items-start gap-2 p-3 rounded-md bg-secondary/50 hover:bg-secondary cursor-pointer"
+                      onClick={() => markAsRead(notification.id)}
+                    >
+                      <div className="flex gap-2 w-full">
+                        {getIcon()}
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{notification.title}</p>
+                          <p className="text-xs text-muted-foreground">{notification.message}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {notification.createdAt
+                              ? new Date(
+                                  notification.createdAt.toDate?.() || notification.createdAt
+                                ).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : 'Just now'}
+                          </p>
+                        </div>
+                        {!notification.read && (
+                          <div className="h-2 w-2 bg-blue-600 rounded-full mt-1 flex-shrink-0"></div>
+                        )}
+                      </div>
+                    </DropdownMenuItem>
+                  );
+                })}
               </div>
-            </DropdownMenuItem>
+            ) : (
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                No notifications
+              </div>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
         {userDoc && dictionary && (
