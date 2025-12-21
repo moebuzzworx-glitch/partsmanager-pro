@@ -238,5 +238,23 @@ service cloud.firestore {
       // Admins or the notification owner can delete notifications
       allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
+
+    /**
+     * @description Invoices collection
+     * @access Admins and premium users: read/write; Trial users: read-only; Unverified: denied
+     */
+    match /invoices/{invoiceId} {
+      allow read: if canRead();
+      allow write: if canWrite();
+    }
+
+    /**
+     * @description Settings collection
+     * @access Users can read/write their own settings
+     */
+    match /settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
   }
 }

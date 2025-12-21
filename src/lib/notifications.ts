@@ -47,7 +47,8 @@ export async function fetchUserNotifications(
       constraints.push(where('read', '==', false));
     }
 
-    constraints.push(orderBy('createdAt', 'desc'));
+    // Note: orderBy removed to avoid requiring composite index
+    // Sorting will be done in memory instead
     constraints.push(limit(50));
 
     const q = query(notificationsRef, ...constraints);
@@ -59,6 +60,13 @@ export async function fetchUserNotifications(
         id: doc.id,
         ...doc.data(),
       } as Notification);
+    });
+
+    // Sort by createdAt in memory (descending)
+    notifications.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
     });
 
     return notifications;
