@@ -14,10 +14,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { PlusCircle, Trash2, Upload, AlertCircle, CheckCircle } from 'lucide-react';
+import { PlusCircle, Trash2 } from 'lucide-react';
 import { getDictionary } from '@/lib/dictionaries';
-import type { Product } from '@/lib/types';
-import { Autocomplete, AutocompleteOption } from './autocomplete';
 import {
     Table,
     TableBody,
@@ -27,14 +25,14 @@ import {
     TableRow,
   } from "@/components/ui/table";
 import { useFirebase } from '@/firebase/provider';
-import { collection, getDocs, query, addDoc, serverTimestamp, where, updateDoc, doc, Query } from 'firebase/firestore';
-import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
+import { collection, getDocs, query, addDoc, serverTimestamp } from 'firebase/firestore';
 
 type Dictionary = Awaited<ReturnType<typeof getDictionary>>;
 
-interface PurchaseItem extends Product {
-  purchaseQuantity: number;
+interface PurchaseItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
 }
 
 interface Supplier {
@@ -51,21 +49,13 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [supplierInput, setSupplierInput] = useState<string>('');
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | undefined>();
-  const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [newProductForm, setNewProductForm] = useState({
-    name: '',
-    reference: '',
-    purchasePrice: '',
-    quantity: '1',
-  });
-  const [showNewProductForm, setShowNewProductForm] = useState(false);
-  const [showBatchForm, setShowBatchForm] = useState(false);
-  const [importStatus, setImportStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
-  const [importMessage, setImportMessage] = useState('');
+  const [currentItemDescription, setCurrentItemDescription] = useState('');
+  const [currentItemQuantity, setCurrentItemQuantity] = useState(1);
+  const [currentItemPrice, setCurrentItemPrice] = useState(0);
 
-  // Fetch products and suppliers from Firestore when dialog opens
+  // Fetch suppliers from Firestore when dialog opens
   useEffect(() => {
     if (!open || !firestore) return;
 
@@ -73,28 +63,6 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
       try {
         setIsLoading(true);
         
-        // Fetch products
-        const productsRef = collection(firestore, 'products');
-        const productsSnapshot = await getDocs(query(productsRef));
-        const fetchedProducts: Product[] = [];
-        productsSnapshot.forEach(doc => {
-          const data = doc.data();
-          // Skip deleted products
-          if (data.isDeleted) return;
-          
-          fetchedProducts.push({
-            id: doc.id,
-            name: data.name || '',
-            reference: data.reference || '',
-            brand: data.brand || '',
-            sku: data.sku || '',
-            stock: data.stock || 0,
-            purchasePrice: data.purchasePrice || 0,
-            price: data.price || 0,
-          });
-        });
-        setProducts(fetchedProducts);
-
         // Fetch suppliers
         const suppliersRef = collection(firestore, 'suppliers');
         const suppliersSnapshot = await getDocs(query(suppliersRef));
@@ -125,14 +93,23 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
     return suppliers.filter(s => s.name.toLowerCase().includes(lowerInput));
   }, [suppliers, supplierInput]);
 
-  const productOptions = useMemo(() => products.map(p => ({ value: p.id, label: `${p.name} (${p.reference})` })), [products]);
   const supplierOptions = useMemo(() => filteredSuppliers.map(s => ({ value: s.id, label: s.name })), [filteredSuppliers]);
 
-  const handleAddProduct = (option: AutocompleteOption) => {
-    const product = products.find(p => p.id === option.value);
-    if (product && !purchaseItems.find(item => item.id === product.id)) {
-      setPurchaseItems(prev => [...prev, { ...product, purchaseQuantity: 1 }]);
+  const handleAddItem = () => {
+    if (!currentItemDescription.trim() || currentItemQuantity <= 0 || currentItemPrice <= 0) {
+      return;
     }
+
+    setPurchaseItems(prev => [...prev, {
+      description: currentItemDescription.trim(),
+      quantity: currentItemQuantity,
+      unitPrice: currentItemPrice,
+    }]);
+
+    // Reset form
+    setCurrentItemDescription('');
+    setCurrentItemQuantity(1);
+    setCurrentItemPrice(0);
   };
 
   const handleSupplierSelect = (option: AutocompleteOption) => {
@@ -143,342 +120,22 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
     }
   };
 
-  const handleQuantityChange = (productId: string, quantity: number) => {
+  const handleQuantityChange = (index: number, quantity: number) => {
     const newQuantity = Math.max(0, quantity);
-    setPurchaseItems(prev => prev.map(item => item.id === productId ? { ...item, purchaseQuantity: newQuantity } : item));
+    setPurchaseItems(prev => prev.map((item, i) => i === index ? { ...item, quantity: newQuantity } : item));
   };
 
-  const handleRemoveItem = (productId: string) => {
-    setPurchaseItems(prev => prev.filter(item => item.id !== productId));
+  const handlePriceChange = (index: number, price: number) => {
+    const newPrice = Math.max(0, price);
+    setPurchaseItems(prev => prev.map((item, i) => i === index ? { ...item, unitPrice: newPrice } : item));
   };
 
-  const handleAddNewProduct = async () => {
-    if (!firestore || !newProductForm.name.trim() || !newProductForm.purchasePrice.trim()) {
-      return;
-    }
-
-    try {
-      // Create new product
-      const productsRef = collection(firestore, 'products');
-      const newProductRef = await addDoc(productsRef, {
-        name: newProductForm.name.trim(),
-        reference: newProductForm.reference.trim() || `REF-${Date.now()}`,
-        brand: '',
-        stock: 0,
-        purchasePrice: parseFloat(newProductForm.purchasePrice),
-        price: parseFloat(newProductForm.purchasePrice) * 1.25,
-        createdAt: serverTimestamp(),
-        isDeleted: false,
-      });
-
-      // Add to purchase items
-      const newProduct: PurchaseItem = {
-        id: newProductRef.id,
-        name: newProductForm.name.trim(),
-        reference: newProductForm.reference.trim() || `REF-${Date.now()}`,
-        brand: '',
-        sku: '',
-        stock: 0,
-        purchasePrice: parseFloat(newProductForm.purchasePrice),
-        price: parseFloat(newProductForm.purchasePrice) * 1.25,
-        purchaseQuantity: parseInt(newProductForm.quantity) || 1,
-      };
-
-      setPurchaseItems(prev => [...prev, newProduct]);
-
-      // Add to products list
-      setProducts(prev => [...prev, {
-        id: newProductRef.id,
-        name: newProductForm.name.trim(),
-        reference: newProductForm.reference.trim() || `REF-${Date.now()}`,
-        brand: '',
-        sku: '',
-        stock: 0,
-        purchasePrice: parseFloat(newProductForm.purchasePrice),
-        price: parseFloat(newProductForm.purchasePrice) * 1.25,
-      }]);
-
-      // Reset form
-      setNewProductForm({
-        name: '',
-        reference: '',
-        purchasePrice: '',
-        quantity: '1',
-      });
-      setShowNewProductForm(false);
-    } catch (error) {
-      console.error('Error adding new product:', error);
-    }
-  };
-
-  const getColumnValue = (row: any, columnName: string): string => {
-    if (row[columnName]) {
-      return String(row[columnName] || '').trim();
-    }
-    
-    const key = Object.keys(row).find(k => 
-      k.trim().toLowerCase() === columnName.trim().toLowerCase()
-    );
-    
-    if (key) {
-      return String(row[key] || '').trim();
-    }
-    
-    const lowerColumnName = columnName.trim().toLowerCase();
-    const partialKey = Object.keys(row).find(k => 
-      k.trim().toLowerCase().includes(lowerColumnName) || 
-      lowerColumnName.includes(k.trim().toLowerCase())
-    );
-    
-    return partialKey ? String(row[partialKey] || '').trim() : '';
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!firestore) {
-      setImportStatus('error');
-      setImportMessage('Firestore not initialized');
-      return;
-    }
-
-    setImportStatus('processing');
-    setImportMessage('Processing file...');
-
-    try {
-      const fileReader = new FileReader();
-      fileReader.onload = async (event) => {
-        try {
-          let parsedData: any[] = [];
-
-          // Detect file type and parse
-          if (file.name.endsWith('.csv')) {
-            // CSV parsing
-            const csvText = event.target?.result as string;
-            Papa.parse(csvText, {
-              header: true,
-              skipEmptyLines: true,
-              complete: async (results) => {
-                await processImportedProducts(results.data);
-              },
-              error: () => {
-                setImportStatus('error');
-                setImportMessage('Failed to parse CSV file');
-              },
-            });
-          } else {
-            // Excel parsing
-            const arrayBuffer = event.target?.result as ArrayBuffer;
-            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            parsedData = XLSX.utils.sheet_to_json(worksheet);
-            await processImportedProducts(parsedData);
-          }
-        } catch (error) {
-          console.error('Error processing file:', error);
-          setImportStatus('error');
-          setImportMessage('Failed to process file');
-        }
-      };
-
-      if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-        fileReader.readAsArrayBuffer(file);
-      } else {
-        fileReader.readAsText(file);
-      }
-    } catch (error) {
-      console.error('Error reading file:', error);
-      setImportStatus('error');
-      setImportMessage('Failed to read file');
-    }
-  };
-
-  const processImportedProducts = async (data: any[]) => {
-    try {
-      let successCount = 0;
-      let updateCount = 0;
-      let errorCount = 0;
-      const errors: string[] = [];
-      const productsRef = collection(firestore, 'products');
-
-      for (let i = 0; i < data.length; i++) {
-        try {
-          const row = data[i];
-          
-          const name = getColumnValue(row, 'Designation').trim() || getColumnValue(row, 'Product').trim();
-          let reference = getColumnValue(row, 'Reference').trim();
-          const priceStr = getColumnValue(row, 'Purchase Price').trim() || getColumnValue(row, 'Price').trim();
-          const quantityStr = getColumnValue(row, 'Quantity').trim() || getColumnValue(row, 'Stock').trim();
-
-          if (!name) {
-            errors.push(`Row ${i + 1}: Missing Product Name`);
-            errorCount++;
-            continue;
-          }
-
-          if (!priceStr) {
-            errors.push(`Row ${i + 1}: Missing Purchase Price`);
-            errorCount++;
-            continue;
-          }
-
-          if (!reference) {
-            reference = `REF-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          }
-
-          const purchasePrice = parseFloat(priceStr) || 0;
-          const quantity = parseInt(quantityStr) || 1;
-
-          if (purchasePrice <= 0) {
-            errors.push(`Row ${i + 1}: Invalid Purchase Price`);
-            errorCount++;
-            continue;
-          }
-
-          // Check if product already exists by reference or name
-          let existingProductId: string | null = null;
-          let existingProduct: any = null;
-
-          // First try to find by reference
-          if (reference) {
-            const referenceQuery = query(productsRef, where('reference', '==', reference));
-            const referenceSnapshot = await getDocs(referenceQuery);
-            if (!referenceSnapshot.empty) {
-              existingProductId = referenceSnapshot.docs[0].id;
-              existingProduct = referenceSnapshot.docs[0].data();
-            }
-          }
-
-          // If not found by reference, try by name
-          if (!existingProductId) {
-            const nameQuery = query(productsRef, where('name', '==', name));
-            const nameSnapshot = await getDocs(nameQuery);
-            if (!nameSnapshot.empty) {
-              existingProductId = nameSnapshot.docs[0].id;
-              existingProduct = nameSnapshot.docs[0].data();
-            }
-          }
-
-          if (existingProductId && existingProduct) {
-            // Update existing product: add stock and update price
-            const currentStock = existingProduct.stock || 0;
-            const newStock = currentStock + quantity;
-            const newPrice = purchasePrice * 1.25; // Default 25% markup
-
-            const existingProductRef = doc(firestore, 'products', existingProductId);
-            await updateDoc(existingProductRef, {
-              stock: newStock,
-              purchasePrice: purchasePrice,
-              price: newPrice,
-              updatedAt: serverTimestamp(),
-            });
-
-            // Update local state
-            setProducts(prev => prev.map(p => 
-              p.id === existingProductId 
-                ? { ...p, stock: newStock, purchasePrice, price: newPrice }
-                : p
-            ));
-
-            // Add to purchase items
-            const updatedProduct: PurchaseItem = {
-              id: existingProductId,
-              name: existingProduct.name,
-              reference: existingProduct.reference,
-              brand: existingProduct.brand || '',
-              sku: existingProduct.sku || '',
-              stock: newStock,
-              purchasePrice: purchasePrice,
-              price: newPrice,
-              purchaseQuantity: quantity,
-            };
-
-            setPurchaseItems(prev => {
-              const existing = prev.find(item => item.id === existingProductId);
-              if (existing) {
-                return prev.map(item => 
-                  item.id === existingProductId 
-                    ? { ...item, purchaseQuantity: item.purchaseQuantity + quantity }
-                    : item
-                );
-              }
-              return [...prev, updatedProduct];
-            });
-
-            updateCount++;
-          } else {
-            // Create new product
-            const newProductRef = await addDoc(productsRef, {
-              name: name,
-              reference: reference,
-              brand: '',
-              stock: quantity,
-              purchasePrice: purchasePrice,
-              price: purchasePrice * 1.25,
-              createdAt: serverTimestamp(),
-              isDeleted: false,
-            });
-
-            // Add to purchase items
-            const newProduct: PurchaseItem = {
-              id: newProductRef.id,
-              name: name,
-              reference: reference,
-              brand: '',
-              sku: '',
-              stock: quantity,
-              purchasePrice: purchasePrice,
-              price: purchasePrice * 1.25,
-              purchaseQuantity: quantity,
-            };
-
-            setPurchaseItems(prev => [...prev, newProduct]);
-
-            // Add to products list
-            setProducts(prev => [...prev, {
-              id: newProductRef.id,
-              name: name,
-              reference: reference,
-              brand: '',
-              sku: '',
-              stock: quantity,
-              purchasePrice: purchasePrice,
-              price: purchasePrice * 1.25,
-            }]);
-
-            successCount++;
-          }
-        } catch (rowError) {
-          console.error(`Error processing row ${i + 1}:`, rowError);
-          errors.push(`Row ${i + 1}: Error processing`);
-          errorCount++;
-        }
-      }
-
-      const totalProcessed = successCount + updateCount;
-      setImportStatus('success');
-      setImportMessage(`Processed ${totalProcessed} products (${successCount} new, ${updateCount} updated)${errorCount > 0 ? `, ${errorCount} errors.` : ''}`);
-      
-      // Reset file input
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-      if (fileInput) fileInput.value = '';
-
-      // Close batch form after delay
-      setTimeout(() => {
-        setShowBatchForm(false);
-        setImportStatus('idle');
-        setImportMessage('');
-      }, 2000);
-    } catch (error) {
-      console.error('Error importing products:', error);
-      setImportStatus('error');
-      setImportMessage('Failed to import products');
-    }
+  const handleRemoveItem = (index: number) => {
+    setPurchaseItems(prev => prev.filter((_, i) => i !== index));
   };
   
   const totalAmount = useMemo(() => {
-    return purchaseItems.reduce((total, item) => total + (item.purchasePrice * item.purchaseQuantity), 0);
+    return purchaseItems.reduce((total, item) => total + (item.unitPrice * item.quantity), 0);
   }, [purchaseItems]);
 
   const handleSubmit = async () => {
@@ -500,42 +157,29 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
         supplierId = newSupplierDoc.id;
       }
 
-      // Save each purchase item to the purchases collection and update product stock
+      // Save purchase to purchases collection
       const purchasesRef = collection(firestore, 'purchases');
-      const productsRef = collection(firestore, 'products');
-
-      for (const item of purchaseItems) {
-        // Save purchase record
-        await addDoc(purchasesRef, {
-          supplierId: supplierId,
-          supplier: supplierName,
-          productId: item.id,
-          product: item.name,
-          quantity: item.purchaseQuantity,
-          amount: item.purchasePrice * item.purchaseQuantity,
-          unitPrice: item.purchasePrice,
-          reference: item.reference,
-          date: serverTimestamp(),
-        });
-
-        // Update product stock: add purchase quantity to existing stock
-        const productRef = doc(firestore, 'products', item.id);
-        const currentStock = item.stock || 0;
-        const newStock = currentStock + item.purchaseQuantity;
-
-        await updateDoc(productRef, {
-          stock: newStock,
-          purchasePrice: item.purchasePrice, // Update purchase price
-          price: item.purchasePrice * 1.25, // Auto-calculate selling price (25% markup)
-          updatedAt: serverTimestamp(),
-        });
-      }
+      await addDoc(purchasesRef, {
+        supplierId: supplierId,
+        supplier: supplierName,
+        items: purchaseItems.map(item => ({
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          amount: item.quantity * item.unitPrice,
+        })),
+        totalAmount: totalAmount,
+        date: serverTimestamp(),
+      });
 
       // Reset form
       setOpen(false);
       setPurchaseItems([]);
       setSupplierInput('');
       setSelectedSupplier(undefined);
+      setCurrentItemDescription('');
+      setCurrentItemQuantity(1);
+      setCurrentItemPrice(0);
       onPurchaseAdded?.();
     } catch (error) {
       console.error('Error saving purchase:', error);
@@ -598,206 +242,90 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
                   <p className="text-xs text-blue-600">{supplierInput} - {d.newSupplier}</p>
                 )}
             </div>
-            <div className="grid gap-2">
-                <div className="flex justify-between items-center">
-                  <Label htmlFor="product">{d.product}</Label>
-                  <div className="flex gap-2">
-                    <Button 
-                      type="button"
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setShowBatchForm(!showBatchForm);
-                        setShowNewProductForm(false);
-                      }}
-                    >
-                      <PlusCircle className="w-4 h-4 mr-1" />
-                      Batch Add
-                    </Button>
-                    <Button 
-                      type="button"
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setShowNewProductForm(!showNewProductForm);
-                        setShowBatchForm(false);
-                      }}
-                    >
-                      <PlusCircle className="w-4 h-4 mr-1" />
-                      New Product
-                    </Button>
-                  </div>
-                </div>
-                <Autocomplete
-                    options={productOptions}
-                    placeholder={d.productPlaceholder}
-                    emptyMessage={d.noProductFound}
-                    onValueChange={handleAddProduct}
+
+            <div className="grid gap-4 border rounded-lg p-4 bg-gray-50">
+              <div className="grid gap-2">
+                <Label htmlFor="item-description">{d.itemDescription}</Label>
+                <Input
+                    type="text"
+                    id="item-description"
+                    placeholder={d.itemDescriptionPlaceholder}
+                    value={currentItemDescription}
+                    onChange={(e) => setCurrentItemDescription(e.target.value)}
+                    className="w-full"
                 />
-
-                {/* Batch Products Form */}
-                {showBatchForm && (
-                  <Card className="mt-2 p-4">
-                    <div className="space-y-3">
-                      <div>
-                        <Label htmlFor="batchFile" className="text-sm font-semibold">Import CSV or Excel File</Label>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Columns: Designation (or Product), Reference, Purchase Price (or Price), Quantity (optional)
-                        </p>
-                      </div>
-                      
-                      <div className="relative">
-                        <input
-                          id="batchFile"
-                          type="file"
-                          accept=".csv,.xlsx,.xls"
-                          onChange={handleFileUpload}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        />
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 hover:bg-gray-50/50 transition-colors">
-                          <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                          <p className="text-sm font-medium text-gray-700">
-                            Drag and drop your file here or click to upload
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            CSV or Excel files are supported
-                          </p>
-                        </div>
-                      </div>
-
-                      {importStatus === 'processing' && (
-                        <div className="flex items-center gap-2 text-sm text-blue-600">
-                          <div className="h-4 w-4 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
-                          {importMessage}
-                        </div>
-                      )}
-
-                      {importStatus === 'success' && (
-                        <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded">
-                          <CheckCircle className="h-4 w-4" />
-                          {importMessage}
-                        </div>
-                      )}
-
-                      {importStatus === 'error' && (
-                        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-2 rounded">
-                          <AlertCircle className="h-4 w-4" />
-                          {importMessage}
-                        </div>
-                      )}
-
-                      <Button 
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setShowBatchForm(false);
-                          setImportStatus('idle');
-                          setImportMessage('');
-                        }}
-                      >
-                        Close
-                      </Button>
-                    </div>
-                  </Card>
-                )}
-
-                {/* New Product Form */}
-                {showNewProductForm && (
-                  <Card className="mt-2 p-4">
-                    <div className="space-y-3">
-                      <div className="grid gap-1">
-                        <Label htmlFor="productName" className="text-sm">Product Name *</Label>
-                        <Input
-                          id="productName"
-                          placeholder="Enter product name..."
-                          value={newProductForm.name}
-                          onChange={(e) => setNewProductForm(prev => ({ ...prev, name: e.target.value }))}
-                        />
-                      </div>
-                      <div className="grid gap-1">
-                        <Label htmlFor="productRef" className="text-sm">Reference</Label>
-                        <Input
-                          id="productRef"
-                          placeholder="Auto-generated if empty"
-                          value={newProductForm.reference}
-                          onChange={(e) => setNewProductForm(prev => ({ ...prev, reference: e.target.value }))}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="grid gap-1">
-                          <Label htmlFor="productPrice" className="text-sm">Purchase Price *</Label>
-                          <Input
-                            id="productPrice"
-                            type="number"
-                            placeholder="0.00"
-                            value={newProductForm.purchasePrice}
-                            onChange={(e) => setNewProductForm(prev => ({ ...prev, purchasePrice: e.target.value }))}
-                          />
-                        </div>
-                        <div className="grid gap-1">
-                          <Label htmlFor="productQty" className="text-sm">Quantity</Label>
-                          <Input
-                            id="productQty"
-                            type="number"
-                            placeholder="1"
-                            value={newProductForm.quantity}
-                            onChange={(e) => setNewProductForm(prev => ({ ...prev, quantity: e.target.value }))}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          type="button"
-                          size="sm"
-                          onClick={handleAddNewProduct}
-                        >
-                          Add Product
-                        </Button>
-                        <Button 
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowNewProductForm(false)}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                )}
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="item-quantity">{d.quantity}</Label>
+                  <Input 
+                      type="number" 
+                      id="item-quantity"
+                      value={currentItemQuantity}
+                      onChange={(e) => setCurrentItemQuantity(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      className="w-full"
+                      min="0"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="item-price">{d.price}</Label>
+                  <Input 
+                      type="number" 
+                      id="item-price"
+                      value={currentItemPrice}
+                      onChange={(e) => setCurrentItemPrice(Math.max(0, parseFloat(e.target.value) || 0))}
+                      className="w-full"
+                      min="0"
+                      step="0.01"
+                  />
+                </div>
+                <div className="flex flex-col justify-end">
+                  <Button onClick={handleAddItem} variant="outline" className="w-full">
+                    {d.addItem}
+                  </Button>
+                </div>
+              </div>
             </div>
-          
+
           {purchaseItems.length > 0 && (
             <Card>
                 <CardContent className="p-0">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>{d.product}</TableHead>
-                                <TableHead className="w-[120px]">{d.quantity}</TableHead>
+                                <TableHead>{d.itemDescription}</TableHead>
+                                <TableHead className="w-[100px]">{d.quantity}</TableHead>
                                 <TableHead className="text-right w-[120px]">{d.price}</TableHead>
                                 <TableHead className="text-right w-[120px]">{d.total}</TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {purchaseItems.map(item => (
-                                <TableRow key={item.id}>
-                                    <TableCell>{item.name}</TableCell>
+                            {purchaseItems.map((item, index) => (
+                                <TableRow key={index}>
+                                    <TableCell>{item.description}</TableCell>
                                     <TableCell>
                                         <Input 
                                             type="number" 
-                                            value={item.purchaseQuantity}
-                                            onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value, 10))}
+                                            value={item.quantity}
+                                            onChange={(e) => handleQuantityChange(index, parseInt(e.target.value, 10))}
                                             className="w-full"
                                             min="0"
                                         />
                                     </TableCell>
-                                    <TableCell className="text-right">{item.purchasePrice.toFixed(2)} DZD</TableCell>
-                                    <TableCell className="text-right">{(item.purchasePrice * item.purchaseQuantity).toFixed(2)} DZD</TableCell>
+                                    <TableCell className="text-right">
+                                        <Input 
+                                            type="number" 
+                                            value={item.unitPrice}
+                                            onChange={(e) => handlePriceChange(index, parseFloat(e.target.value))}
+                                            className="w-full text-right"
+                                            min="0"
+                                            step="0.01"
+                                        />
+                                    </TableCell>
+                                    <TableCell className="text-right">{(item.unitPrice * item.quantity).toFixed(2)} DZD</TableCell>
                                     <TableCell>
-                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
+                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}>
                                             <Trash2 className="h-4 w-4 text-destructive"/>
                                         </Button>
                                     </TableCell>

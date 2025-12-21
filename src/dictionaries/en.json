@@ -109,11 +109,11 @@
     "supplierPlaceholder": "Search or create a supplier...",
     "noSupplierFound": "No supplier found.",
     "newSupplier": "(New Supplier)",
-    "product": "Product",
-    "productPlaceholder": "Search for a product to add...",
-    "noProductFound": "No product found.",
+    "itemDescription": "Item Description",
+    "itemDescriptionPlaceholder": "e.g., Detergent, Paper Towels, Office Supplies...",
+    "addItem": "Add Item",
     "quantity": "Quantity",
-    "price": "Price",
+    "price": "Unit Price",
     "total": "Total",
     "submit": "Log Purchase"
   }

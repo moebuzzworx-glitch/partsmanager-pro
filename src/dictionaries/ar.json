@@ -104,16 +104,16 @@
   "logPurchaseDialog": {
     "logPurchase": "تسجيل عملية شراء",
     "title": "تسجيل عملية شراء جديدة",
-    "description": "أضف المنتجات والمورد لتسجيل أمر شراء.",
+    "description": "سجل المستلزمات والنفقات التشغيلية من المورد الخاص بك.",
     "supplier": "المورد",
     "supplierPlaceholder": "ابحث عن مورد أو أنشئ مورداً جديداً...",
     "noSupplierFound": "لم يتم العثور على مورد.",
     "newSupplier": "(مورد جديد)",
-    "product": "المنتج",
-    "productPlaceholder": "ابحث عن منتج لإضافته...",
-    "noProductFound": "لم يتم العثور على منتج.",
+    "itemDescription": "وصف المادة",
+    "itemDescriptionPlaceholder": "مثل: منظف، مناديل ورقية، مستلزمات مكتبية...",
+    "addItem": "إضافة المادة",
     "quantity": "الكمية",
-    "price": "السعر",
+    "price": "السعر الفردي",
     "total": "المجموع",
     "submit": "تسجيل الشراء"
   }
