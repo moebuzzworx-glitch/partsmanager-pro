@@ -218,5 +218,16 @@ service cloud.firestore {
         allow delete: if canWrite() && parentSaleExists(saleId) && resource != null;
       }
     }
+
+    /**
+     * @description User notifications
+     * @access Users can only read/update their own notifications; Admins create all notifications
+     */
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isAdmin();
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
   }
 }
