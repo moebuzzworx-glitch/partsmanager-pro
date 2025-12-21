@@ -1,32 +1,100 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Loader2, Trash2 } from "lucide-react";
 import { useFirebase } from "@/firebase/provider";
 import { useEffect, useState } from "react";
-import { fetchUserMetrics, UserMetrics } from "@/lib/admin-analytics";
+import { fetchAllUsers, deleteUser, UserProfile } from "@/lib/user-management";
+import { EditUserDialog } from "@/components/admin/edit-user-dialog";
+import { CreateUserDialog } from "@/components/admin/create-user-dialog";
+import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function AdminUsersPage() {
   const { firestore } = useFirebase();
-  const [users, setUsers] = useState<UserMetrics[]>([]);
+  const { toast } = useToast();
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+
+  const loadUsers = async () => {
+    if (!firestore) return;
+    try {
+      setIsLoading(true);
+      const fetchedUsers = await fetchAllUsers(firestore);
+      setUsers(fetchedUsers);
+    } catch (error) {
+      console.error('Error loading users:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load users',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!firestore) return;
-
-    const loadUsers = async () => {
-      try {
-        const userMetrics = await fetchUserMetrics(firestore);
-        setUsers(userMetrics);
-      } catch (error) {
-        console.error('Error loading users:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadUsers();
   }, [firestore]);
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!firestore) return;
+
+    setIsDeleting(userId);
+    try {
+      const success = await deleteUser(firestore, userId);
+      if (success) {
+        setUsers(users.filter(u => u.id !== userId));
+        toast({
+          title: 'Success',
+          description: `User ${userName} deleted successfully`,
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to delete user',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete user',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const filteredUsers = users.filter((user) =>
+    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (isLoading) {
     return (
@@ -40,60 +108,110 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-headline font-bold">User Management</h1>
-        <p className="text-muted-foreground mt-2">Manage users, roles, and permissions</p>
+        <p className="text-muted-foreground mt-2">Manage users, roles, subscriptions, and permissions</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>All Users</CardTitle>
-          <CardDescription>View and manage all system users ({users.length} total)</CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>All Users</CardTitle>
+              <CardDescription>View and manage all system users ({users.length} total)</CardDescription>
+            </div>
+            <CreateUserDialog onUserCreated={loadUsers} />
+          </div>
         </CardHeader>
-        <CardContent>
-          {users.length > 0 ? (
+        <CardContent className="space-y-4">
+          <Input
+            placeholder="Search by email or name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-sm"
+          />
+
+          {filteredUsers.length > 0 ? (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 font-semibold">Email</th>
-                    <th className="text-left py-3 px-4 font-semibold">Role</th>
-                    <th className="text-left py-3 px-4 font-semibold">Created At</th>
-                    <th className="text-left py-3 px-4 font-semibold">Last Login</th>
-                    <th className="text-left py-3 px-4 font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user) => (
-                    <tr key={user.email} className="border-b hover:bg-secondary/50 transition-colors">
-                      <td className="py-3 px-4">{user.email}</td>
-                      <td className="py-3 px-4">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          user.role === 'admin' 
-                            ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                            : user.role === 'premium'
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                        }`}>
-                          {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-muted-foreground">
-                        {user.createdAt ? new Date(user.createdAt.toDate?.() || user.createdAt).toLocaleDateString() : 'N/A'}
-                      </td>
-                      <td className="py-3 px-4 text-muted-foreground">
-                        {user.lastLogin ? new Date(user.lastLogin.toDate?.() || user.lastLogin).toLocaleDateString() : 'Never'}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                          Active
-                        </span>
-                      </td>
-                    </tr>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Subscription</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.map((user) => (
+                    <TableRow key={user.id} className="hover:bg-secondary/50">
+                      <TableCell className="font-medium">{user.email}</TableCell>
+                      <TableCell>{user.name || '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant={user.subscription === 'premium' ? 'default' : 'secondary'}>
+                          {user.subscription === 'premium' ? 'Premium' : 'Trial'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={user.role === 'admin' ? 'destructive' : 'outline'}>
+                          {user.role === 'admin' ? 'Admin' : 'User'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
+                          {user.status === 'suspended' ? 'Suspended' : 'Active'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {user.createdAt
+                          ? new Date(user.createdAt.toDate?.() || user.createdAt).toLocaleDateString()
+                          : '-'}
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <EditUserDialog user={user} onUserUpdated={loadUsers} />
+                        
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              disabled={user.role === 'admin' || isDeleting === user.id}
+                              title={user.role === 'admin' ? 'Cannot delete admin accounts' : ''}
+                            >
+                              {isDeleting === user.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete User</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete {user.name || user.email}? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteUser(user.id, user.name || user.email)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           ) : (
-            <p className="text-muted-foreground text-center py-8">No users found</p>
+            <p className="text-muted-foreground text-center py-8">
+              {users.length === 0 ? 'No users found. Create one to get started!' : 'No users match your search.'}
+            </p>
           )}
         </CardContent>
       </Card>
