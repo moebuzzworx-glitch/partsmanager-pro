@@ -64,7 +64,7 @@ export function AdminLayoutClient({
       // Not authenticated, redirect to login
       console.log('❌ No user found, redirecting to login');
       setIsChecking(false);
-      routerRef.current.push('/${locale}/admin/login');
+      routerRef.current.push(`/${locale}/admin/login`);
       return;
     }
 
