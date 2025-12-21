@@ -27,7 +27,7 @@ import {
     TableRow,
   } from "@/components/ui/table";
 import { useFirebase } from '@/firebase/provider';
-import { collection, getDocs, query, addDoc, serverTimestamp, where, updateDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, query, addDoc, serverTimestamp, where, updateDoc, doc, Query } from 'firebase/firestore';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
@@ -297,6 +297,7 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
   const processImportedProducts = async (data: any[]) => {
     try {
       let successCount = 0;
+      let updateCount = 0;
       let errorCount = 0;
       const errors: string[] = [];
       const productsRef = collection(firestore, 'products');
@@ -335,46 +336,119 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
             continue;
           }
 
-          // Create new product
-          const newProductRef = await addDoc(productsRef, {
-            name: name,
-            reference: reference,
-            brand: '',
-            stock: 0,
-            purchasePrice: purchasePrice,
-            price: purchasePrice * 1.25,
-            createdAt: serverTimestamp(),
-            isDeleted: false,
-          });
+          // Check if product already exists by reference or name
+          let existingProductId: string | null = null;
+          let existingProduct: any = null;
 
-          // Add to purchase items
-          const newProduct: PurchaseItem = {
-            id: newProductRef.id,
-            name: name,
-            reference: reference,
-            brand: '',
-            sku: '',
-            stock: 0,
-            purchasePrice: purchasePrice,
-            price: purchasePrice * 1.25,
-            purchaseQuantity: quantity,
-          };
+          // First try to find by reference
+          if (reference) {
+            const referenceQuery = query(productsRef, where('reference', '==', reference));
+            const referenceSnapshot = await getDocs(referenceQuery);
+            if (!referenceSnapshot.empty) {
+              existingProductId = referenceSnapshot.docs[0].id;
+              existingProduct = referenceSnapshot.docs[0].data();
+            }
+          }
 
-          setPurchaseItems(prev => [...prev, newProduct]);
+          // If not found by reference, try by name
+          if (!existingProductId) {
+            const nameQuery = query(productsRef, where('name', '==', name));
+            const nameSnapshot = await getDocs(nameQuery);
+            if (!nameSnapshot.empty) {
+              existingProductId = nameSnapshot.docs[0].id;
+              existingProduct = nameSnapshot.docs[0].data();
+            }
+          }
 
-          // Add to products list
-          setProducts(prev => [...prev, {
-            id: newProductRef.id,
-            name: name,
-            reference: reference,
-            brand: '',
-            sku: '',
-            stock: 0,
-            purchasePrice: purchasePrice,
-            price: purchasePrice * 1.25,
-          }]);
+          if (existingProductId && existingProduct) {
+            // Update existing product: add stock and update price
+            const currentStock = existingProduct.stock || 0;
+            const newStock = currentStock + quantity;
+            const newPrice = purchasePrice * 1.25; // Default 25% markup
 
-          successCount++;
+            const existingProductRef = doc(firestore, 'products', existingProductId);
+            await updateDoc(existingProductRef, {
+              stock: newStock,
+              purchasePrice: purchasePrice,
+              price: newPrice,
+              updatedAt: serverTimestamp(),
+            });
+
+            // Update local state
+            setProducts(prev => prev.map(p => 
+              p.id === existingProductId 
+                ? { ...p, stock: newStock, purchasePrice, price: newPrice }
+                : p
+            ));
+
+            // Add to purchase items
+            const updatedProduct: PurchaseItem = {
+              id: existingProductId,
+              name: existingProduct.name,
+              reference: existingProduct.reference,
+              brand: existingProduct.brand || '',
+              sku: existingProduct.sku || '',
+              stock: newStock,
+              purchasePrice: purchasePrice,
+              price: newPrice,
+              purchaseQuantity: quantity,
+            };
+
+            setPurchaseItems(prev => {
+              const existing = prev.find(item => item.id === existingProductId);
+              if (existing) {
+                return prev.map(item => 
+                  item.id === existingProductId 
+                    ? { ...item, purchaseQuantity: item.purchaseQuantity + quantity }
+                    : item
+                );
+              }
+              return [...prev, updatedProduct];
+            });
+
+            updateCount++;
+          } else {
+            // Create new product
+            const newProductRef = await addDoc(productsRef, {
+              name: name,
+              reference: reference,
+              brand: '',
+              stock: quantity,
+              purchasePrice: purchasePrice,
+              price: purchasePrice * 1.25,
+              createdAt: serverTimestamp(),
+              isDeleted: false,
+            });
+
+            // Add to purchase items
+            const newProduct: PurchaseItem = {
+              id: newProductRef.id,
+              name: name,
+              reference: reference,
+              brand: '',
+              sku: '',
+              stock: quantity,
+              purchasePrice: purchasePrice,
+              price: purchasePrice * 1.25,
+              purchaseQuantity: quantity,
+            };
+
+            setPurchaseItems(prev => [...prev, newProduct]);
+
+            // Add to products list
+            setProducts(prev => [...prev, {
+              id: newProductRef.id,
+              name: name,
+              reference: reference,
+              brand: '',
+              sku: '',
+              stock: quantity,
+              purchasePrice: purchasePrice,
+              price: purchasePrice * 1.25,
+            }]);
+
+            successCount++;
+          }
         } catch (rowError) {
           console.error(`Error processing row ${i + 1}:`, rowError);
           errors.push(`Row ${i + 1}: Error processing`);
@@ -382,8 +456,9 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
         }
       }
 
+      const totalProcessed = successCount + updateCount;
       setImportStatus('success');
-      setImportMessage(`Imported ${successCount} products. ${errorCount > 0 ? `${errorCount} errors.` : ''}`);
+      setImportMessage(`Processed ${totalProcessed} products (${successCount} new, ${updateCount} updated)${errorCount > 0 ? `, ${errorCount} errors.` : ''}`);
       
       // Reset file input
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -571,13 +646,24 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
                         </p>
                       </div>
                       
-                      <Input
-                        id="batchFile"
-                        type="file"
-                        accept=".csv,.xlsx,.xls"
-                        onChange={handleFileUpload}
-                        className="cursor-pointer"
-                      />
+                      <div className="relative">
+                        <input
+                          id="batchFile"
+                          type="file"
+                          accept=".csv,.xlsx,.xls"
+                          onChange={handleFileUpload}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 hover:bg-gray-50/50 transition-colors">
+                          <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                          <p className="text-sm font-medium text-gray-700">
+                            Drag and drop your file here or click to upload
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            CSV or Excel files are supported
+                          </p>
+                        </div>
+                      </div>
 
                       {importStatus === 'processing' && (
                         <div className="flex items-center gap-2 text-sm text-blue-600">
