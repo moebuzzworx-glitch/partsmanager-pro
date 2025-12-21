@@ -167,15 +167,118 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
       return;
     }
 
+    // Helper function to find column value case-insensitively and trim whitespace
+    const getColumnValue = (row: ProductRow, columnName: string): string => {
+      // Try exact match first
+      if (row[columnName]) {
+        return String(row[columnName] || '').trim();
+      }
+      
+      // Try case-insensitive match
+      const key = Object.keys(row).find(k => 
+        k.trim().toLowerCase() === columnName.trim().toLowerCase()
+      );
+      
+      if (key) {
+        return String(row[key] || '').trim();
+      }
+      
+      // If still not found, try partial matching (for flexibility)
+      const lowerColumnName = columnName.trim().toLowerCase();
+      const partialKey = Object.keys(row).find(k => 
+        k.trim().toLowerCase().includes(lowerColumnName) || 
+        lowerColumnName.includes(k.trim().toLowerCase())
+      );
+      
+      return partialKey ? String(row[partialKey] || '').trim() : '';
+    };
+
+    // Function to process products from parsed data
+    const processProducts = async (products: ProductRow[]) => {
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: string[] = [];
+
+      for (let i = 0; i < products.length; i++) {
+        try {
+          const row = products[i];
+          
+          // Extract values flexibly (case-insensitive)
+          const designation = getColumnValue(row, 'Designation').trim();
+          const reference = getColumnValue(row, 'Reference').trim();
+          const brand = getColumnValue(row, 'Brand').trim();
+          const stockStr = getColumnValue(row, 'Stock').trim();
+          const priceStr = getColumnValue(row, 'Purchase Price').trim();
+
+          // Validate required fields
+          if (!designation) {
+            errors.push(`Row ${i + 1}: Missing Designation`);
+            errorCount++;
+            continue;
+          }
+
+          const stock = parseInt(stockStr) || 0;
+          const purchasePrice = parseFloat(priceStr) || 0;
+
+          if (purchasePrice <= 0) {
+            errors.push(`Row ${i + 1}: Invalid Purchase Price`);
+            errorCount++;
+            continue;
+          }
+
+          // Add to Firestore
+          const productsRef = collection(firestore, 'products');
+          await addDoc(productsRef, {
+            name: designation,
+            reference: reference || null,
+            brand: brand || null,
+            stock: stock,
+            purchasePrice: purchasePrice,
+            price: purchasePrice * 1.25, // Default 25% markup
+            createdAt: new Date(),
+          });
+
+          successCount++;
+        } catch (error: any) {
+          errors.push(`Row ${i + 1}: ${error.message}`);
+          errorCount++;
+        }
+      }
+
+      // Report results
+      const message = `Successfully imported ${successCount} products${errorCount > 0 ? `, ${errorCount} errors` : ''}`;
+      setImportStatus(errorCount === 0 ? 'success' : 'error');
+      setImportMessage(message);
+
+      if (errorCount === 0) {
+        toast({
+          title: 'Success',
+          description: `Imported ${successCount} products successfully`,
+        });
+        setOpen(false);
+        if (onProductAdded) {
+          onProductAdded();
+        }
+      } else {
+        toast({
+          title: 'Partial Import',
+          description: message,
+          variant: 'destructive',
+        });
+        console.log('Import errors:', errors);
+      }
+    };
+
     setImportStatus('processing');
     setImportMessage('Processing file...');
 
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
+      dynamicTyping: false,
       complete: async (results) => {
         try {
-          const products = results.data as ProductRow[];
+          let products = results.data as ProductRow[];
           
           if (products.length === 0) {
             setImportStatus('error');
@@ -188,85 +291,74 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
             return;
           }
 
-          // Helper function to find column value case-insensitively
-          const getColumnValue = (row: ProductRow, columnName: string): string => {
-            const key = Object.keys(row).find(k => k.toLowerCase() === columnName.toLowerCase());
-            return key ? String(row[key] || '') : '';
-          };
-
-          // Validate and import products
-          let successCount = 0;
-          let errorCount = 0;
-          const errors: string[] = [];
-
-          for (let i = 0; i < products.length; i++) {
-            try {
-              const row = products[i];
-              
-              // Extract values flexibly (case-insensitive)
-              const designation = getColumnValue(row, 'Designation').trim();
-              const reference = getColumnValue(row, 'Reference').trim();
-              const brand = getColumnValue(row, 'Brand').trim();
-              const stockStr = getColumnValue(row, 'Stock').trim();
-              const priceStr = getColumnValue(row, 'Purchase Price').trim();
-
-              // Validate required fields
-              if (!designation) {
-                errors.push(`Row ${i + 1}: Missing Designation`);
-                errorCount++;
-                continue;
-              }
-
-              const stock = parseInt(stockStr) || 0;
-              const purchasePrice = parseFloat(priceStr) || 0;
-
-              if (purchasePrice <= 0) {
-                errors.push(`Row ${i + 1}: Invalid Purchase Price`);
-                errorCount++;
-                continue;
-              }
-
-              // Add to Firestore
-              const productsRef = collection(firestore, 'products');
-              await addDoc(productsRef, {
-                name: designation,
-                reference: reference || null,
-                brand: brand || null,
-                stock: stock,
-                purchasePrice: purchasePrice,
-                price: purchasePrice * 1.25, // Default 25% markup
-                createdAt: new Date(),
+          // Log column headers for debugging
+          console.log('CSV Column Headers:', Object.keys(products[0]));
+          console.log('First row data:', products[0]);
+          
+          // If first row appears to be data (not headers), try parsing without headers
+          const firstRowKeys = Object.keys(products[0]);
+          const hasProperHeaders = firstRowKeys.some(key => 
+            key.toLowerCase().includes('designation') || 
+            key.toLowerCase().includes('reference') ||
+            key.toLowerCase().includes('brand') ||
+            key.toLowerCase().includes('stock') ||
+            key.toLowerCase().includes('price')
+          );
+          
+          // If headers don't look right, reparse without header detection
+          if (!hasProperHeaders && firstRowKeys.some(k => k.includes('field') || /^\d+$/.test(k))) {
+            console.log('Headers appear malformed, reparsing without header detection...');
+            
+            // Reparse without header option
+            return new Promise<void>((resolve) => {
+              Papa.parse(file, {
+                header: false,
+                skipEmptyLines: true,
+                dynamicTyping: false,
+                complete: async (resultsNoHeader) => {
+                  try {
+                    const rows = resultsNoHeader.data as any[];
+                    
+                    if (rows.length === 0) {
+                      setImportStatus('error');
+                      setImportMessage('No data found in file.');
+                      resolve();
+                      return;
+                    }
+                    
+                    // Convert array-based rows to object-based using first row as headers
+                    const headerRow = rows[0];
+                    const dataProducts = rows.slice(1).map((row: any[]) => {
+                      const obj: ProductRow = {};
+                      headerRow.forEach((header, index) => {
+                        obj[header || `column_${index}`] = row[index];
+                      });
+                      return obj;
+                    });
+                    
+                    products = dataProducts;
+                    console.log('Reparsed CSV Column Headers:', headerRow);
+                    console.log('First data row:', products[0]);
+                    
+                    await processProducts(products);
+                    resolve();
+                  } catch (error) {
+                    console.error('Error in reparse:', error);
+                    setImportStatus('error');
+                    setImportMessage('Error processing file.');
+                    resolve();
+                  }
+                },
+                error: (error: any) => {
+                  setImportStatus('error');
+                  setImportMessage(`Error reading file: ${error.message}`);
+                  resolve();
+                },
               });
-
-              successCount++;
-            } catch (error: any) {
-              errors.push(`Row ${i + 1}: ${error.message}`);
-              errorCount++;
-            }
-          }
-
-          // Report results
-          const message = `Successfully imported ${successCount} products${errorCount > 0 ? `, ${errorCount} errors` : ''}`;
-          setImportStatus(errorCount === 0 ? 'success' : 'error');
-          setImportMessage(message);
-
-          if (errorCount === 0) {
-            toast({
-              title: 'Success',
-              description: `Imported ${successCount} products successfully`,
             });
-            setOpen(false);
-            if (onProductAdded) {
-              onProductAdded();
-            }
-          } else {
-            toast({
-              title: 'Partial Import',
-              description: message,
-              variant: 'destructive',
-            });
-            console.log('Import errors:', errors);
           }
+          
+          await processProducts(products);
         } catch (error: any) {
           setImportStatus('error');
           setImportMessage(`Error processing file: ${error.message}`);
