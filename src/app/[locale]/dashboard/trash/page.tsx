@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { RotateCcw, Trash, Loader2 } from "lucide-react";
 import {
   Table,
@@ -37,6 +38,7 @@ export default function TrashPage({
   const [dictionary, setDictionary] = useState<any>(null);
   const [deletedItems, setDeletedItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
   // Load dictionary
   useEffect(() => {
@@ -138,6 +140,90 @@ export default function TrashPage({
     }
   };
 
+  const handleToggleSelect = (itemId: string) => {
+    const newSelected = new Set(selectedItems);
+    if (newSelected.has(itemId)) {
+      newSelected.delete(itemId);
+    } else {
+      newSelected.add(itemId);
+    }
+    setSelectedItems(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedItems.size === deletedItems.length) {
+      setSelectedItems(new Set());
+    } else {
+      setSelectedItems(new Set(deletedItems.map(item => item.id)));
+    }
+  };
+
+  const handleBatchRestore = async () => {
+    if (selectedItems.size === 0) return;
+
+    if (!firestore) return;
+
+    try {
+      const success = await restoreFromTrash(firestore, Array.from(selectedItems));
+      if (success) {
+        setDeletedItems(deletedItems.filter(item => !selectedItems.has(item.id)));
+        setSelectedItems(new Set());
+        toast({
+          title: 'Success',
+          description: `${selectedItems.size} item(s) restored successfully`,
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to restore items',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error batch restoring items:', error);
+      toast({
+        title: 'Error',
+        description: 'An error occurred while restoring items',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleBatchPermanentDelete = async () => {
+    if (selectedItems.size === 0) return;
+
+    if (!confirm(`Permanently delete ${selectedItems.size} item(s)? This action cannot be undone.`)) {
+      return;
+    }
+
+    if (!firestore) return;
+
+    try {
+      const success = await permanentlyDelete(firestore, Array.from(selectedItems));
+      if (success) {
+        setDeletedItems(deletedItems.filter(item => !selectedItems.has(item.id)));
+        setSelectedItems(new Set());
+        toast({
+          title: 'Success',
+          description: `${selectedItems.size} item(s) permanently deleted`,
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to delete items',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error batch deleting items:', error);
+      toast({
+        title: 'Error',
+        description: 'An error occurred while deleting items',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (!dictionary) return <div>Loading...</div>;
 
   return (
@@ -152,12 +238,40 @@ export default function TrashPage({
       </div>
       <Card>
         <CardHeader>
+          <div className="flex justify-between items-center">
             <CardTitle>Deleted Items</CardTitle>
+            {selectedItems.size > 0 && (
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleBatchRestore}
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Restore Selected ({selectedItems.size})
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={handleBatchPermanentDelete}
+                >
+                  <Trash className="mr-2 h-4 w-4" />
+                  Delete Permanently ({selectedItems.size})
+                </Button>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>
+                  <Checkbox 
+                    checked={selectedItems.size === deletedItems.length && deletedItems.length > 0}
+                    onCheckedChange={handleSelectAll}
+                  />
+                </TableHead>
                 <TableHead className="hidden w-[100px] sm:table-cell">
                   <span className="sr-only">Image</span>
                 </TableHead>
@@ -169,6 +283,12 @@ export default function TrashPage({
             <TableBody>
               {deletedItems.map((product) => (
                 <TableRow key={product.id}>
+                    <TableCell>
+                      <Checkbox 
+                        checked={selectedItems.has(product.id)}
+                        onCheckedChange={() => handleToggleSelect(product.id)}
+                      />
+                    </TableCell>
                     <TableCell className="hidden sm:table-cell">
                         <Image
                         alt={product.name}
@@ -202,7 +322,7 @@ export default function TrashPage({
               ))}
                 {deletedItems.length === 0 && (
                     <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center">
+                        <TableCell colSpan={5} className="h-24 text-center">
                             No deleted items.
                         </TableCell>
                     </TableRow>

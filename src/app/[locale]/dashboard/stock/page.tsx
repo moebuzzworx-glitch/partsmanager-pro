@@ -9,6 +9,7 @@ import { use } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardContent,
@@ -65,6 +66,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
   const [isLoading, setIsLoading] = useState(true);
   const [dictionary, setDictionary] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
 
   // Load dictionary
   useEffect(() => {
@@ -142,6 +144,59 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
     }
   };
 
+  const handleToggleSelect = (productId: string) => {
+    const newSelected = new Set(selectedProducts);
+    if (newSelected.has(productId)) {
+      newSelected.delete(productId);
+    } else {
+      newSelected.add(productId);
+    }
+    setSelectedProducts(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedProducts.size === filteredProducts.length) {
+      setSelectedProducts(new Set());
+    } else {
+      setSelectedProducts(new Set(filteredProducts.map(p => p.id)));
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedProducts.size === 0) return;
+
+    if (!confirm(`Delete ${selectedProducts.size} product(s)? They will be moved to trash.`)) {
+      return;
+    }
+
+    if (!firestore) return;
+
+    try {
+      const success = await moveToTrash(firestore, Array.from(selectedProducts));
+      if (success) {
+        setProducts(products.filter(p => !selectedProducts.has(p.id)));
+        setSelectedProducts(new Set());
+        toast({
+          title: 'Success',
+          description: `${selectedProducts.size} product(s) moved to trash`,
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to delete products',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error batch deleting products:', error);
+      toast({
+        title: 'Error',
+        description: 'An error occurred while deleting products',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (!dictionary) {
     return (
       <div className="space-y-8">
@@ -169,7 +224,16 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>{d.product}</CardTitle>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              {selectedProducts.size > 0 && (
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={handleBatchDelete}
+                >
+                  Delete Selected ({selectedProducts.size})
+                </Button>
+              )}
               <Input 
                 placeholder={d.searchPlaceholder} 
                 className="w-full max-w-sm" 
@@ -223,6 +287,12 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
                   <TableHead className="hidden w-[100px] sm:table-cell">
                     <span className="sr-only">Image</span>
                   </TableHead>
+                  <TableHead>
+                    <Checkbox 
+                      checked={selectedProducts.size === filteredProducts.length && filteredProducts.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
                   <TableHead>{d.designation}</TableHead>
                   <TableHead>{d.reference}</TableHead>
                   <TableHead>{d.brand}</TableHead>
@@ -237,13 +307,19 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
               <TableBody>
                 {filteredProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       {products.length === 0 ? 'No products found. Add one to get started!' : 'No products match your search.'}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredProducts.map((product) => (
                     <TableRow key={product.id}>
+                      <TableCell>
+                        <Checkbox 
+                          checked={selectedProducts.has(product.id)}
+                          onCheckedChange={() => handleToggleSelect(product.id)}
+                        />
+                      </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Image
                           alt={product.name}
