@@ -11,10 +11,16 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Upload, AlertCircle, CheckCircle } from 'lucide-react';
 import { getDictionary } from '@/lib/dictionaries';
 import type { Product } from '@/lib/types';
 import { Autocomplete, AutocompleteOption } from './autocomplete';
@@ -28,6 +34,8 @@ import {
   } from "@/components/ui/table";
 import { useFirebase } from '@/firebase/provider';
 import { collection, getDocs, query, addDoc, serverTimestamp, where, updateDoc, doc } from 'firebase/firestore';
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 
 type Dictionary = Awaited<ReturnType<typeof getDictionary>>;
 
@@ -66,6 +74,8 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
     quantity: string;
   }>>([{ name: '', reference: '', purchasePrice: '', quantity: '' }]);
   const [showBatchForm, setShowBatchForm] = useState(false);
+  const [importStatus, setImportStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
+  const [importMessage, setImportMessage] = useState('');
 
   // Fetch products and suppliers from Firestore when dialog opens
   useEffect(() => {
@@ -269,6 +279,197 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
     }
   };
 
+  const getColumnValue = (row: any, columnName: string): string => {
+    if (row[columnName]) {
+      return String(row[columnName] || '').trim();
+    }
+    
+    const key = Object.keys(row).find(k => 
+      k.trim().toLowerCase() === columnName.trim().toLowerCase()
+    );
+    
+    if (key) {
+      return String(row[key] || '').trim();
+    }
+    
+    const lowerColumnName = columnName.trim().toLowerCase();
+    const partialKey = Object.keys(row).find(k => 
+      k.trim().toLowerCase().includes(lowerColumnName) || 
+      lowerColumnName.includes(k.trim().toLowerCase())
+    );
+    
+    return partialKey ? String(row[partialKey] || '').trim() : '';
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!firestore) {
+      setImportStatus('error');
+      setImportMessage('Firestore not initialized');
+      return;
+    }
+
+    setImportStatus('processing');
+    setImportMessage('Processing file...');
+
+    try {
+      const fileReader = new FileReader();
+      fileReader.onload = async (event) => {
+        try {
+          let parsedData: any[] = [];
+
+          // Detect file type and parse
+          if (file.name.endsWith('.csv')) {
+            // CSV parsing
+            const csvText = event.target?.result as string;
+            Papa.parse(csvText, {
+              header: true,
+              skipEmptyLines: true,
+              complete: async (results) => {
+                await processImportedProducts(results.data);
+              },
+              error: () => {
+                setImportStatus('error');
+                setImportMessage('Failed to parse CSV file');
+              },
+            });
+          } else {
+            // Excel parsing
+            const arrayBuffer = event.target?.result as ArrayBuffer;
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            parsedData = XLSX.utils.sheet_to_json(worksheet);
+            await processImportedProducts(parsedData);
+          }
+        } catch (error) {
+          console.error('Error processing file:', error);
+          setImportStatus('error');
+          setImportMessage('Failed to process file');
+        }
+      };
+
+      if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+        fileReader.readAsArrayBuffer(file);
+      } else {
+        fileReader.readAsText(file);
+      }
+    } catch (error) {
+      console.error('Error reading file:', error);
+      setImportStatus('error');
+      setImportMessage('Failed to read file');
+    }
+  };
+
+  const processImportedProducts = async (data: any[]) => {
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: string[] = [];
+      const productsRef = collection(firestore, 'products');
+
+      for (let i = 0; i < data.length; i++) {
+        try {
+          const row = data[i];
+          
+          const name = getColumnValue(row, 'Designation').trim() || getColumnValue(row, 'Product').trim();
+          let reference = getColumnValue(row, 'Reference').trim();
+          const priceStr = getColumnValue(row, 'Purchase Price').trim() || getColumnValue(row, 'Price').trim();
+          const quantityStr = getColumnValue(row, 'Quantity').trim() || getColumnValue(row, 'Stock').trim();
+
+          if (!name) {
+            errors.push(`Row ${i + 1}: Missing Product Name`);
+            errorCount++;
+            continue;
+          }
+
+          if (!priceStr) {
+            errors.push(`Row ${i + 1}: Missing Purchase Price`);
+            errorCount++;
+            continue;
+          }
+
+          if (!reference) {
+            reference = `REF-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          }
+
+          const purchasePrice = parseFloat(priceStr) || 0;
+          const quantity = parseInt(quantityStr) || 1;
+
+          if (purchasePrice <= 0) {
+            errors.push(`Row ${i + 1}: Invalid Purchase Price`);
+            errorCount++;
+            continue;
+          }
+
+          // Create new product
+          const newProductRef = await addDoc(productsRef, {
+            name: name,
+            reference: reference,
+            brand: '',
+            stock: 0,
+            purchasePrice: purchasePrice,
+            price: purchasePrice * 1.25,
+            createdAt: serverTimestamp(),
+            isDeleted: false,
+          });
+
+          // Add to purchase items
+          const newProduct: PurchaseItem = {
+            id: newProductRef.id,
+            name: name,
+            reference: reference,
+            brand: '',
+            sku: '',
+            stock: 0,
+            purchasePrice: purchasePrice,
+            price: purchasePrice * 1.25,
+            purchaseQuantity: quantity,
+          };
+
+          setPurchaseItems(prev => [...prev, newProduct]);
+
+          // Add to products list
+          setProducts(prev => [...prev, {
+            id: newProductRef.id,
+            name: name,
+            reference: reference,
+            brand: '',
+            sku: '',
+            stock: 0,
+            purchasePrice: purchasePrice,
+            price: purchasePrice * 1.25,
+          }]);
+
+          successCount++;
+        } catch (rowError) {
+          console.error(`Error processing row ${i + 1}:`, rowError);
+          errors.push(`Row ${i + 1}: Error processing`);
+          errorCount++;
+        }
+      }
+
+      setImportStatus('success');
+      setImportMessage(`Imported ${successCount} products. ${errorCount > 0 ? `${errorCount} errors.` : ''}`);
+      
+      // Reset file input
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+
+      // Close batch form after delay
+      setTimeout(() => {
+        setShowBatchForm(false);
+        setImportStatus('idle');
+        setImportMessage('');
+      }, 2000);
+    } catch (error) {
+      console.error('Error importing products:', error);
+      setImportStatus('error');
+      setImportMessage('Failed to import products');
+    }
+  };
+
   const updateBatchProduct = (index: number, field: string, value: string) => {
     setBatchProducts(prev => {
       const updated = [...prev];
@@ -446,101 +647,163 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
                 {/* Batch Products Form */}
                 {showBatchForm && (
                   <Card className="mt-2 p-4">
-                    <div className="space-y-3">
-                      <div className="grid gap-2">
-                        <Label className="text-sm font-semibold">Add Multiple Products</Label>
-                        <div className="border rounded">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="hover:bg-transparent">
-                                <TableHead className="py-2 px-3 text-xs">Product Name</TableHead>
-                                <TableHead className="py-2 px-3 text-xs">Reference</TableHead>
-                                <TableHead className="py-2 px-3 text-xs w-[100px]">Price</TableHead>
-                                <TableHead className="py-2 px-3 text-xs w-[80px]">Qty</TableHead>
-                                <TableHead className="py-2 px-3 text-xs w-[50px]"></TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {batchProducts.map((product, idx) => (
-                                <TableRow key={idx} className="hover:bg-gray-50">
-                                  <TableCell className="p-1">
-                                    <Input
-                                      placeholder="Product name"
-                                      value={product.name}
-                                      onChange={(e) => updateBatchProduct(idx, 'name', e.target.value)}
-                                      className="h-8 text-xs"
-                                    />
-                                  </TableCell>
-                                  <TableCell className="p-1">
-                                    <Input
-                                      placeholder="Auto-generate"
-                                      value={product.reference}
-                                      onChange={(e) => updateBatchProduct(idx, 'reference', e.target.value)}
-                                      className="h-8 text-xs"
-                                    />
-                                  </TableCell>
-                                  <TableCell className="p-1">
-                                    <Input
-                                      type="number"
-                                      placeholder="0.00"
-                                      value={product.purchasePrice}
-                                      onChange={(e) => updateBatchProduct(idx, 'purchasePrice', e.target.value)}
-                                      className="h-8 text-xs"
-                                    />
-                                  </TableCell>
-                                  <TableCell className="p-1">
-                                    <Input
-                                      type="number"
-                                      placeholder="1"
-                                      value={product.quantity}
-                                      onChange={(e) => updateBatchProduct(idx, 'quantity', e.target.value)}
-                                      className="h-8 text-xs"
-                                    />
-                                  </TableCell>
-                                  <TableCell className="p-1">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      onClick={() => removeBatchRow(idx)}
-                                    >
-                                      <Trash2 className="h-4 w-4 text-destructive" />
-                                    </Button>
-                                  </TableCell>
+                    <Tabs defaultValue="manual" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2 mb-4">
+                        <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+                        <TabsTrigger value="import">Import File</TabsTrigger>
+                      </TabsList>
+
+                      {/* Manual Entry Tab */}
+                      <TabsContent value="manual" className="space-y-3">
+                        <div className="grid gap-2">
+                          <Label className="text-sm font-semibold">Add Multiple Products</Label>
+                          <div className="border rounded">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="hover:bg-transparent">
+                                  <TableHead className="py-2 px-3 text-xs">Product Name</TableHead>
+                                  <TableHead className="py-2 px-3 text-xs">Reference</TableHead>
+                                  <TableHead className="py-2 px-3 text-xs w-[100px]">Price</TableHead>
+                                  <TableHead className="py-2 px-3 text-xs w-[80px]">Qty</TableHead>
+                                  <TableHead className="py-2 px-3 text-xs w-[50px]"></TableHead>
                                 </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
+                              </TableHeader>
+                              <TableBody>
+                                {batchProducts.map((product, idx) => (
+                                  <TableRow key={idx} className="hover:bg-gray-50">
+                                    <TableCell className="p-1">
+                                      <Input
+                                        placeholder="Product name"
+                                        value={product.name}
+                                        onChange={(e) => updateBatchProduct(idx, 'name', e.target.value)}
+                                        className="h-8 text-xs"
+                                      />
+                                    </TableCell>
+                                    <TableCell className="p-1">
+                                      <Input
+                                        placeholder="Auto-generate"
+                                        value={product.reference}
+                                        onChange={(e) => updateBatchProduct(idx, 'reference', e.target.value)}
+                                        className="h-8 text-xs"
+                                      />
+                                    </TableCell>
+                                    <TableCell className="p-1">
+                                      <Input
+                                        type="number"
+                                        placeholder="0.00"
+                                        value={product.purchasePrice}
+                                        onChange={(e) => updateBatchProduct(idx, 'purchasePrice', e.target.value)}
+                                        className="h-8 text-xs"
+                                      />
+                                    </TableCell>
+                                    <TableCell className="p-1">
+                                      <Input
+                                        type="number"
+                                        placeholder="1"
+                                        value={product.quantity}
+                                        onChange={(e) => updateBatchProduct(idx, 'quantity', e.target.value)}
+                                        className="h-8 text-xs"
+                                      />
+                                    </TableCell>
+                                    <TableCell className="p-1">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => removeBatchRow(idx)}
+                                      >
+                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={addBatchRow}
-                        >
-                          <PlusCircle className="w-4 h-4 mr-1" />
-                          Add Row
-                        </Button>
-                        <Button 
-                          type="button"
-                          size="sm"
-                          onClick={handleAddBatchProducts}
-                        >
-                          Add Products
-                        </Button>
-                        <Button 
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowBatchForm(false)}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addBatchRow}
+                          >
+                            <PlusCircle className="w-4 h-4 mr-1" />
+                            Add Row
+                          </Button>
+                          <Button 
+                            type="button"
+                            size="sm"
+                            onClick={handleAddBatchProducts}
+                          >
+                            Add Products
+                          </Button>
+                          <Button 
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowBatchForm(false)}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </TabsContent>
+
+                      {/* Import File Tab */}
+                      <TabsContent value="import" className="space-y-3">
+                        <div className="space-y-3">
+                          <div>
+                            <Label htmlFor="batchFile" className="text-sm font-semibold">Import CSV or Excel File</Label>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Columns: Designation (or Product), Reference, Purchase Price (or Price), Quantity (optional)
+                            </p>
+                          </div>
+                          
+                          <Input
+                            id="batchFile"
+                            type="file"
+                            accept=".csv,.xlsx,.xls"
+                            onChange={handleFileUpload}
+                            className="cursor-pointer"
+                          />
+
+                          {importStatus === 'processing' && (
+                            <div className="flex items-center gap-2 text-sm text-blue-600">
+                              <div className="h-4 w-4 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
+                              {importMessage}
+                            </div>
+                          )}
+
+                          {importStatus === 'success' && (
+                            <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded">
+                              <CheckCircle className="h-4 w-4" />
+                              {importMessage}
+                            </div>
+                          )}
+
+                          {importStatus === 'error' && (
+                            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-2 rounded">
+                              <AlertCircle className="h-4 w-4" />
+                              {importMessage}
+                            </div>
+                          )}
+
+                          <Button 
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setShowBatchForm(false);
+                              setImportStatus('idle');
+                              setImportMessage('');
+                            }}
+                          >
+                            Close
+                          </Button>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
                   </Card>
                 )}
 
