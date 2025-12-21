@@ -23,7 +23,7 @@ import { Label } from '@/components/ui/label';
 import { PlusCircle, Upload, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { getDictionary } from '@/lib/dictionaries';
 import { useFirebase } from '@/firebase/provider';
-import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { User as AppUser } from '@/lib/types';
 import { canWrite, getExportRestrictionMessage } from '@/lib/trial-utils';
 import { useToast } from '@/hooks/use-toast';
@@ -207,6 +207,7 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
     const processProducts = async (products: ProductRow[]) => {
       let successCount = 0;
       let errorCount = 0;
+      let updateCount = 0;
       const errors: string[] = [];
 
       for (let i = 0; i < products.length; i++) {
@@ -241,19 +242,60 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
             continue;
           }
 
-          // Add to Firestore
+          // Check if product already exists by reference or designation
           const productsRef = collection(firestore, 'products');
-          await addDoc(productsRef, {
-            name: designation,
-            reference: reference, // Always a string now
-            brand: brand || null,
-            stock: stock,
-            purchasePrice: purchasePrice,
-            price: purchasePrice * 1.25, // Default 25% markup
-            createdAt: new Date(),
-          });
+          let existingProductId: string | null = null;
+          let existingProduct: any = null;
 
-          successCount++;
+          // First try to find by reference
+          if (reference) {
+            const referenceQuery = query(productsRef, where('reference', '==', reference));
+            const referenceSnapshot = await getDocs(referenceQuery);
+            if (!referenceSnapshot.empty) {
+              existingProductId = referenceSnapshot.docs[0].id;
+              existingProduct = referenceSnapshot.docs[0].data();
+            }
+          }
+
+          // If not found by reference, try by designation
+          if (!existingProductId) {
+            const designationQuery = query(productsRef, where('name', '==', designation));
+            const designationSnapshot = await getDocs(designationQuery);
+            if (!designationSnapshot.empty) {
+              existingProductId = designationSnapshot.docs[0].id;
+              existingProduct = designationSnapshot.docs[0].data();
+            }
+          }
+
+          if (existingProductId && existingProduct) {
+            // Update existing product: add stock and update price
+            const currentStock = existingProduct.stock || 0;
+            const newStock = currentStock + stock;
+            const newPrice = purchasePrice * 1.25; // Default 25% markup
+            
+            const existingProductRef = doc(firestore, 'products', existingProductId);
+            await updateDoc(existingProductRef, {
+              stock: newStock,
+              purchasePrice: purchasePrice,
+              price: newPrice,
+              updatedAt: new Date(),
+            });
+
+            updateCount++;
+          } else {
+            // Create new product
+            await addDoc(productsRef, {
+              name: designation,
+              reference: reference,
+              brand: brand || null,
+              stock: stock,
+              purchasePrice: purchasePrice,
+              price: purchasePrice * 1.25, // Default 25% markup
+              createdAt: new Date(),
+            });
+
+            successCount++;
+          }
         } catch (error: any) {
           errors.push(`Row ${i + 1}: ${error.message}`);
           errorCount++;
@@ -261,14 +303,15 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
       }
 
       // Report results
-      const message = `Successfully imported ${successCount} products${errorCount > 0 ? `, ${errorCount} errors` : ''}`;
+      const totalProcessed = successCount + updateCount;
+      const message = `Processed ${totalProcessed} products (${successCount} new, ${updateCount} updated)${errorCount > 0 ? `, ${errorCount} errors` : ''}`;
       setImportStatus(errorCount === 0 ? 'success' : 'error');
       setImportMessage(message);
 
       if (errorCount === 0) {
         toast({
           title: 'Success',
-          description: `Imported ${successCount} products successfully`,
+          description: message,
         });
         setOpen(false);
         if (onProductAdded) {
