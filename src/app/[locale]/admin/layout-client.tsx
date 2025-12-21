@@ -54,6 +54,13 @@ export function AdminLayoutClient({
 
   // Check if user is admin - all auth logic in ONE effect
   useEffect(() => {
+    // Skip auth checks for login page
+    if (isLoginPage) {
+      console.log('🔑 Login page detected, skipping auth checks');
+      setIsChecking(false);
+      return;
+    }
+
     // If loading, wait for Firebase auth
     if (isUserLoading) {
       console.log('⏳ isUserLoading is true, returning early');
@@ -117,9 +124,9 @@ export function AdminLayoutClient({
     return () => {
       isMounted = false;
     };
-  }, [user, firestore, isUserLoading, locale]);
+  }, [user, firestore, isUserLoading, locale, isLoginPage]);
 
-  if (isUserLoading || isChecking || !dictionary) {
+  if (isUserLoading || (isChecking && !isLoginPage) || !dictionary) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -127,7 +134,12 @@ export function AdminLayoutClient({
     );
   }
 
-  // Not authenticated
+  // If on login page, show the login page content without admin layout
+  if (isLoginPage) {
+    return children;
+  }
+
+  // Not authenticated and not on login page
   if (!user) {
     return (
       <div className="flex items-center justify-center h-screen">
