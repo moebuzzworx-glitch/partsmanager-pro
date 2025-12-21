@@ -12,12 +12,45 @@ import {
   HardDrive,
   FileText,
   Lock,
+  AlertTriangle,
+  CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { Locale } from "@/lib/config";
+import { initializeFirebase } from "@/firebase";
+import { fetchAnalyticsData } from "@/lib/admin-analytics";
 
 export default async function AdminDashboard({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
+  const { firestore } = initializeFirebase();
+  
+  let analyticsData = {
+    totalRevenue: 0,
+    totalOrders: 0,
+    activeUsers: 0,
+    totalProducts: 0,
+    lowStockProducts: 0,
+    totalCustomers: 0,
+    totalSuppliers: 0,
+    systemStatus: 'healthy' as const,
+  };
+
+  try {
+    analyticsData = await fetchAnalyticsData(firestore);
+  } catch (error) {
+    console.error('Failed to fetch analytics:', error);
+  }
+
+  const statusIcon = analyticsData.systemStatus === 'healthy' 
+    ? <CheckCircle className="h-4 w-4 text-green-500" />
+    : <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+
+  const statusText = analyticsData.systemStatus === 'healthy' 
+    ? 'All systems operational'
+    : analyticsData.systemStatus === 'warning'
+    ? 'Low stock warning'
+    : 'Critical inventory issues';
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -32,27 +65,27 @@ export default async function AdminDashboard({ params }: { params: Promise<{ loc
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Total Revenue"
-          value="$125,430.50"
+          value={`$${analyticsData.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={<DollarSign className="h-4 w-4" />}
-          description="+20.1% from last month"
+          description={`${analyticsData.totalOrders} total orders`}
         />
         <StatsCard
           title="Active Users"
-          value="24"
+          value={analyticsData.activeUsers.toString()}
           icon={<Users className="h-4 w-4" />}
-          description="+3 new this month"
+          description="Registered accounts"
         />
         <StatsCard
-          title="Total Orders"
-          value="1,247"
-          icon={<FileText className="h-4 w-4" />}
-          description="+147 this month"
+          title="Total Products"
+          value={analyticsData.totalProducts.toString()}
+          icon={<Package className="h-4 w-4" />}
+          description={`${analyticsData.lowStockProducts} low stock`}
         />
         <StatsCard
           title="System Status"
-          value="Healthy"
-          icon={<Activity className="h-4 w-4" />}
-          description="All systems operational"
+          value={analyticsData.systemStatus.charAt(0).toUpperCase() + analyticsData.systemStatus.slice(1)}
+          icon={statusIcon}
+          description={statusText}
         />
       </div>
 
