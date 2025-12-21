@@ -80,6 +80,9 @@ export default function DashboardLayout({
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
+  }
+
+  return (
     <div className="flex flex-col h-screen bg-background">
       <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
         <Logo />
@@ -181,14 +184,7 @@ export default function DashboardLayout({
         </DropdownMenu>
         {mockUser && (
           <UserNav 
-            user={{
-              ...mockUser,
-              createdAt: mockUser.createdAt instanceof Object && 'toDate' in mockUser.createdAt 
-                ? mockUser.createdAt.toDate().toISOString()
-                : typeof mockUser.createdAt === 'string' 
-                  ? mockUser.createdAt 
-                  : new Date().toISOString()
-            }} 
+            user={mockUser}
             dictionary={dictionary.auth} 
           />
         )}
