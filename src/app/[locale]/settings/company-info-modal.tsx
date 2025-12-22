@@ -1,6 +1,7 @@
-'use client';
+ 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { saveUserSettings, getUserSettings } from '@/lib/settings-utils';
 import { useFirebase } from '@/firebase/provider';
@@ -47,6 +48,7 @@ export type CompanyInfo = z.infer<typeof companyInfoSchema>;
 export function CompanyInfoModal() {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
   const { firestore, user, isUserLoading, firebaseApp, auth } = useFirebase() as any;
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -204,6 +206,14 @@ export function CompanyInfoModal() {
         window.dispatchEvent(new CustomEvent('app:settings-updated', { detail: { uid: user?.uid } }));
       } catch (e) {
         // ignore when SSR or unavailable
+      }
+
+      // Refresh the current route to re-render server components and apply settings immediately
+      try {
+        router.refresh();
+      } catch (e) {
+        // fallback to full reload if refresh fails
+        try { window.location.reload(); } catch {}
       }
 
       toast({
