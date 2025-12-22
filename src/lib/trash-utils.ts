@@ -1,4 +1,4 @@
-import { Firestore, doc, updateDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { Firestore, doc, updateDoc, deleteDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 
 /**
  * Move product(s) to trash (soft delete)
@@ -132,3 +132,41 @@ export async function getActiveProducts(firestore: Firestore): Promise<any[]> {
     return [];
   }
 }
+
+/**
+ * Migrate all products to ensure they have the isDeleted field
+ * Sets isDeleted=false for any products missing this field
+ * @param firestore - Firestore instance
+ * @returns Number of products updated
+ */
+export async function ensureAllProductsHaveDeletedField(firestore: Firestore): Promise<number> {
+  try {
+    const productsRef = collection(firestore, 'products');
+    const allDocsQuery = query(productsRef);
+    const querySnapshot = await getDocs(allDocsQuery);
+    
+    let updateCount = 0;
+    const batch = writeBatch(firestore);
+
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      // If isDeleted field is missing, add it with value false
+      if (!('isDeleted' in data)) {
+        batch.update(docSnap.ref, { isDeleted: false });
+        updateCount++;
+      }
+    });
+
+    // Commit batch if there are updates
+    if (updateCount > 0) {
+      await batch.commit();
+      console.log(`Migrated ${updateCount} products to have isDeleted field`);
+    }
+
+    return updateCount;
+  } catch (error) {
+    console.error('Error migrating products:', error);
+    return 0;
+  }
+}
+

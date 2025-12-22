@@ -41,7 +41,7 @@ import { cn } from "@/lib/utils";
 import { AddProductDialog } from "@/components/dashboard/add-product-dialog";
 import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { moveToTrash } from "@/lib/trash-utils";
+import { moveToTrash, ensureAllProductsHaveDeletedField } from "@/lib/trash-utils";
 import { useToast } from "@/hooks/use-toast";
 
 interface Product {
@@ -84,6 +84,10 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
     const fetchProducts = async () => {
       try {
         setIsLoading(true);
+        
+        // Ensure all products have the isDeleted field (one-time migration)
+        await ensureAllProductsHaveDeletedField(firestore);
+        
         const productsRef = collection(firestore, 'products');
         const q = query(productsRef, where('isDeleted', '==', false));
         const querySnapshot = await getDocs(q);
