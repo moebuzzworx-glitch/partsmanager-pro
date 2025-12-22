@@ -207,8 +207,8 @@ export default function InvoicesPage({
       invoice.clientName.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => {
-      const dateA = new Date(a.invoiceDate).getTime();
-      const dateB = new Date(b.invoiceDate).getTime();
+      const dateA = a.createdAt?.toDate?.() ? new Date(a.createdAt.toDate()).getTime() : new Date(a.invoiceDate).getTime();
+      const dateB = b.createdAt?.toDate?.() ? new Date(b.createdAt.toDate()).getTime() : new Date(b.invoiceDate).getTime();
       return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
     });
 
