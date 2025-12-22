@@ -2,8 +2,8 @@
 'use client';
 
 import { jsPDF } from 'jspdf';
-// side-effect import to extend jsPDF prototype with autoTable
-import 'jspdf-autotable';
+// Import AutoTable as side effect - must come after jsPDF import
+import AutoTable from 'jspdf-autotable';
 
 import type { InvoiceFormData } from './create-invoice-form';
 import { User as AppUser } from '@/lib/types';
@@ -138,10 +138,9 @@ function getCompanyInfo(): CompanyInfo {
 }
 
 
-export function generateInvoicePdf(data: InvoiceFormData, settings?: any) {
+export function generateInvoicePdf(data: InvoiceFormData) {
   const doc = new jsPDF();
-  // Prefer company info from settings (Firestore) if provided, otherwise fallback to localStorage
-  const companyInfo = (settings && settings.companyInfo) ? settings.companyInfo as CompanyInfo : getCompanyInfo();
+  const companyInfo = getCompanyInfo();
 
   const formatPrice = (price: number) => {
     if (typeof price !== 'number') return '0,00';
@@ -222,30 +221,27 @@ export function generateInvoicePdf(data: InvoiceFormData, settings?: any) {
 
 
   // Table
-  const marginPercent = settings?.marginPercent ? Number(settings.marginPercent) : 0;
-
   const tableData = data.lineItems.map((item, index) => {
-    const unitPriceAdjusted = item.unitPrice * (1 + marginPercent / 100);
-    const total = item.quantity * unitPriceAdjusted;
+    const total = item.quantity * item.unitPrice;
     return [
       index + 1,
       item.reference || '',
       item.designation,
       item.unit || '',
       formatPrice(item.quantity),
-      formatPrice(unitPriceAdjusted),
+      formatPrice(item.unitPrice),
       formatPrice(item.vat),
       formatPrice(total),
     ];
   });
-
-  const totalHT = data.lineItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice * (1 + marginPercent / 100)), 0);
-  const totalTVA = data.lineItems.reduce((sum, item) => sum + (item.quantity * (item.unitPrice * (1 + marginPercent / 100)) * (item.vat / 100)), 0);
+  
+  const totalHT = data.lineItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+  const totalTVA = data.lineItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice * (item.vat / 100)), 0);
   const timbre = 0; // As per image
   const totalTTC = totalHT + totalTVA;
   const netAPayer = totalTTC + timbre;
 
-  (doc as any).autoTable({
+  (AutoTable as any)(doc, {
     startY: 102,
     head: [['N°', 'Référence', 'Désignation', 'U', 'Qté', 'PUV', 'TVA(%)', 'Montant HT']],
     body: tableData,
