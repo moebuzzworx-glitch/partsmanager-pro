@@ -1,12 +1,21 @@
 
 'use client';
 
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-
 import type { InvoiceFormData } from './create-invoice-form';
 import { User as AppUser } from '@/lib/types';
 import { canExport } from '@/lib/trial-utils';
+
+// Only import jsPDF and autotable in browser context
+let jsPDF: any = null;
+if (typeof window !== 'undefined') {
+  try {
+    const jsPDFModule = require('jspdf');
+    jsPDF = jsPDFModule.default || jsPDFModule;
+    require('jspdf-autotable');
+  } catch (e) {
+    // jsPDF not loaded
+  }
+}
 
 export interface CompanyInfo {
   companyName: string;
@@ -41,7 +50,7 @@ export function getExportRestrictionMessage(user: AppUser): string | null {
 }
 
 // This function needs to be written in a way that jsPDF's weird 'this' context works.
-function addPageNumbers(this: jsPDF) {
+function addPageNumbers(this: any) {
   const pageCount = (this as any).internal.pages.length - 1;
   for (let i = 1; i <= pageCount; i++) {
     this.setPage(i);
@@ -138,6 +147,9 @@ function getCompanyInfo(): CompanyInfo {
 
 
 export function generateInvoicePdf(data: InvoiceFormData) {
+  if (!jsPDF) {
+    throw new Error('jsPDF is not available. This function can only be called in the browser.');
+  }
   const doc = new jsPDF();
   const companyInfo = getCompanyInfo();
 
