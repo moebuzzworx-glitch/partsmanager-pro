@@ -72,6 +72,34 @@ export default function PurchasesPage({
     }
   };
 
+  const fetchPurchases = async () => {
+    if (!firestore) return;
+    try {
+      setIsLoading(true);
+      const purchasesRef = collection(firestore, 'purchases');
+      const q = query(purchasesRef);
+      const querySnapshot = await getDocs(q);
+      
+      const fetchedPurchases: Purchase[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        fetchedPurchases.push({
+          id: doc.id,
+          supplier: data.supplier || '',
+          date: data.date ? new Date(data.date.toDate?.() || data.date).toISOString() : new Date().toISOString(),
+          items: data.items || [],
+          totalAmount: data.totalAmount || 0,
+        });
+      });
+
+      setPurchases(fetchedPurchases);
+    } catch (error) {
+      console.error('Error fetching purchases:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Load dictionary
   useEffect(() => {
     const loadDictionary = async () => {
@@ -84,34 +112,6 @@ export default function PurchasesPage({
   // Fetch purchases from Firestore
   useEffect(() => {
     if (!firestore) return;
-
-    const fetchPurchases = async () => {
-      try {
-        setIsLoading(true);
-        const purchasesRef = collection(firestore, 'purchases');
-        const q = query(purchasesRef);
-        const querySnapshot = await getDocs(q);
-        
-        const fetchedPurchases: Purchase[] = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          fetchedPurchases.push({
-            id: doc.id,
-            supplier: data.supplier || '',
-            date: data.date ? new Date(data.date.toDate?.() || data.date).toISOString() : new Date().toISOString(),
-            items: data.items || [],
-            totalAmount: data.totalAmount || 0,
-          });
-        });
-
-        setPurchases(fetchedPurchases);
-      } catch (error) {
-        console.error('Error fetching purchases:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchPurchases();
   }, [firestore]);
 
@@ -149,35 +149,7 @@ export default function PurchasesPage({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <LogPurchaseDialog dictionary={dictionary} onPurchaseAdded={() => {
-                // Refresh purchases
-                const refreshPurchases = async () => {
-                  if (!firestore) return;
-                  try {
-                    const purchasesRef = collection(firestore, 'purchases');
-                    const q = query(purchasesRef);
-                    const querySnapshot = await getDocs(q);
-                    
-                    const fetchedPurchases: Purchase[] = [];
-                    querySnapshot.forEach((doc) => {
-                      const data = doc.data();
-                      fetchedPurchases.push({
-                        id: doc.id,
-                        supplier: data.supplier || '',
-                        date: data.date ? new Date(data.date.toDate?.() || data.date).toISOString() : new Date().toISOString(),
-                        items: data.items || [],
-                        totalAmount: data.totalAmount || 0,
-                      });
-                    });
-
-                    setPurchases(fetchedPurchases);
-                  } catch (error) {
-                    console.error('Error refreshing purchases:', error);
-                  }
-                };
-
-                refreshPurchases();
-              }} />
+              <LogPurchaseDialog dictionary={dictionary} onPurchaseAdded={fetchPurchases} />
             </div>
           </div>
         </CardHeader>

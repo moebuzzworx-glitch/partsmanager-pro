@@ -71,6 +71,36 @@ export default function CustomersPage({
     }
   };
 
+  const fetchCustomers = async () => {
+    if (!firestore) return;
+    try {
+      setIsLoading(true);
+      const customersRef = collection(firestore, 'customers');
+      const q = query(customersRef);
+      const querySnapshot = await getDocs(q);
+      
+      const fetchedCustomers: Customer[] = [];
+      querySnapshot.forEach((doc) => {
+        fetchedCustomers.push({
+          id: doc.id,
+          name: doc.data().name || '',
+          email: doc.data().email || '',
+          phone: doc.data().phone || '',
+          address: doc.data().address || '',
+          rc: doc.data().rc || '',
+          nis: doc.data().nis || '',
+          nif: doc.data().nif || '',
+        });
+      });
+
+      setCustomers(fetchedCustomers);
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Load dictionary
   useEffect(() => {
     const loadDictionary = async () => {
@@ -83,36 +113,6 @@ export default function CustomersPage({
   // Fetch customers from Firestore
   useEffect(() => {
     if (!firestore) return;
-
-    const fetchCustomers = async () => {
-      try {
-        setIsLoading(true);
-        const customersRef = collection(firestore, 'customers');
-        const q = query(customersRef);
-        const querySnapshot = await getDocs(q);
-        
-        const fetchedCustomers: Customer[] = [];
-        querySnapshot.forEach((doc) => {
-          fetchedCustomers.push({
-            id: doc.id,
-            name: doc.data().name || '',
-            email: doc.data().email || '',
-            phone: doc.data().phone || '',
-            address: doc.data().address || '',
-            rc: doc.data().rc || '',
-            nis: doc.data().nis || '',
-            nif: doc.data().nif || '',
-          });
-        });
-
-        setCustomers(fetchedCustomers);
-      } catch (error) {
-        console.error('Error fetching customers:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchCustomers();
   }, [firestore]);
 
@@ -152,35 +152,7 @@ export default function CustomersPage({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <AddCustomerDialog onCustomerAdded={() => {
-                // Refresh customers
-                const refreshCustomers = async () => {
-                  if (!firestore) return;
-                  try {
-                    const customersRef = collection(firestore, 'customers');
-                    const q = query(customersRef);
-                    const querySnapshot = await getDocs(q);
-                    
-                    const fetchedCustomers: Customer[] = [];
-                    querySnapshot.forEach((doc) => {
-                      fetchedCustomers.push({
-                        id: doc.id,
-                        name: doc.data().name || '',
-                        email: doc.data().email || '',
-                        phone: doc.data().phone || '',
-                        address: doc.data().address || '',
-                        rc: doc.data().rc || '',
-                        nis: doc.data().nis || '',
-                        nif: doc.data().nif || '',
-                      });
-                    });
-                    setCustomers(fetchedCustomers);
-                  } catch (error) {
-                    console.error('Error fetching customers:', error);
-                  }
-                };
-                refreshCustomers();
-              }} />
+              <AddCustomerDialog onCustomerAdded={fetchCustomers} />
             </div>
           </div>
         </CardHeader>

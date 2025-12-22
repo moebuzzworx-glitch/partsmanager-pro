@@ -65,38 +65,38 @@ export default function SalesPage({
     loadDictionary();
   }, [locale]);
 
+  const fetchSales = async () => {
+    if (!firestore) return;
+    try {
+      setIsLoading(true);
+      const salesRef = collection(firestore, 'sales');
+      const q = query(salesRef);
+      const querySnapshot = await getDocs(q);
+      
+      const fetchedSales: Sale[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        fetchedSales.push({
+          id: doc.id,
+          product: data.product || '',
+          customer: data.customer || '',
+          date: data.date ? new Date(data.date.toDate?.() || data.date).toISOString() : new Date().toISOString(),
+          quantity: data.quantity || 0,
+          amount: data.amount || 0,
+        });
+      });
+
+      setSales(fetchedSales);
+    } catch (error) {
+      console.error('Error fetching sales:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Fetch sales from Firestore
   useEffect(() => {
     if (!firestore) return;
-
-    const fetchSales = async () => {
-      try {
-        setIsLoading(true);
-        const salesRef = collection(firestore, 'sales');
-        const q = query(salesRef);
-        const querySnapshot = await getDocs(q);
-        
-        const fetchedSales: Sale[] = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          fetchedSales.push({
-            id: doc.id,
-            product: data.product || '',
-            customer: data.customer || '',
-            date: data.date ? new Date(data.date.toDate?.() || data.date).toISOString() : new Date().toISOString(),
-            quantity: data.quantity || 0,
-            amount: data.amount || 0,
-          });
-        });
-
-        setSales(fetchedSales);
-      } catch (error) {
-        console.error('Error fetching sales:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchSales();
   }, [firestore]);
 
@@ -134,34 +134,7 @@ export default function SalesPage({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <LogSaleDialog dictionary={dictionary} onSaleAdded={() => {
-                // Refresh sales
-                const refreshSales = async () => {
-                  if (!firestore) return;
-                  try {
-                    const salesRef = collection(firestore, 'sales');
-                    const q = query(salesRef);
-                    const querySnapshot = await getDocs(q);
-                    
-                    const fetchedSales: Sale[] = [];
-                    querySnapshot.forEach((doc) => {
-                      const data = doc.data();
-                      fetchedSales.push({
-                        id: doc.id,
-                        product: data.product || '',
-                        customer: data.customer || '',
-                        date: data.date ? new Date(data.date.toDate?.() || data.date).toISOString() : new Date().toISOString(),
-                        quantity: data.quantity || 0,
-                        amount: data.amount || 0,
-                      });
-                    });
-                    setSales(fetchedSales);
-                  } catch (error) {
-                    console.error('Error fetching sales:', error);
-                  }
-                };
-                refreshSales();
-              }} />
+              <LogSaleDialog dictionary={dictionary} onSaleAdded={fetchSales} />
             </div>
           </div>
         </CardHeader>

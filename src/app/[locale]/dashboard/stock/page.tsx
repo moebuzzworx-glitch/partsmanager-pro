@@ -65,6 +65,41 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
 
+  const fetchProducts = async () => {
+    if (!firestore) return;
+    try {
+      setIsLoading(true);
+      
+      // Ensure all products have the isDeleted field (one-time migration)
+      await ensureAllProductsHaveDeletedField(firestore);
+      
+      const productsRef = collection(firestore, 'products');
+      const q = query(productsRef, where('isDeleted', '==', false));
+      const querySnapshot = await getDocs(q);
+      
+      const fetchedProducts: Product[] = [];
+      querySnapshot.forEach((doc) => {
+        fetchedProducts.push({
+          id: doc.id,
+          name: doc.data().name || '',
+          sku: doc.data().reference || '',
+          reference: doc.data().reference || '',
+          brand: doc.data().brand || '',
+          stock: doc.data().stock || 0,
+          quantity: doc.data().stock || 0,
+          purchasePrice: doc.data().purchasePrice || 0,
+          price: doc.data().price || 0,
+        });
+      });
+
+      setProducts(fetchedProducts);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Load dictionary
   useEffect(() => {
     const loadDictionary = async () => {
@@ -77,41 +112,6 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
   // Fetch products from Firestore
   useEffect(() => {
     if (!firestore) return;
-
-    const fetchProducts = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Ensure all products have the isDeleted field (one-time migration)
-        await ensureAllProductsHaveDeletedField(firestore);
-        
-        const productsRef = collection(firestore, 'products');
-        const q = query(productsRef, where('isDeleted', '==', false));
-        const querySnapshot = await getDocs(q);
-        
-        const fetchedProducts: Product[] = [];
-        querySnapshot.forEach((doc) => {
-          fetchedProducts.push({
-            id: doc.id,
-            name: doc.data().name || '',
-            sku: doc.data().reference || '',
-            reference: doc.data().reference || '',
-            brand: doc.data().brand || '',
-            stock: doc.data().stock || 0,
-            quantity: doc.data().stock || 0,
-            purchasePrice: doc.data().purchasePrice || 0,
-            price: doc.data().price || 0,
-          });
-        });
-
-        setProducts(fetchedProducts);
-      } catch (error) {
-        console.error('Error fetching products:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchProducts();
   }, [firestore]);
 
@@ -239,38 +239,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <AddProductDialog dictionary={dictionary} onProductAdded={() => {
-                // Refresh products
-                const refreshProducts = async () => {
-                  if (!firestore) return;
-                  try {
-                    const productsRef = collection(firestore, 'products');
-                    const q = query(productsRef);
-                    const querySnapshot = await getDocs(q);
-                    
-                    const fetchedProducts: Product[] = [];
-                    querySnapshot.forEach((doc) => {
-                      fetchedProducts.push({
-                        id: doc.id,
-                        name: doc.data().name || '',
-                        sku: doc.data().reference || '',
-                        reference: doc.data().reference || '',
-                        brand: doc.data().brand || '',
-                        stock: doc.data().stock || 0,
-                        quantity: doc.data().stock || 0,
-                        purchasePrice: doc.data().purchasePrice || 0,
-                        price: doc.data().price || 0,
-                        imageUrl: '/images/placeholder-product.svg',
-                        imageHint: doc.data().name,
-                      });
-                    });
-                    setProducts(fetchedProducts);
-                  } catch (error) {
-                    console.error('Error fetching products:', error);
-                  }
-                };
-                refreshProducts();
-              }} />
+              <AddProductDialog dictionary={dictionary} onProductAdded={fetchProducts} />
             </div>
           </div>
         </CardHeader>

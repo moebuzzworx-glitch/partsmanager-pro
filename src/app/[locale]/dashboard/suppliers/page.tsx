@@ -72,6 +72,38 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
     }
   };
 
+  const fetchSuppliers = async () => {
+    if (!firestore) return;
+    try {
+      setIsLoading(true);
+      const suppliersRef = collection(firestore, 'suppliers');
+      const q = query(suppliersRef);
+      const querySnapshot = await getDocs(q);
+      
+      const fetchedSuppliers: Supplier[] = [];
+      querySnapshot.forEach((doc) => {
+        fetchedSuppliers.push({
+          id: doc.id,
+          name: doc.data().name || '',
+          email: doc.data().email || '',
+          phone: doc.data().phone || '',
+          contactName: doc.data().contactName || '',
+          address: doc.data().address || '',
+          rc: doc.data().rc || '',
+          nis: doc.data().nis || '',
+          nif: doc.data().nif || '',
+          rib: doc.data().rib || '',
+        });
+      });
+
+      setSuppliers(fetchedSuppliers);
+    } catch (error) {
+      console.error('Error fetching suppliers:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Load dictionary
   useEffect(() => {
     const loadDictionary = async () => {
@@ -84,38 +116,6 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
   // Fetch suppliers from Firestore
   useEffect(() => {
     if (!firestore) return;
-
-    const fetchSuppliers = async () => {
-      try {
-        setIsLoading(true);
-        const suppliersRef = collection(firestore, 'suppliers');
-        const q = query(suppliersRef);
-        const querySnapshot = await getDocs(q);
-        
-        const fetchedSuppliers: Supplier[] = [];
-        querySnapshot.forEach((doc) => {
-          fetchedSuppliers.push({
-            id: doc.id,
-            name: doc.data().name || '',
-            email: doc.data().email || '',
-            phone: doc.data().phone || '',
-            contactName: doc.data().contactName || '',
-            address: doc.data().address || '',
-            rc: doc.data().rc || '',
-            nis: doc.data().nis || '',
-            nif: doc.data().nif || '',
-            rib: doc.data().rib || '',
-          });
-        });
-
-        setSuppliers(fetchedSuppliers);
-      } catch (error) {
-        console.error('Error fetching suppliers:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchSuppliers();
   }, [firestore]);
 
@@ -153,37 +153,7 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <AddSupplierDialog onSupplierAdded={() => {
-                // Refresh suppliers
-                const refreshSuppliers = async () => {
-                  if (!firestore) return;
-                  try {
-                    const suppliersRef = collection(firestore, 'suppliers');
-                    const q = query(suppliersRef);
-                    const querySnapshot = await getDocs(q);
-                    
-                    const fetchedSuppliers: Supplier[] = [];
-                    querySnapshot.forEach((doc) => {
-                      fetchedSuppliers.push({
-                        id: doc.id,
-                        name: doc.data().name || '',
-                        email: doc.data().email || '',
-                        phone: doc.data().phone || '',
-                        contactName: doc.data().contactName || '',
-                        address: doc.data().address || '',
-                        rc: doc.data().rc || '',
-                        nis: doc.data().nis || '',
-                        nif: doc.data().nif || '',
-                        rib: doc.data().rib || '',
-                      });
-                    });
-                    setSuppliers(fetchedSuppliers);
-                  } catch (error) {
-                    console.error('Error fetching suppliers:', error);
-                  }
-                };
-                refreshSuppliers();
-              }} />
+              <AddSupplierDialog onSupplierAdded={fetchSuppliers} />
             </div>
           </div>
         </CardHeader>
