@@ -268,9 +268,9 @@ export default function InvoicesPage({
                                   {updatingPaidId === invoice.id ? (
                                     <Loader2 className="h-4 w-4 animate-spin"/>
                                   ) : invoice.paid ? (
-                                    <Check className="h-4 w-4 text-green-600"/>
+                                    <X className="h-4 w-4 text-red-600"/>
                                   ) : (
-                                    <X className="h-4 w-4 text-gray-400"/>
+                                    <Check className="h-4 w-4 text-green-600"/>
                                   )}
                              </Button>
                              <Button 
