@@ -2,7 +2,6 @@
 
 export const dynamic = 'force-dynamic';
 
-import Image from "next/image";
 import { MoreHorizontal, PlusCircle, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { use } from "react";
@@ -54,8 +53,6 @@ interface Product {
   quantity?: number;
   purchasePrice?: number;
   price?: number;
-  imageUrl?: string;
-  imageHint?: string;
 }
 
 export default function StockPage({ params }: { params: Promise<{ locale: Locale }> }) {
@@ -104,8 +101,6 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
             quantity: doc.data().stock || 0,
             purchasePrice: doc.data().purchasePrice || 0,
             price: doc.data().price || 0,
-            imageUrl: '/images/placeholder-product.svg',
-            imageHint: doc.data().name,
           });
         });
 
@@ -322,16 +317,6 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
                         <Checkbox 
                           checked={selectedProducts.has(product.id)}
                           onCheckedChange={() => handleToggleSelect(product.id)}
-                        />
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <Image
-                          alt={product.name}
-                          className="aspect-square rounded-md object-cover"
-                          height="40"
-                          src={product.imageUrl || '/images/placeholder-product.svg'}
-                          width="40"
-                          data-ai-hint={product.imageHint}
                         />
                       </TableCell>
                       <TableCell className="font-medium">{product.name}</TableCell>

@@ -280,6 +280,7 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
               purchasePrice: purchasePrice,
               price: newPrice,
               updatedAt: new Date(),
+              isDeleted: false,
             });
 
             updateCount++;
