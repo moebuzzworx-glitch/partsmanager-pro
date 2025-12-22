@@ -28,7 +28,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useSettings } from '@/contexts/settings-context';
 import { Save, Edit } from 'lucide-react';
  
 
@@ -48,7 +47,6 @@ export type CompanyInfo = z.infer<typeof companyInfoSchema>;
 export function CompanyInfoModal() {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
-  const { triggerRefresh } = useSettings();
   const { firestore, user, isUserLoading, firebaseApp, auth } = useFirebase() as any;
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -214,8 +212,14 @@ export function CompanyInfoModal() {
       });
       setOpen(false);
 
-      // Trigger refresh to update UI components that depend on company settings
-      triggerRefresh();
+      // Reload the page after a brief delay so modal closes first
+      setTimeout(() => {
+        try {
+          window.location.reload();
+        } catch (e) {
+          console.warn('Page reload failed:', e);
+        }
+      }, 300);
     } catch (error) {
       toast({
         title: 'Error Saving',

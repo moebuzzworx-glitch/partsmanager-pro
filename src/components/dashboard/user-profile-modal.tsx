@@ -71,6 +71,15 @@ export function UserProfileModal({ children, open: controlledOpen, onOpenChange 
       } catch (e) {}
 
       setOpen(false);
+
+      // Reload the page after a brief delay so modal closes first
+      setTimeout(() => {
+        try {
+          window.location.reload();
+        } catch (e) {
+          console.warn('Page reload failed:', e);
+        }
+      }, 300);
     } catch (error: any) {
       toast({ title: 'Error', description: error.message || 'Failed to update profile', variant: 'destructive' });
     }
