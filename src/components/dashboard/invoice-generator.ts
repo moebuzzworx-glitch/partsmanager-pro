@@ -177,6 +177,11 @@ export async function generateInvoicePdf(data: InvoiceFormData, companyInfo?: Co
     integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     return `${integerPart},${decimalPart}`;
   };
+
+  const formatQuantity = (quantity: number) => {
+    if (typeof quantity !== 'number') return '0';
+    return Math.round(quantity).toString();
+  };
   
   // Company Header
   doc.setFontSize(10);
@@ -289,13 +294,13 @@ export async function generateInvoicePdf(data: InvoiceFormData, companyInfo?: Co
   const clientTextLeftX = 16;
   const clientTextRightX = 105;
   const lineSpacing = 5.5;
-  const clientPadding = 3;
+  const clientPadding = 6; // Increased padding for better text spacing inside box
   
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   
   // Measure and draw client info - use multiple lines if needed
-  let currentClientY = clientBoxY + clientPadding;
+  let currentClientY = clientBoxY + clientPadding + 2; // Add extra 2pt for top breathing room
   const availableWidth = 80; // Width available per column
   
   // Left column
@@ -345,7 +350,7 @@ export async function generateInvoicePdf(data: InvoiceFormData, companyInfo?: Co
       item.reference || '',
       item.designation,
       item.unit || '',
-      formatPrice(item.quantity),
+      formatQuantity(item.quantity),
       formatPrice(item.unitPrice),
       vatPercent > 0 ? `${vatPercent}` : '',
       formatPrice(total),
