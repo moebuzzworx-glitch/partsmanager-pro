@@ -138,8 +138,9 @@ service cloud.firestore {
       allow read: if isSignedIn() && request.auth.uid == uid;
       // Users can create their own profile document (for initial signup)
       allow create: if isSignedIn() && request.auth.uid == uid;
-      // Users can update their own profile (except role)
-      allow update: if isSignedIn() && request.auth.uid == uid && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
+      // Users can update their own profile (except role and subscription)
+      // This allows updating displayName, photoURL and other profile fields.
+      allow update: if isSignedIn() && request.auth.uid == uid && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role','subscription']);
       // Users cannot delete their own profile
       allow delete: if false;
     }

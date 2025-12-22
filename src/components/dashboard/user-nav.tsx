@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LogOut, User as UserIcon, Palette, Loader2 } from 'lucide-react';
+import UserProfileModal from './user-profile-modal';
 import type { User } from '@/lib/types';
 import { type getDictionary } from '@/lib/dictionaries';
 import { usePathname } from 'next/navigation';
@@ -38,6 +39,7 @@ export function UserNav({
   const auth = useAuth();
   const { toast } = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const handleLogout = async () => {
     if (!auth) return;
@@ -74,6 +76,7 @@ export function UserNav({
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
+      <UserProfileModal open={false} onOpenChange={() => {}} />
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
@@ -83,6 +86,10 @@ export function UserNav({
             </p>
           </div>
         </DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => setProfileOpen(true)}>
+          <UserIcon className="mr-2 h-4 w-4" />
+          <span>Profile</span>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut}>
           {isLoggingOut ? (
@@ -93,6 +100,7 @@ export function UserNav({
           <span>{dictionary.logout}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
+      <UserProfileModal open={profileOpen} onOpenChange={setProfileOpen} />
     </DropdownMenu>
   );
 }
