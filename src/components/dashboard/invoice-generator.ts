@@ -357,13 +357,15 @@ export function generateInvoicePdf(data: InvoiceFormData, companyInfo?: CompanyI
 
   // Draw rows
   for (let i = 0; i < rows; i++) {
-    const y = summaryY + i * rowHeight;
+    let y = summaryY + i * rowHeight;
     // Bold the last label/value
     if (i === rows - 1) doc.setFont('helvetica', 'bold');
     else doc.setFont('helvetica', 'normal');
 
     // Ensure label fits within left portion
     const labelX = summaryX + padding;
+    // push the last (net) row slightly down so it sits below the separator
+    if (i === rows - 1) y += 4;
     doc.text(labels[i], labelX, y);
 
     // Value aligned to the right inside the box
@@ -371,8 +373,10 @@ export function generateInvoicePdf(data: InvoiceFormData, companyInfo?: CompanyI
     doc.text(values[i], valueX, y, { align: 'right' });
   }
 
-  // Draw a separator above the net to pay (before last row)
-  const sepY = summaryY + (rows - 1) * rowHeight - (rowHeight / 3);
+  // Draw a separator above the net to pay (before last row). Place it
+  // slightly above the pushed-down net row.
+  const sepBase = summaryY + (rows - 1) * rowHeight;
+  const sepY = sepBase + 1; // separator just above the net row
   doc.setLineWidth(0.2);
   doc.line(summaryX + padding, sepY, summaryX + summaryBoxWidth - padding, sepY);
 
@@ -386,33 +390,41 @@ export function generateInvoicePdf(data: InvoiceFormData, companyInfo?: CompanyI
   // Start at least 40pt below startY or just below the summary box
   let textY = Math.max(startY + 40, summaryBottom + 6);
 
-  // If there's not enough horizontal space because the summary box is wide,
-  // limit the text width to the available area to the left of the summary box.
-  let availableWidth = summaryX - leftMargin - 8;
-  let isNewPageForText = false;
-
-  if (availableWidth < 120) {
-    // Not enough room on the current page; move the amount-in-text to a new page
-    doc.addPage();
-    textY = 20 + padding;
-    isNewPageForText = true;
-    availableWidth = (doc.internal.pageSize as any).width - leftMargin * 2;
-  }
-
-  // If textY is too close to bottom, push to a new page
-  if (textY > pageHeight - 60 && !isNewPageForText) {
-    doc.addPage();
-    textY = 20 + padding;
-    availableWidth = (doc.internal.pageSize as any).width - leftMargin * 2;
-  }
-
-  doc.text('Arrêter la présente facture à la somme de :', leftMargin, textY);
-  textY += 6;
-  doc.setFont('helvetica', 'bold');
+  // Try to place amount-in-text to the left of the summary box first.
+  const leftAvailable = Math.max(40, summaryX - leftMargin - 8);
+  const fullAvailable = (doc.internal.pageSize as any).width - leftMargin * 2;
   const words = numberToWordsFr(netAPayer);
   const capitalized = words.charAt(0).toUpperCase() + words.slice(1);
-  const splitWords = doc.splitTextToSize(capitalized, availableWidth);
-  doc.text(splitWords, leftMargin, textY);
+  const approxLineHeight = 6;
+
+  const splitLeft = doc.splitTextToSize(capitalized, leftAvailable);
+  const heightLeft = splitLeft.length * approxLineHeight;
+
+  const splitFull = doc.splitTextToSize(capitalized, fullAvailable);
+  const heightFull = splitFull.length * approxLineHeight;
+
+  // Prefer left placement if it fits vertically; otherwise try full-width
+  if (summaryBottom + 6 + heightLeft <= pageHeight - 20) {
+    // left column OK
+    doc.text('Arrêter la présente facture à la somme de :', leftMargin, textY);
+    textY += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text(splitLeft, leftMargin, textY);
+  } else if (summaryBottom + 6 + heightFull <= pageHeight - 20) {
+    // full width below summary fits
+    doc.text('Arrêter la présente facture à la somme de :', leftMargin, textY);
+    textY += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text(splitFull, leftMargin, textY);
+  } else {
+    // no room below summary -> new page
+    doc.addPage();
+    textY = 20 + padding;
+    doc.text('Arrêter la présente facture à la somme de :', leftMargin, textY);
+    textY += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text(splitFull, leftMargin, textY);
+  }
 
   
   // Page numbers - using a custom function to handle jsPDF's context
