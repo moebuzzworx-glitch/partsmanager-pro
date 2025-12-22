@@ -6,7 +6,6 @@ import { getDictionary } from "@/lib/dictionaries";
 import { Locale } from "@/lib/config";
 import { useEffect, useState } from "react";
 import { use } from "react";
-import dynamic from "next/dynamic";
 import {
   Card,
   CardContent,
@@ -26,12 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query } from "firebase/firestore";
-
-// Dynamic import to prevent server-side jsPDF execution during build
-const CreateInvoiceDialog = dynamic(
-  () => import("@/components/dashboard/create-invoice-dialog").then(mod => ({ default: mod.CreateInvoiceDialog })),
-  { ssr: false }
-);
+import { CreateInvoiceDialogWrapper } from "@/components/dashboard/create-invoice-dialog-wrapper";
 
 interface Invoice {
   id: string;
@@ -121,7 +115,7 @@ export default function InvoicesPage({
         <CardHeader>
             <div className="flex justify-between items-center">
                 <CardTitle>Invoices</CardTitle>
-                <CreateInvoiceDialog locale={locale} dictionary={dictionary} />
+                <CreateInvoiceDialogWrapper locale={locale} dictionary={dictionary} />
             </div>
         </CardHeader>
         <CardContent>
