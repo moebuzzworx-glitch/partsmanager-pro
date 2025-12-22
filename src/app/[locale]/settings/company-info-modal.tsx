@@ -103,25 +103,49 @@ export function CompanyInfoModal() {
         let uploadedLogoUrl: string | undefined;
         try {
           // If a new logo file was selected, upload it
-          if (logoFile && firebaseApp && user) {
-            const storage = getStorage(firebaseApp as any);
-            const sRef = storageRef(storage, `logos/${user.uid}/${Date.now()}_${logoFile.name}`);
-            await uploadBytes(sRef, logoFile);
-            uploadedLogoUrl = await getDownloadURL(sRef);
-            setPreviewUrl(uploadedLogoUrl);
-            // Update Firebase Auth profile photoURL so header/avatar updates
-            try {
-              if (auth && auth.currentUser && uploadedLogoUrl) {
-                await updateProfile(auth.currentUser, { photoURL: uploadedLogoUrl });
-                // Force token refresh so onIdTokenChanged fires and provider updates
-                try {
-                  await auth.currentUser.getIdToken(true);
-                } catch (tokenErr) {
-                  // ignore token refresh errors
+          if (logoFile) {
+            // Use server-side upload when configured (no bucket CORS required)
+            if (process.env.NEXT_PUBLIC_USE_SERVER_UPLOAD === 'true') {
+              const toBase64 = (file: File) => new Promise<string>((res, rej) => {
+                const reader = new FileReader();
+                reader.onload = () => res((reader.result as string).split(',')[1]);
+                reader.onerror = rej;
+                reader.readAsDataURL(file);
+              });
+              const base64 = await toBase64(logoFile);
+              const resp = await fetch('/.netlify/functions/upload-logo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename: logoFile.name, contentType: logoFile.type, data: base64, uid: user?.uid }),
+              });
+              if (!resp.ok) throw new Error('Server upload failed');
+              const j = await resp.json();
+              uploadedLogoUrl = j.url;
+              setPreviewUrl(uploadedLogoUrl);
+              // Update Firebase Auth profile photoURL so header/avatar updates (best-effort)
+              try {
+                if (auth && auth.currentUser && uploadedLogoUrl) {
+                  await updateProfile(auth.currentUser, { photoURL: uploadedLogoUrl });
+                  try { await auth.currentUser.getIdToken(true); } catch {}
                 }
+              } catch (e) {
+                console.warn('Failed to update auth profile photoURL', e);
               }
-            } catch (e) {
-              console.warn('Failed to update auth profile photoURL', e);
+            } else if (firebaseApp && user) {
+              const storage = getStorage(firebaseApp as any);
+              const sRef = storageRef(storage, `logos/${user.uid}/${Date.now()}_${logoFile.name}`);
+              await uploadBytes(sRef, logoFile);
+              uploadedLogoUrl = await getDownloadURL(sRef);
+              setPreviewUrl(uploadedLogoUrl);
+              // Update Firebase Auth profile photoURL so header/avatar updates
+              try {
+                if (auth && auth.currentUser && uploadedLogoUrl) {
+                  await updateProfile(auth.currentUser, { photoURL: uploadedLogoUrl });
+                  try { await auth.currentUser.getIdToken(true); } catch {}
+                }
+              } catch (e) {
+                console.warn('Failed to update auth profile photoURL', e);
+              }
             }
           }
 
