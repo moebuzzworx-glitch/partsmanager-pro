@@ -28,8 +28,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Save, Edit } from 'lucide-react';
-import { useFirebase } from '@/firebase/provider';
-import { getUserSettings, saveUserSettings } from '@/lib/settings-utils';
+ 
 
 const companyInfoSchema = z.object({
   companyName: z.string().min(1, 'Company name is required.'),
