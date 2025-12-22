@@ -88,6 +88,8 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
           setSettingsState(settings);
           const nextNumber = getNextInvoiceNumber(settings);
           setNextInvoiceNumber(nextNumber);
+          // ensure form field reflects computed next invoice number
+          setTimeout(() => setValue('invoiceNumber', nextNumber), 0);
         } catch (error) {
           console.error('Error fetching user document and settings:', error);
         }
@@ -173,10 +175,18 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
         // Determine default VAT percentage from settings (if present)
         const defaultVat = (settings as any)?.defaultVat ?? (settingsState as any)?.defaultVat ?? 0;
 
-        await generateInvoicePdf(values, companyInfo, defaultVat);
+        // pass whether VAT should be applied to all lines
+        await generateInvoicePdf(values, companyInfo, defaultVat, !!values.applyVatToAll);
 
         // Update last invoice number in Firestore settings
         await updateLastInvoiceNumber(firestore, user.uid, settings);
+
+        // refresh settings & next invoice number for the next invoice
+        const refreshed = await getUserSettings(firestore, user.uid);
+        setSettingsState(refreshed);
+        const newNext = getNextInvoiceNumber(refreshed);
+        setNextInvoiceNumber(newNext);
+        setValue('invoiceNumber', newNext);
 
         toast({
           title: 'Success',
@@ -372,7 +382,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
                         onCheckedChange={field.onChange}
                       />
                       <Label htmlFor="applyVat" className="text-sm font-normal">
-                        Apply VAT to all
+                        Apply VAT
                       </Label>
                     </div>
                   )}

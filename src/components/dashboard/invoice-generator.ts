@@ -138,7 +138,7 @@ function getCompanyInfo(): CompanyInfo {
 }
 
 
-export function generateInvoicePdf(data: InvoiceFormData, companyInfo?: CompanyInfo, defaultVat?: number) {
+export function generateInvoicePdf(data: InvoiceFormData, companyInfo?: CompanyInfo, defaultVat: number = 0, applyVat: boolean = false) {
   const doc = new jsPDF();
   const resolvedCompanyInfo = companyInfo ?? getCompanyInfo();
 
@@ -213,8 +213,9 @@ export function generateInvoicePdf(data: InvoiceFormData, companyInfo?: CompanyI
   
   doc.setFont('helvetica', 'normal');
   doc.text(`Client : ${data.clientName}`, 16, 79);
-  doc.text(`Adresse : ${data.clientAddress || ''}`, 16, 89);
-  doc.text(`NIS : ${data.clientNis || ''}`, 16, 84);
+  doc.text(`Adresse : ${data.clientAddress || ''}`, 16, 84);
+  doc.text(`NIS : ${data.clientNis || ''}`, 16, 90);
+  doc.text(`RIB : ${data.clientRib || ''}`, 16, 96);
 
   doc.text(`R.C : ${data.clientRc || ''}`, 105, 79, { align: 'left' });
   doc.text(`NIF : ${data.clientNif || ''}`, 105, 84, { align: 'left' });
@@ -223,7 +224,7 @@ export function generateInvoicePdf(data: InvoiceFormData, companyInfo?: CompanyI
   // Table
   const tableData = data.lineItems.map((item: any, index) => {
     const total = item.quantity * item.unitPrice;
-    const vatPercent = item.applyVat ? (defaultVat ?? 0) : 0;
+    const vatPercent = applyVat ? defaultVat : 0;
     return [
       index + 1,
       item.reference || '',
@@ -235,12 +236,11 @@ export function generateInvoicePdf(data: InvoiceFormData, companyInfo?: CompanyI
       formatPrice(total),
     ];
   });
-  
+
   const totalHT = data.lineItems.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0);
-  const totalTVA = data.lineItems.reduce((sum: number, item: any) => {
-    const vatPercent = item.applyVat ? (defaultVat ?? 0) : 0;
-    return sum + (item.quantity * item.unitPrice * (vatPercent / 100));
-  }, 0);
+  const totalTVA = applyVat ? data.lineItems.reduce((sum: number, item: any) => {
+    return sum + (item.quantity * item.unitPrice * (defaultVat / 100));
+  }, 0) : 0;
   const timbre = 0; // As per image
   const totalTTC = totalHT + totalTVA;
   const netAPayer = totalTTC + timbre;
