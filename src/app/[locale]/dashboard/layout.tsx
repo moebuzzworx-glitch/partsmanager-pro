@@ -60,6 +60,13 @@ export default function DashboardLayout({
   const [dictionary, setDictionary] = useState<any>(null);
   const { notifications, unreadCount, markAsRead } = useNotifications();
 
+  // Set dir attribute based on locale
+  useEffect(() => {
+    const dir = locale === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.dir = dir;
+    document.documentElement.lang = locale;
+  }, [locale]);
+
   useEffect(() => {
     getDictionary(locale).then(setDictionary);
   }, [locale]);

@@ -201,8 +201,22 @@ const Sidebar = React.forwardRef<
     const [direction, setDirection] = React.useState<'ltr' | 'rtl'>('ltr');
 
     React.useEffect(() => {
+      // Initial check
       const dir = document.documentElement.dir as 'ltr' | 'rtl';
-      setDirection(dir);
+      setDirection(dir || 'ltr');
+
+      // Watch for direction changes
+      const observer = new MutationObserver(() => {
+        const newDir = document.documentElement.dir as 'ltr' | 'rtl';
+        setDirection(newDir || 'ltr');
+      });
+
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['dir'],
+      });
+
+      return () => observer.disconnect();
     }, []);
 
     const side = sideProp ? sideProp : direction === 'rtl' ? 'right' : 'left';

@@ -46,6 +46,13 @@ export function AdminLayoutClient({
     routerRef.current = router;
   }, [router]);
 
+  // Set dir attribute based on locale
+  useEffect(() => {
+    const dir = locale === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.dir = dir;
+    document.documentElement.lang = locale;
+  }, [locale]);
+
   // Skip auth checks for login page
   const isLoginPage = pathname?.includes('/admin/login');
 
