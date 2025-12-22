@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CompanyInfoModal } from '@/app/[locale]/settings/company-info-modal';
 import { BusinessRulesModal } from '@/app/[locale]/settings/business-rules-modal';
+import { BillingPanel } from './billing-panel';
 
 
 export function SettingsForm() {
@@ -54,15 +55,7 @@ export function SettingsForm() {
             </TabsContent>
 
             <TabsContent value="billing">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Billing & Subscription</CardTitle>
-                        <CardDescription>Manage subscription plans and billing information.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-center text-muted-foreground p-8">Billing management interface will be here.</p>
-                    </CardContent>
-                </Card>
+                <BillingPanel />
             </TabsContent>
         </Tabs>
     )

@@ -24,7 +24,7 @@ import { useFirebase } from '@/firebase/provider';
 import { doc, getDoc } from 'firebase/firestore';
 import { User as AppUser } from '@/lib/types';
 import { canExport, getExportRestrictionMessage } from '@/lib/trial-utils';
-import { getUserSettings, getNextInvoiceNumber, updateLastInvoiceNumber } from '@/lib/settings-utils';
+import { getUserSettings, getNextInvoiceNumber, updateLastInvoiceNumber, AppSettings } from '@/lib/settings-utils';
 import { useToast } from '@/hooks/use-toast';
 import type { Locale } from '@/lib/config';
 import { generateInvoicePdf } from './invoice-generator';
@@ -69,6 +69,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
     const [userDoc, setUserDoc] = React.useState<AppUser | null>(null);
     const [isLoading, setIsLoading] = React.useState(false);
     const [nextInvoiceNumber, setNextInvoiceNumber] = React.useState('FAC-2025-0001');
+    const [settingsState, setSettingsState] = React.useState<AppSettings | null>(null);
     
     // Fetch user document and settings
     React.useEffect(() => {
@@ -84,6 +85,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
 
           // Fetch settings and get next invoice number
           const settings = await getUserSettings(firestore, user.uid);
+          setSettingsState(settings);
           const nextNumber = getNextInvoiceNumber(settings);
           setNextInvoiceNumber(nextNumber);
         } catch (error) {
@@ -155,8 +157,21 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
         // Get company info from Firestore settings
         const settings = await getUserSettings(firestore, user.uid);
         
-        // Generate PDF with form data
-        await generateInvoicePdf(values);
+        // Generate PDF with form data; pass company info from settings if available
+        const companyInfo = settingsState
+          ? {
+              companyName: settingsState.companyName,
+              address: settingsState.address,
+              phone: settingsState.phone,
+              rc: settingsState.rc,
+              nif: settingsState.nif,
+              art: settingsState.art,
+              nis: settingsState.nis,
+              rib: settingsState.rib,
+            }
+          : undefined;
+
+        await generateInvoicePdf(values, companyInfo);
 
         // Update last invoice number in Firestore settings
         await updateLastInvoiceNumber(firestore, user.uid, settings);

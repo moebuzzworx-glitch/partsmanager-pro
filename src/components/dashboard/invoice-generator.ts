@@ -138,9 +138,9 @@ function getCompanyInfo(): CompanyInfo {
 }
 
 
-export function generateInvoicePdf(data: InvoiceFormData) {
+export function generateInvoicePdf(data: InvoiceFormData, companyInfo?: CompanyInfo) {
   const doc = new jsPDF();
-  const companyInfo = getCompanyInfo();
+  const resolvedCompanyInfo = companyInfo ?? getCompanyInfo();
 
   const formatPrice = (price: number) => {
     if (typeof price !== 'number') return '0,00';
@@ -154,17 +154,17 @@ export function generateInvoicePdf(data: InvoiceFormData) {
   // Company Header
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Adresse: ${companyInfo.address || ''}`, 14, 28);
+  doc.text(`Adresse: ${resolvedCompanyInfo.address || ''}`, 14, 28);
   doc.text('N° RC:', 14, 34);
-  doc.text(companyInfo.rc || '', 30, 34);
+  doc.text(resolvedCompanyInfo.rc || '', 30, 34);
   doc.text('N° NIF:', 14, 40);
-  doc.text(companyInfo.nif || '', 30, 40);
+  doc.text(resolvedCompanyInfo.nif || '', 30, 40);
   doc.text('N° Tél:', 14, 46);
-  doc.text(companyInfo.phone || '', 30, 46);
+  doc.text(resolvedCompanyInfo.phone || '', 30, 46);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.text(companyInfo.companyName || '', 105, 18, { align: 'center'});
+  doc.text(resolvedCompanyInfo.companyName || '', 105, 18, { align: 'center'});
   doc.setLineWidth(0.5);
   doc.line(85, 20, 125, 20); 
 
@@ -172,18 +172,18 @@ export function generateInvoicePdf(data: InvoiceFormData) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.text('N° NIS:', 150, 28);
-  doc.text(companyInfo.nis || '', 165, 28);
+  doc.text(resolvedCompanyInfo.nis || '', 165, 28);
   doc.text('N° ART:', 150, 34);
-  doc.text(companyInfo.art || '', 165, 34);
+  doc.text(resolvedCompanyInfo.art || '', 165, 34);
   doc.text('N° RIB:', 150, 40);
-  doc.text(companyInfo.rib || '', 165, 40);
+  doc.text(resolvedCompanyInfo.rib || '', 165, 40);
 
   // Logo Placeholder
   doc.setFillColor(237, 28, 36);
   doc.circle(25, 18, 5, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(255,255,255);
-  const logoInitial = companyInfo.companyName.charAt(0) || 'C';
+  const logoInitial = (resolvedCompanyInfo.companyName || 'C').charAt(0) || 'C';
   doc.text(logoInitial, 25 - (doc.getTextWidth(logoInitial) / 2), 19.5);
 
 

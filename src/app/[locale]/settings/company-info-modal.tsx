@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -25,7 +25,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Save, Edit } from 'lucide-react';
-import { useEffect } from 'react';
+import { useFirebase } from '@/firebase/provider';
+import { getUserSettings, saveUserSettings } from '@/lib/settings-utils';
 
 const companyInfoSchema = z.object({
   companyName: z.string().min(1, 'Company name is required.'),
@@ -43,6 +44,7 @@ export type CompanyInfo = z.infer<typeof companyInfoSchema>;
 export function CompanyInfoModal() {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
+  const { firestore, user, isUserLoading } = useFirebase();
   const form = useForm<CompanyInfo>({
     resolver: zodResolver(companyInfoSchema),
     defaultValues: {
@@ -58,19 +60,59 @@ export function CompanyInfoModal() {
   });
 
   useEffect(() => {
-    try {
-      const storedInfo = localStorage.getItem('companyInfo');
-      if (storedInfo) {
-        form.reset(JSON.parse(storedInfo));
+    let cancelled = false;
+    (async () => {
+      try {
+        if (user && firestore && !isUserLoading) {
+          const settings = await getUserSettings(firestore, user.uid);
+          const info = {
+            companyName: settings.companyName || '',
+            address: settings.address || '',
+            phone: settings.phone || '',
+            rc: settings.rc || '',
+            nif: settings.nif || '',
+            art: settings.art || '',
+            nis: settings.nis || '',
+            rib: settings.rib || '',
+          };
+          if (!cancelled) form.reset(info);
+          return;
+        }
+
+        // Fallback to localStorage
+        const storedInfo = localStorage.getItem('companyInfo');
+        if (storedInfo && !cancelled) {
+          form.reset(JSON.parse(storedInfo));
+        }
+      } catch (error) {
+        console.error('Could not retrieve company info', error);
       }
-    } catch (error) {
-      console.error('Could not retrieve company info from local storage', error);
-    }
+    })();
+    return () => { cancelled = true };
   }, [form]);
 
   function onSubmit(values: CompanyInfo) {
     try {
       localStorage.setItem('companyInfo', JSON.stringify(values));
+      // Persist to Firestore when available
+      (async () => {
+        try {
+          if (user && firestore) {
+            await saveUserSettings(firestore, user.uid, {
+              companyName: values.companyName,
+              address: values.address,
+              phone: values.phone,
+              rc: values.rc,
+              nif: values.nif,
+              art: values.art,
+              nis: values.nis,
+              rib: values.rib,
+            });
+          }
+        } catch (e) {
+          console.error('Failed to save company info to Firestore', e);
+        }
+      })();
       toast({
         title: 'Information Saved',
         description: 'Your company details have been updated.',

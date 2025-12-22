@@ -1,4 +1,4 @@
-'use client';
+ 'use client';
 
 import { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,6 +24,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { useFirebase } from '@/firebase/provider';
+import { getUserSettings, saveUserSettings } from '@/lib/settings-utils';
 import { Save, Edit, Percent, Loader2 } from 'lucide-react';
 
 const businessRulesSchema = z.object({
@@ -38,6 +40,8 @@ export function BusinessRulesModal() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  const { firestore, user, isUserLoading } = useFirebase();
+
   const form = useForm<BusinessRulesData>({
     resolver: zodResolver(businessRulesSchema),
     defaultValues: {
@@ -47,17 +51,31 @@ export function BusinessRulesModal() {
   });
 
   useEffect(() => {
-    try {
-      const storedMargin = localStorage.getItem('profitMargin');
-      const storedVat = localStorage.getItem('defaultVat');
-      
-      form.reset({
-        profitMargin: storedMargin ? parseFloat(storedMargin) : 25,
-        defaultVat: storedVat ? parseFloat(storedVat) : 19,
-      });
-    } catch (error) {
-      console.error('Could not retrieve business rules from local storage', error);
-    }
+    let cancelled = false;
+    (async () => {
+      try {
+        if (user && firestore && !isUserLoading) {
+          const settings = await getUserSettings(firestore, user.uid);
+          form.reset({
+            profitMargin: settings.profitMargin ?? 25,
+            defaultVat: (settings as any).defaultVat ?? 19,
+          });
+          return;
+        }
+
+        const storedMargin = localStorage.getItem('profitMargin');
+        const storedVat = localStorage.getItem('defaultVat');
+        if (!cancelled) {
+          form.reset({
+            profitMargin: storedMargin ? parseFloat(storedMargin) : 25,
+            defaultVat: storedVat ? parseFloat(storedVat) : 19,
+          });
+        }
+      } catch (error) {
+        console.error('Could not retrieve business rules from local storage', error);
+      }
+    })();
+    return () => { cancelled = true };
   }, [form]);
 
   async function onSubmit(values: BusinessRulesData) {
@@ -65,6 +83,15 @@ export function BusinessRulesModal() {
     try {
       localStorage.setItem('profitMargin', values.profitMargin.toString());
       localStorage.setItem('defaultVat', values.defaultVat.toString());
+
+      // Persist to Firestore when available
+      if (user && firestore) {
+        await saveUserSettings(firestore, user.uid, {
+          profitMargin: values.profitMargin,
+          // store defaultVat under the same shape (AppSettings doesn't have defaultVat, but it's okay to add)
+          defaultVat: values.defaultVat,
+        } as any);
+      }
 
       toast({
         title: 'Business Rules Saved',
