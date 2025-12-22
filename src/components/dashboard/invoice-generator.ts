@@ -276,21 +276,65 @@ export async function generateInvoicePdf(data: InvoiceFormData, companyInfo?: Co
   doc.roundedRect(boxX, boxY, boxWidth, boxHeight, 3, 3);
   doc.text(fullTitleText, boxX + 5, boxY + 6.5);
   
-  // Client Info
+  // Client Info - Dynamic positioning based on content
   doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(11);
   doc.text('Renseignements Client', 14, 70);
-  doc.setLineWidth(0.2);
-  doc.roundedRect(12, 73, 186, 25, 2, 2);
+  
+  // Track Y position for dynamic layout
+  let clientBoxY = 73;
+  const clientBoxX = 12;
+  const clientBoxWidth = 186;
+  const clientTextLeftX = 16;
+  const clientTextRightX = 105;
+  const lineSpacing = 5.5;
+  const clientPadding = 3;
   
   doc.setFont('helvetica', 'normal');
-  doc.text(`Client : ${data.clientName}`, 16, 79);
-  doc.text(`Adresse : ${data.clientAddress || ''}`, 16, 84);
-  doc.text(`NIS : ${data.clientNis || ''}`, 16, 90);
-  doc.text(`RIB : ${data.clientRib || ''}`, 16, 96);
-
-  doc.text(`R.C : ${data.clientRc || ''}`, 105, 79, { align: 'left' });
-  doc.text(`NIF : ${data.clientNif || ''}`, 105, 84, { align: 'left' });
-
+  doc.setFontSize(10);
+  
+  // Measure and draw client info - use multiple lines if needed
+  let currentClientY = clientBoxY + clientPadding;
+  const availableWidth = 80; // Width available per column
+  
+  // Left column
+  const clientNameLines = doc.splitTextToSize(`Client : ${data.clientName}`, availableWidth);
+  doc.text(clientNameLines, clientTextLeftX, currentClientY);
+  currentClientY += clientNameLines.length * lineSpacing;
+  
+  const addressLines = doc.splitTextToSize(`Adresse : ${data.clientAddress || ''}`, availableWidth);
+  doc.text(addressLines, clientTextLeftX, currentClientY);
+  currentClientY += addressLines.length * lineSpacing;
+  
+  const nisLines = doc.splitTextToSize(`NIS : ${data.clientNis || ''}`, availableWidth);
+  doc.text(nisLines, clientTextLeftX, currentClientY);
+  currentClientY += nisLines.length * lineSpacing;
+  
+  const ribLines = doc.splitTextToSize(`RIB : ${data.clientRib || ''}`, availableWidth);
+  doc.text(ribLines, clientTextLeftX, currentClientY);
+  const leftColumnHeight = currentClientY - (clientBoxY + clientPadding) + lineSpacing;
+  
+  // Right column (parallel, starting from same Y as left)
+  let currentRightY = clientBoxY + clientPadding;
+  
+  const rcLines = doc.splitTextToSize(`R.C : ${data.clientRc || ''}`, availableWidth);
+  doc.text(rcLines, clientTextRightX, currentRightY);
+  currentRightY += rcLines.length * lineSpacing;
+  
+  const nifLines = doc.splitTextToSize(`NIF : ${data.clientNif || ''}`, availableWidth);
+  doc.text(nifLines, clientTextRightX, currentRightY);
+  const rightColumnHeight = currentRightY - (clientBoxY + clientPadding) + lineSpacing;
+  
+  // Calculate total client box height based on taller column
+  const clientBoxHeight = Math.max(leftColumnHeight, rightColumnHeight) + clientPadding;
+  
+  // Draw the box around the content (draw before text, so it appears behind)
+  doc.setLineWidth(0.2);
+  doc.roundedRect(clientBoxX, clientBoxY, clientBoxWidth, clientBoxHeight, 2, 2);
+  
+  // Calculate where table should start (after client box with some spacing)
+  const tableStartY = clientBoxY + clientBoxHeight + 4;
 
   // Table
   const tableData = data.lineItems.map((item: any, index) => {
@@ -317,7 +361,7 @@ export async function generateInvoicePdf(data: InvoiceFormData, companyInfo?: Co
   const netAPayer = totalTTC + timbre;
 
   (AutoTable as any)(doc, {
-    startY: 102,
+    startY: tableStartY,
     head: [['N°', 'Référence', 'Désignation', 'U', 'Qté', 'PUV', 'TVA(%)', 'Montant HT']],
     body: tableData,
     theme: 'grid',
