@@ -269,11 +269,11 @@ service cloud.firestore {
 
     /**
      * @description Settings collection
-     * @access Users can read/write their own settings
+     * @access Users can read/write their own settings; admins may manage all settings
      */
     match /settings/{settingId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == settingId);
+      allow write: if isAdmin() || (isSignedIn() && request.auth.uid == settingId);
     }
 
     /**
