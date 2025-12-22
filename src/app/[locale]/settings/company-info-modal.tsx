@@ -97,11 +97,10 @@ export function CompanyInfoModal() {
     return () => { cancelled = true };
   }, [form]);
 
-  function onSubmit(values: CompanyInfo) {
+  async function onSubmit(values: CompanyInfo) {
     try {
-      (async () => {
-        let uploadedLogoUrl: string | undefined;
-        try {
+      let uploadedLogoUrl: string | undefined;
+      try {
           // If a new logo file was selected, upload it
           if (logoFile) {
             // Prefer Cloudinary unsigned upload when configured
@@ -181,15 +180,32 @@ export function CompanyInfoModal() {
             if (uploadedLogoUrl) payload.logoUrl = uploadedLogoUrl;
             await saveUserSettings(firestore, user.uid, payload);
           }
-        } catch (e) {
-          console.error('Failed to save company info to Firestore or upload logo', e);
-        }
+      } catch (e) {
+        console.error('Failed to save company info to Firestore or upload logo', e);
+        throw e;
+      }
 
-        // Always persist locally
-        const localSave: any = { ...values };
-        if (uploadedLogoUrl) localSave.logoUrl = uploadedLogoUrl;
-        localStorage.setItem('companyInfo', JSON.stringify(localSave));
-      })();
+      // Always persist locally
+      const localSave: any = { ...values };
+      if (uploadedLogoUrl) localSave.logoUrl = uploadedLogoUrl;
+      localStorage.setItem('companyInfo', JSON.stringify(localSave));
+
+      // Force auth token refresh so onIdTokenChanged listeners update (avatar/displayName)
+      try {
+        if (auth && auth.currentUser && typeof auth.currentUser.getIdToken === 'function') {
+          await auth.currentUser.getIdToken(true);
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      // Emit a global event so other components can re-fetch settings if needed
+      try {
+        window.dispatchEvent(new CustomEvent('app:settings-updated', { detail: { uid: user?.uid } }));
+      } catch (e) {
+        // ignore when SSR or unavailable
+      }
+
       toast({
         title: 'Information Saved',
         description: 'Your company details have been updated.',

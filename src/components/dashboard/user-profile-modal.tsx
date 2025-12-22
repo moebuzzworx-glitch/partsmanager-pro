@@ -57,6 +57,19 @@ export function UserProfileModal({ children, open: controlledOpen, onOpenChange 
       }
 
       toast({ title: 'Profile updated' });
+      // Force token refresh so onIdTokenChanged will update auth consumers
+      try {
+        if (auth && auth.currentUser && typeof auth.currentUser.getIdToken === 'function') {
+          await auth.currentUser.getIdToken(true);
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      try {
+        window.dispatchEvent(new CustomEvent('app:settings-updated', { detail: { uid: user?.uid } }));
+      } catch (e) {}
+
       setOpen(false);
     } catch (error: any) {
       toast({ title: 'Error', description: error.message || 'Failed to update profile', variant: 'destructive' });
