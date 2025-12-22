@@ -261,9 +261,10 @@ export default function InvoicesPage({
                              <Button 
                                variant="outline" 
                                size="sm"
-                               disabled={updatingPaidId === invoice.id}
+                               disabled={invoice.isProforma || updatingPaidId === invoice.id}
                                onClick={() => handleTogglePaidStatus(invoice)}
-                               title={invoice.paid ? 'Mark as Unpaid' : 'Mark as Paid'}
+                               title={invoice.isProforma ? 'Proforma invoices cannot be marked as paid' : invoice.paid ? 'Mark as Unpaid' : 'Mark as Paid'}
+                               className={invoice.isProforma ? 'opacity-50 cursor-not-allowed' : ''}
                              >
                                   {updatingPaidId === invoice.id ? (
                                     <Loader2 className="h-4 w-4 animate-spin"/>
