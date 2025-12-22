@@ -29,6 +29,7 @@ export interface StoredInvoice {
   total?: number;
   subtotal?: number;
   vatAmount?: number;
+  paid: boolean;
   createdAt?: any;
   updatedAt?: any;
 }
@@ -69,6 +70,7 @@ export async function saveInvoiceData(
       total,
       subtotal,
       vatAmount,
+      paid: false,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -170,4 +172,46 @@ export function calculateInvoiceTotals(
   const total = subtotal + vatAmount;
 
   return { subtotal, vatAmount, total };
+}
+
+/**
+ * Update invoice paid status
+ */
+export async function updateInvoicePaidStatus(
+  firestore: Firestore,
+  invoiceId: string,
+  paid: boolean
+): Promise<boolean> {
+  try {
+    const invoiceRef = doc(firestore, 'invoices', invoiceId);
+    await updateDoc(invoiceRef, {
+      paid,
+      updatedAt: serverTimestamp(),
+    });
+    return true;
+  } catch (error) {
+    console.error('Error updating invoice paid status:', error);
+    return false;
+  }
+}
+
+/**
+ * Update invoice details
+ */
+export async function updateInvoice(
+  firestore: Firestore,
+  invoiceId: string,
+  invoiceData: Partial<StoredInvoice>
+): Promise<boolean> {
+  try {
+    const invoiceRef = doc(firestore, 'invoices', invoiceId);
+    await updateDoc(invoiceRef, {
+      ...invoiceData,
+      updatedAt: serverTimestamp(),
+    });
+    return true;
+  } catch (error) {
+    console.error('Error updating invoice:', error);
+    return false;
+  }
 }

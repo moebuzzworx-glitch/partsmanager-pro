@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Download, Loader2, Trash2 } from "lucide-react";
+import { Download, Loader2, Trash2, Edit, Check, X } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -24,7 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useFirebase } from "@/firebase/provider";
-import { getUserInvoices, deleteInvoice, type StoredInvoice } from "@/lib/invoices-utils";
+import { getUserInvoices, deleteInvoice, updateInvoicePaidStatus, type StoredInvoice } from "@/lib/invoices-utils";
 import { generateInvoicePdf } from "@/components/dashboard/invoice-generator";
 import { getUserSettings } from "@/lib/settings-utils";
 import { CreateInvoiceDialog } from "@/components/dashboard/create-invoice-dialog";
@@ -42,6 +42,7 @@ export default function InvoicesPage({
   const [isLoading, setIsLoading] = useState(true);
   const [dictionary, setDictionary] = useState<any>(null);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+  const [updatingPaidId, setUpdatingPaidId] = useState<string | null>(null);
 
   const fetchInvoicesList = async () => {
     if (!firestore || !user) return;
@@ -160,6 +161,35 @@ export default function InvoicesPage({
     }
   };
 
+  const handleTogglePaidStatus = async (invoice: StoredInvoice) => {
+    if (!firestore || !invoice.id) return;
+
+    try {
+      setUpdatingPaidId(invoice.id);
+      const newPaidStatus = !invoice.paid;
+      const success = await updateInvoicePaidStatus(firestore, invoice.id, newPaidStatus);
+      
+      if (success) {
+        setInvoices(invoices.map(inv => 
+          inv.id === invoice.id ? { ...inv, paid: newPaidStatus } : inv
+        ));
+        toast({
+          title: 'Success',
+          description: `Invoice marked as ${newPaidStatus ? 'paid' : 'unpaid'}.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error updating invoice:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update invoice status.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingPaidId(null);
+    }
+  };
+
   if (!dictionary) {
     return (
       <div className="space-y-8">
@@ -202,6 +232,7 @@ export default function InvoicesPage({
                   <TableHead>Client</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -221,7 +252,27 @@ export default function InvoicesPage({
                           <TableCell className="text-right font-semibold">
                             {invoice.total?.toFixed(2) || '0.00'} DZD
                           </TableCell>
+                          <TableCell>
+                            <Badge variant={invoice.paid ? 'default' : 'secondary'}>
+                              {invoice.paid ? 'Paid' : 'Unpaid'}
+                            </Badge>
+                          </TableCell>
                           <TableCell className="text-right space-x-2">
+                             <Button 
+                               variant="outline" 
+                               size="sm"
+                               disabled={updatingPaidId === invoice.id}
+                               onClick={() => handleTogglePaidStatus(invoice)}
+                               title={invoice.paid ? 'Mark as Unpaid' : 'Mark as Paid'}
+                             >
+                                  {updatingPaidId === invoice.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin"/>
+                                  ) : invoice.paid ? (
+                                    <Check className="h-4 w-4 text-green-600"/>
+                                  ) : (
+                                    <X className="h-4 w-4 text-gray-400"/>
+                                  )}
+                             </Button>
                              <Button 
                                variant="outline" 
                                size="sm"
