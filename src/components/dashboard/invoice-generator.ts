@@ -2,7 +2,7 @@
 'use client';
 
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 import type { InvoiceFormData } from './create-invoice-form';
 import { User as AppUser } from '@/lib/types';
@@ -138,9 +138,11 @@ function getCompanyInfo(): CompanyInfo {
 
 
 export function generateInvoicePdf(data: InvoiceFormData) {
-  if (!jsPDF) {
-    throw new Error('jsPDF is not available. This function can only be called in the browser.');
+  // Register autoTable with jsPDF instance if not already registered
+  if (!(jsPDF.prototype as any).autoTable) {
+    autoTable(jsPDF);
   }
+  
   const doc = new jsPDF();
   const companyInfo = getCompanyInfo();
 
