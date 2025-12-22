@@ -1,3 +1,5 @@
+'use client';
+
 import * as React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -8,6 +10,8 @@ import { doc, getDoc } from 'firebase/firestore';
 import { User as AppUser } from '@/lib/types';
 import { canExport, getExportRestrictionMessage } from '@/lib/trial-utils';
 import { getUserSettings, getNextInvoiceNumber, updateLastInvoiceNumber } from '@/lib/settings-utils';
+import { useToast } from '@/hooks/use-toast';
+import type { Locale } from '@/lib/config';
 
 const lineItemSchema = z.object({
   reference: z.string().optional(),
