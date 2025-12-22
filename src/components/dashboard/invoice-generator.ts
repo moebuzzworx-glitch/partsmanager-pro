@@ -241,7 +241,7 @@ export function generateInvoicePdf(data: InvoiceFormData) {
   const totalTTC = totalHT + totalTVA;
   const netAPayer = totalTTC + timbre;
 
-  (doc as any).autoTable({
+  (AutoTable as any)(doc, {
     startY: 102,
     head: [['N°', 'Référence', 'Désignation', 'U', 'Qté', 'PUV', 'TVA(%)', 'Montant HT']],
     body: tableData,
