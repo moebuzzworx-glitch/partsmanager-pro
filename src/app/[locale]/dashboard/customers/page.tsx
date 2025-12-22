@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AddCustomerDialog } from "@/components/dashboard/add-customer-dialog";
 import { useFirebase } from "@/firebase/provider";
-import { collection, getDocs, query } from "firebase/firestore";
+import { collection, getDocs, query, deleteDoc, doc } from "firebase/firestore";
 
 interface Customer {
   id: string;
@@ -57,6 +57,16 @@ export default function CustomersPage({
   const [isLoading, setIsLoading] = useState(true);
   const [dictionary, setDictionary] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
+
+  const handleDeleteCustomer = async (id: string) => {
+    if (!firestore) return;
+    try {
+      await deleteDoc(doc(firestore, 'customers', id));
+      setCustomers(prev => prev.filter(c => c.id !== id));
+    } catch (error) {
+      console.error('Error deleting customer:', error);
+    }
+  };
 
   // Load dictionary
   useEffect(() => {
@@ -220,8 +230,16 @@ export default function CustomersPage({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>{d.actions}</DropdownMenuLabel>
-                            <DropdownMenuItem>{d.edit}</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                            <DropdownMenuItem onClick={() => {
+                              // TODO: Implement edit functionality with edit dialog
+                              console.log('Edit customer:', customer.id);
+                            }}>
+                              {d.edit}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteCustomer(customer.id)}
+                              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            >
                               {d.delete}
                             </DropdownMenuItem>
                           </DropdownMenuContent>

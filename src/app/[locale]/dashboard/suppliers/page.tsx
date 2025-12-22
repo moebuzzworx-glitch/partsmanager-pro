@@ -36,7 +36,7 @@ import { getDictionary } from "@/lib/dictionaries";
 import { Locale } from "@/lib/config";
 import { AddSupplierDialog } from "@/components/dashboard/add-supplier-dialog";
 import { useFirebase } from "@/firebase/provider";
-import { collection, getDocs, query } from "firebase/firestore";
+import { collection, getDocs, query, deleteDoc, doc } from "firebase/firestore";
 
 interface Supplier {
   id: string;
@@ -58,6 +58,16 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
   const [isLoading, setIsLoading] = useState(true);
   const [dictionary, setDictionary] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
+
+  const handleDeleteSupplier = async (id: string) => {
+    if (!firestore) return;
+    try {
+      await deleteDoc(doc(firestore, 'suppliers', id));
+      setSuppliers(prev => prev.filter(s => s.id !== id));
+    } catch (error) {
+      console.error('Error deleting supplier:', error);
+    }
+  };
 
   // Load dictionary
   useEffect(() => {
@@ -226,8 +236,16 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>{d.actions}</DropdownMenuLabel>
-                            <DropdownMenuItem>{d.edit}</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                            <DropdownMenuItem onClick={() => {
+                              // TODO: Implement edit functionality with edit dialog
+                              console.log('Edit supplier:', supplier.id);
+                            }}>
+                              {d.edit}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteSupplier(supplier.id)}
+                              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            >
                               {d.delete}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
