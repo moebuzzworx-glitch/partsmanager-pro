@@ -1,28 +1,8 @@
-'use client';
-
 import * as React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { PlusCircle, Trash2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { Locale } from '@/lib/config';
-import { generateInvoicePdf } from './invoice-generator';
 import { useFirebase } from '@/firebase/provider';
 import { doc, getDoc } from 'firebase/firestore';
 import { User as AppUser } from '@/lib/types';
@@ -155,9 +135,9 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
         // Get company info from Firestore settings
         const settings = await getUserSettings(firestore, user.uid);
         
-        // Note: Company info is fetched internally by generateInvoicePdf
-        // We just need to update the settings after generating the invoice
-
+        // Dynamically import generateInvoicePdf to prevent server-side jsPDF bundling
+        const { generateInvoicePdf } = await import('./invoice-generator');
+        
         // Generate PDF with form data
         await generateInvoicePdf(values);
 
