@@ -6,6 +6,7 @@ import { getDictionary } from "@/lib/dictionaries";
 import { Locale } from "@/lib/config";
 import { useEffect, useState } from "react";
 import { use } from "react";
+import dynamic from "next/dynamic";
 import {
   Card,
   CardContent,
@@ -23,9 +24,14 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CreateInvoiceDialog } from "@/components/dashboard/create-invoice-dialog";
 import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query } from "firebase/firestore";
+
+// Dynamic import to prevent server-side jsPDF execution during build
+const CreateInvoiceDialog = dynamic(
+  () => import("@/components/dashboard/create-invoice-dialog").then(mod => ({ default: mod.CreateInvoiceDialog })),
+  { ssr: false }
+);
 
 interface Invoice {
   id: string;
