@@ -35,6 +35,7 @@ import { Input } from "@/components/ui/input";
 import { getDictionary } from "@/lib/dictionaries";
 import { Locale } from "@/lib/config";
 import { AddSupplierDialog } from "@/components/dashboard/add-supplier-dialog";
+import { EditSupplierDialog } from "@/components/dashboard/edit-supplier-dialog";
 import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, deleteDoc, doc } from "firebase/firestore";
 
@@ -58,6 +59,8 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
   const [isLoading, setIsLoading] = useState(true);
   const [dictionary, setDictionary] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const handleDeleteSupplier = async (id: string) => {
     if (!firestore) return;
@@ -237,8 +240,8 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>{d.actions}</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => {
-                              // TODO: Implement edit functionality with edit dialog
-                              console.log('Edit supplier:', supplier.id);
+                              setEditingSupplier(supplier);
+                              setEditDialogOpen(true);
                             }}>
                               {d.edit}
                             </DropdownMenuItem>
@@ -264,6 +267,47 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
           </div>
         </CardFooter>
       </Card>
+
+      {editingSupplier && (
+        <EditSupplierDialog
+          supplier={editingSupplier}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onSupplierUpdated={() => {
+            setEditDialogOpen(false);
+            setEditingSupplier(null);
+            // Refresh suppliers
+            const refreshSuppliers = async () => {
+              if (!firestore) return;
+              try {
+                const suppliersRef = collection(firestore, 'suppliers');
+                const q = query(suppliersRef);
+                const querySnapshot = await getDocs(q);
+                
+                const fetchedSuppliers: Supplier[] = [];
+                querySnapshot.forEach((doc) => {
+                  fetchedSuppliers.push({
+                    id: doc.id,
+                    name: doc.data().name || '',
+                    email: doc.data().email || '',
+                    phone: doc.data().phone || '',
+                    contactName: doc.data().contactName || '',
+                    address: doc.data().address || '',
+                    rc: doc.data().rc || '',
+                    nis: doc.data().nis || '',
+                    nif: doc.data().nif || '',
+                    rib: doc.data().rib || '',
+                  });
+                });
+                setSuppliers(fetchedSuppliers);
+              } catch (error) {
+                console.error('Error fetching suppliers:', error);
+              }
+            };
+            refreshSuppliers();
+          }}
+        />
+      )}
     </div>
   );
 }

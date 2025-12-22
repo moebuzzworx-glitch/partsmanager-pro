@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AddCustomerDialog } from "@/components/dashboard/add-customer-dialog";
+import { EditCustomerDialog } from "@/components/dashboard/edit-customer-dialog";
 import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, deleteDoc, doc } from "firebase/firestore";
 
@@ -57,6 +58,8 @@ export default function CustomersPage({
   const [isLoading, setIsLoading] = useState(true);
   const [dictionary, setDictionary] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const handleDeleteCustomer = async (id: string) => {
     if (!firestore) return;
@@ -231,8 +234,8 @@ export default function CustomersPage({
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>{d.actions}</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => {
-                              // TODO: Implement edit functionality with edit dialog
-                              console.log('Edit customer:', customer.id);
+                              setEditingCustomer(customer);
+                              setEditDialogOpen(true);
                             }}>
                               {d.edit}
                             </DropdownMenuItem>
@@ -259,6 +262,45 @@ export default function CustomersPage({
           </div>
         </CardFooter>
       </Card>
+
+      {editingCustomer && (
+        <EditCustomerDialog
+          customer={editingCustomer}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onCustomerUpdated={() => {
+            setEditDialogOpen(false);
+            setEditingCustomer(null);
+            // Refresh customers
+            const refreshCustomers = async () => {
+              if (!firestore) return;
+              try {
+                const customersRef = collection(firestore, 'customers');
+                const q = query(customersRef);
+                const querySnapshot = await getDocs(q);
+                
+                const fetchedCustomers: Customer[] = [];
+                querySnapshot.forEach((doc) => {
+                  fetchedCustomers.push({
+                    id: doc.id,
+                    name: doc.data().name || '',
+                    email: doc.data().email || '',
+                    phone: doc.data().phone || '',
+                    address: doc.data().address || '',
+                    rc: doc.data().rc || '',
+                    nis: doc.data().nis || '',
+                    nif: doc.data().nif || '',
+                  });
+                });
+                setCustomers(fetchedCustomers);
+              } catch (error) {
+                console.error('Error fetching customers:', error);
+              }
+            };
+            refreshCustomers();
+          }}
+        />
+      )}
     </div>
   );
 }
