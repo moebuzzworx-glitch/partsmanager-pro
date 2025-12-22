@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
@@ -15,7 +14,6 @@ import { saveUserSettings } from '@/lib/settings-utils';
 export function UserProfileModal({ children, open: controlledOpen, onOpenChange }: { children?: React.ReactNode; open?: boolean; onOpenChange?: (v: boolean) => void }) {
   const { firebaseApp, auth, firestore, user } = useFirebase() as any;
   const { toast } = useToast();
-  const router = useRouter();
   const [internalOpen, setInternalOpen] = useState(false);
   const open = typeof controlledOpen === 'boolean' ? controlledOpen : internalOpen;
   const setOpen = (v: boolean) => {
@@ -72,14 +70,16 @@ export function UserProfileModal({ children, open: controlledOpen, onOpenChange 
         window.dispatchEvent(new CustomEvent('app:settings-updated', { detail: { uid: user?.uid } }));
       } catch (e) {}
 
-      // Refresh the route to apply changes across the app; fallback to full reload
-      try {
-        router.refresh();
-      } catch (e) {
-        try { window.location.reload(); } catch {}
-      }
-
       setOpen(false);
+
+      // Reload the page after a brief delay so modal closes first
+      setTimeout(() => {
+        try {
+          window.location.reload();
+        } catch (e) {
+          console.warn('Page reload failed:', e);
+        }
+      }, 300);
     } catch (error: any) {
       toast({ title: 'Error', description: error.message || 'Failed to update profile', variant: 'destructive' });
     }
