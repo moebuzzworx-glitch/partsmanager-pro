@@ -252,10 +252,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="hidden w-[100px] sm:table-cell">
-                    <span className="sr-only">Image</span>
-                  </TableHead>
-                  <TableHead>
+                  <TableHead className="w-[50px]">
                     <Checkbox 
                       checked={selectedProducts.size === filteredProducts.length && filteredProducts.length > 0}
                       onCheckedChange={handleSelectAll}
@@ -267,7 +264,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
                   <TableHead className="hidden md:table-cell">{d.stock}</TableHead>
                   <TableHead className="hidden md:table-cell">{d.purchasePrice}</TableHead>
                   <TableHead className="hidden md:table-cell">{d.sellingPrice}</TableHead>
-                  <TableHead>
+                  <TableHead className="w-[50px]">
                     <span className="sr-only">{d.actions}</span>
                   </TableHead>
                 </TableRow>
@@ -275,14 +272,14 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
               <TableBody>
                 {filteredProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       {products.length === 0 ? 'No products found. Add one to get started!' : 'No products match your search.'}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredProducts.map((product) => (
                     <TableRow key={product.id}>
-                      <TableCell>
+                      <TableCell className="w-[50px]">
                         <Checkbox 
                           checked={selectedProducts.has(product.id)}
                           onCheckedChange={() => handleToggleSelect(product.id)}
@@ -300,7 +297,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
                       <TableCell className="hidden md:table-cell">
                         {product.price?.toFixed(2)} DZD
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="w-[50px]">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
