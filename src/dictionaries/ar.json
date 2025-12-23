@@ -1,4 +1,3 @@
-
 {
   "appName": "PartsManager Pro",
   "landing": {
@@ -42,7 +41,16 @@
     "revenue": "إجمالي الإيرادات",
     "salesToday": "مبيعات اليوم",
     "lowStockItems": "عناصر المخزون المنخفض",
-    "addProduct": "إضافة منتج"
+    "addProduct": "إضافة منتج",
+    "itemsNeedingReorder": "Items Needing Reorder",
+    "todaysSales": "Today's Sales",
+    "salesCompletedToday": "Sales completed today",
+    "netProfit": "Net Profit",
+    "totalRevenue": "Total Revenue",
+    "incomeFromPaidInvoices": "Income from paid invoices & sales",
+    "recentActivity": "Recent Activity",
+    "recentActivityEmpty": "Recent activity will be shown here",
+    "addSupplier": "Add Supplier"
   },
   "stockPage": {
     "title": "إدارة المخزون",
@@ -65,7 +73,9 @@
     "lowStock": "مخزون منخفض",
     "outOfStock": "نفد المخزون",
     "edit": "تعديل",
-    "delete": "حذف"
+    "delete": "حذف",
+    "addButton": "Add Product",
+    "deleteSelected": "Delete Selected"
   },
   "addProductDialog": {
     "title": "إضافة منتج جديد",
@@ -134,7 +144,18 @@
     "validationNameRequired": "اسم المورد مطلوب",
     "validationEmailRequired": "البريد الإلكتروني صحيح مطلوب",
     "validationPhoneRequired": "رقم الهاتف مطلوب",
-    "validationNameMinLength": "يجب أن يكون الاسم على الأقل 3 أحرف"
+    "validationNameMinLength": "يجب أن يكون الاسم على الأقل 3 أحرف",
+    "address": "Address (Optional)",
+    "addressPlaceholder": "Street address",
+    "rc": "RC (Optional)",
+    "rcPlaceholder": "Registration Code",
+    "nis": "NIS (Optional)",
+    "nisPlaceholder": "NIS Number",
+    "nif": "NIF (Optional)",
+    "nifPlaceholder": "NIF Number",
+    "rib": "RIB (Optional)",
+    "ribPlaceholder": "Bank Account RIB",
+    "cancel": "Cancel"
   },
   "editSupplierDialog": {
     "title": "تعديل المورد",
@@ -145,7 +166,20 @@
     "phone": "هاتف",
     "submit": "تحديث المورد",
     "updateSuccess": "تم تحديث المورد بنجاح.",
-    "updateError": "فشل في تحديث المورد. يرجى المحاولة مرة أخرى."
+    "updateError": "فشل في تحديث المورد. يرجى المحاولة مرة أخرى.",
+    "address": "Address",
+    "rc": "RC",
+    "nis": "NIS",
+    "nif": "NIF",
+    "art": "ART",
+    "rib": "RIB",
+    "addressPlaceholder": "Street address",
+    "rcPlaceholder": "Registration Code",
+    "nisPlaceholder": "NIS Number",
+    "nifPlaceholder": "NIF Number",
+    "artPlaceholder": "ART Number",
+    "ribPlaceholder": "Bank Account RIB",
+    "cancel": "Cancel"
   },
   "addCustomerDialog": {
     "title": "إضافة عميل جديد",
@@ -164,7 +198,20 @@
     "validationNameRequired": "اسم العميل مطلوب",
     "validationEmailRequired": "البريد الإلكتروني صحيح مطلوب",
     "validationPhoneRequired": "رقم الهاتف مطلوب",
-    "validationNameMinLength": "يجب أن يكون الاسم على الأقل 3 أحرف"
+    "validationNameMinLength": "يجب أن يكون الاسم على الأقل 3 أحرف",
+    "address": "Address (Optional)",
+    "addressPlaceholder": "Street address",
+    "rc": "RC (Optional)",
+    "rcPlaceholder": "Registration Code",
+    "nis": "NIS (Optional)",
+    "nisPlaceholder": "NIS Number",
+    "nif": "NIF (Optional)",
+    "nifPlaceholder": "NIF Number",
+    "art": "ART (Optional)",
+    "artPlaceholder": "ART Number",
+    "rib": "RIB (Optional)",
+    "ribPlaceholder": "Bank Account RIB",
+    "cancel": "Cancel"
   },
   "editCustomerDialog": {
     "title": "تعديل العميل",
@@ -175,7 +222,20 @@
     "phone": "هاتف",
     "submit": "تحديث العميل",
     "updateSuccess": "تم تحديث العميل بنجاح.",
-    "updateError": "فشل في تحديث العميل. يرجى المحاولة مرة أخرى."
+    "updateError": "فشل في تحديث العميل. يرجى المحاولة مرة أخرى.",
+    "address": "Address",
+    "rc": "RC",
+    "nis": "NIS",
+    "nif": "NIF",
+    "art": "ART",
+    "rib": "RIB",
+    "addressPlaceholder": "Street address",
+    "rcPlaceholder": "Registration Code",
+    "nisPlaceholder": "NIS Number",
+    "nifPlaceholder": "NIF Number",
+    "artPlaceholder": "ART Number",
+    "ribPlaceholder": "Bank Account RIB",
+    "cancel": "Cancel"
   },
   "userManagement": {
     "title": "إدارة المستخدمين",
@@ -318,7 +378,10 @@
     "noDataInvoicesSearch": "لا توجد فواتير مطابقة لبحثك.",
     "noDataTrash": "لا توجد عناصر محذوفة.",
     "showing": "عرض <strong>1-{count}</strong> من <strong>{total}</strong>",
-    "showingItems": "{count} عنصر"
+    "showingItems": "{count} عنصر",
+    "searchPlaceholder": "Search...",
+    "noDataCustomers": "No customers found. Add one to get started!",
+    "noDataCustomersSearch": "No customers match your search."
   },
   "invoices": {
     "invoiceNumber": "رقم الفاتورة",
@@ -340,13 +403,24 @@
     "deleteInvoiceErrorTitle": "خطأ",
     "deleteInvoiceErrorDescription": "فشل في حذف الفاتورة.",
     "sortNewest": "الأحدث أولاً",
-    "sortOldest": "الأقدم أولاً"
+    "sortOldest": "الأقدم أولاً",
+    "title": "Invoices",
+    "description": "Manage your sales invoices.",
+    "addButton": "Create Invoice",
+    "searchPlaceholder": "Search invoices..."
   },
   "purchases": {
     "title": "المشتريات",
     "deletePurchaseAction": "حذف الشراء",
     "noData": "لم يتم العثور على مشتريات",
-    "confirmDelete": "هل أنت متأكد؟"
+    "confirmDelete": "هل أنت متأكد؟",
+    "description": "Manage your purchase orders.",
+    "addButton": "Log Purchase",
+    "searchPlaceholder": "Search purchases...",
+    "supplier": "Supplier",
+    "date": "Date",
+    "items": "Items",
+    "totalAmount": "Total Amount"
   },
   "stock": {
     "title": "إدارة المخزون",
@@ -364,7 +438,10 @@
     "customer": "العميل",
     "date": "التاريخ",
     "quantity": "الكمية",
-    "amount": "المبلغ"
+    "amount": "المبلغ",
+    "description": "Manage your sales transactions.",
+    "addButton": "Log Sale",
+    "searchPlaceholder": "Search sales..."
   },
   "trash": {
     "title": "سلة المحذوفات",
@@ -372,20 +449,30 @@
     "deletePermanently": "حذف نهائياً",
     "restoreSelected": "استرجاع المحددة ({count})",
     "deletePermSelectedy": "حذف نهائياً ({count})",
-    "image": "الصورة"
+    "image": "الصورة",
+    "description": "View and manage your deleted items.",
+    "searchPlaceholder": "Search trash..."
   },
   "suppliers": {
     "name": "الاسم",
     "email": "البريد الإلكتروني",
     "phone": "الهاتف",
     "noData": "لم يتم العثور على موردين",
-    "noDataSearch": "لا توجد موردون مطابقون."
+    "noDataSearch": "لا توجد موردون مطابقون.",
+    "title": "Suppliers",
+    "description": "Manage your supplier information.",
+    "addButton": "Add Supplier",
+    "searchPlaceholder": "Search suppliers..."
   },
   "customers": {
     "name": "الاسم",
     "email": "البريد الإلكتروني",
     "phone": "الهاتف",
     "noData": "لم يتم العثور على عملاء",
-    "noDataSearch": "لا توجد عملاء مطابقون."
+    "noDataSearch": "لا توجد عملاء مطابقون.",
+    "title": "Customers",
+    "description": "Manage your customer information.",
+    "addButton": "Add Customer",
+    "searchPlaceholder": "Search customers..."
   }
 }

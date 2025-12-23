@@ -1,4 +1,3 @@
-
 {
   "appName": "PartsManager Pro",
   "landing": {
@@ -42,7 +41,16 @@
     "revenue": "Revenu Total",
     "salesToday": "Ventes du Jour",
     "lowStockItems": "Articles en Stock Faible",
-    "addProduct": "Ajouter un produit"
+    "addProduct": "Ajouter un produit",
+    "itemsNeedingReorder": "Items Needing Reorder",
+    "todaysSales": "Today's Sales",
+    "salesCompletedToday": "Sales completed today",
+    "netProfit": "Net Profit",
+    "totalRevenue": "Total Revenue",
+    "incomeFromPaidInvoices": "Income from paid invoices & sales",
+    "recentActivity": "Recent Activity",
+    "recentActivityEmpty": "Recent activity will be shown here",
+    "addSupplier": "Add Supplier"
   },
   "stockPage": {
     "title": "Gestion des Stocks",
@@ -65,7 +73,9 @@
     "lowStock": "Stock Faible",
     "outOfStock": "En Rupture",
     "edit": "Modifier",
-    "delete": "Supprimer"
+    "delete": "Supprimer",
+    "addButton": "Add Product",
+    "deleteSelected": "Delete Selected"
   },
   "addProductDialog": {
     "title": "Ajouter un Nouveau Produit",
@@ -134,7 +144,18 @@
     "validationNameRequired": "Le nom du fournisseur est requis",
     "validationEmailRequired": "Une adresse e-mail valide est requise",
     "validationPhoneRequired": "Le numéro de téléphone est requis",
-    "validationNameMinLength": "Le nom doit comporter au moins 3 caractères"
+    "validationNameMinLength": "Le nom doit comporter au moins 3 caractères",
+    "address": "Address (Optional)",
+    "addressPlaceholder": "Street address",
+    "rc": "RC (Optional)",
+    "rcPlaceholder": "Registration Code",
+    "nis": "NIS (Optional)",
+    "nisPlaceholder": "NIS Number",
+    "nif": "NIF (Optional)",
+    "nifPlaceholder": "NIF Number",
+    "rib": "RIB (Optional)",
+    "ribPlaceholder": "Bank Account RIB",
+    "cancel": "Cancel"
   },
   "editSupplierDialog": {
     "title": "Modifier le Fournisseur",
@@ -145,7 +166,20 @@
     "phone": "Téléphone",
     "submit": "Modifier le Fournisseur",
     "updateSuccess": "Fournisseur modifié avec succès.",
-    "updateError": "Échec de la modification du fournisseur. Veuillez réessayer."
+    "updateError": "Échec de la modification du fournisseur. Veuillez réessayer.",
+    "address": "Address",
+    "rc": "RC",
+    "nis": "NIS",
+    "nif": "NIF",
+    "art": "ART",
+    "rib": "RIB",
+    "addressPlaceholder": "Street address",
+    "rcPlaceholder": "Registration Code",
+    "nisPlaceholder": "NIS Number",
+    "nifPlaceholder": "NIF Number",
+    "artPlaceholder": "ART Number",
+    "ribPlaceholder": "Bank Account RIB",
+    "cancel": "Cancel"
   },
   "addCustomerDialog": {
     "title": "Ajouter un Nouveau Client",
@@ -164,7 +198,20 @@
     "validationNameRequired": "Le nom du client est requis",
     "validationEmailRequired": "Une adresse e-mail valide est requise",
     "validationPhoneRequired": "Le numéro de téléphone est requis",
-    "validationNameMinLength": "Le nom doit comporter au moins 3 caractères"
+    "validationNameMinLength": "Le nom doit comporter au moins 3 caractères",
+    "address": "Address (Optional)",
+    "addressPlaceholder": "Street address",
+    "rc": "RC (Optional)",
+    "rcPlaceholder": "Registration Code",
+    "nis": "NIS (Optional)",
+    "nisPlaceholder": "NIS Number",
+    "nif": "NIF (Optional)",
+    "nifPlaceholder": "NIF Number",
+    "art": "ART (Optional)",
+    "artPlaceholder": "ART Number",
+    "rib": "RIB (Optional)",
+    "ribPlaceholder": "Bank Account RIB",
+    "cancel": "Cancel"
   },
   "editCustomerDialog": {
     "title": "Modifier le Client",
@@ -175,7 +222,20 @@
     "phone": "Téléphone",
     "submit": "Modifier le Client",
     "updateSuccess": "Client modifié avec succès.",
-    "updateError": "Échec de la modification du client. Veuillez réessayer."
+    "updateError": "Échec de la modification du client. Veuillez réessayer.",
+    "address": "Address",
+    "rc": "RC",
+    "nis": "NIS",
+    "nif": "NIF",
+    "art": "ART",
+    "rib": "RIB",
+    "addressPlaceholder": "Street address",
+    "rcPlaceholder": "Registration Code",
+    "nisPlaceholder": "NIS Number",
+    "nifPlaceholder": "NIF Number",
+    "artPlaceholder": "ART Number",
+    "ribPlaceholder": "Bank Account RIB",
+    "cancel": "Cancel"
   },
   "userManagement": {
     "title": "Gestion des Utilisateurs",
@@ -318,7 +378,10 @@
     "noDataInvoicesSearch": "Aucune facture ne correspond à votre recherche.",
     "noDataTrash": "Aucun élément supprimé.",
     "showing": "Affichage <strong>1-{count}</strong> sur <strong>{total}</strong>",
-    "showingItems": "{count} articles"
+    "showingItems": "{count} articles",
+    "searchPlaceholder": "Search...",
+    "noDataCustomers": "No customers found. Add one to get started!",
+    "noDataCustomersSearch": "No customers match your search."
   },
   "invoices": {
     "invoiceNumber": "Numéro de Facture",
@@ -340,13 +403,24 @@
     "deleteInvoiceErrorTitle": "Erreur",
     "deleteInvoiceErrorDescription": "Impossible de supprimer la facture.",
     "sortNewest": "Plus Récente d'Abord",
-    "sortOldest": "Plus Ancienne d'Abord"
+    "sortOldest": "Plus Ancienne d'Abord",
+    "title": "Invoices",
+    "description": "Manage your sales invoices.",
+    "addButton": "Create Invoice",
+    "searchPlaceholder": "Search invoices..."
   },
   "purchases": {
     "title": "Achats",
     "deletePurchaseAction": "Supprimer l'Achat",
     "noData": "Aucun achat trouvé",
-    "confirmDelete": "Êtes-vous sûr?"
+    "confirmDelete": "Êtes-vous sûr?",
+    "description": "Manage your purchase orders.",
+    "addButton": "Log Purchase",
+    "searchPlaceholder": "Search purchases...",
+    "supplier": "Supplier",
+    "date": "Date",
+    "items": "Items",
+    "totalAmount": "Total Amount"
   },
   "stock": {
     "title": "Gestion des Stocks",
@@ -364,7 +438,10 @@
     "customer": "Client",
     "date": "Date",
     "quantity": "Quantité",
-    "amount": "Montant"
+    "amount": "Montant",
+    "description": "Manage your sales transactions.",
+    "addButton": "Log Sale",
+    "searchPlaceholder": "Search sales..."
   },
   "trash": {
     "title": "Corbeille",
@@ -372,20 +449,30 @@
     "deletePermanently": "Supprimer Définitivement",
     "restoreSelected": "Restaurer les Sélectionnés ({count})",
     "deletePermSelectedy": "Supprimer Définitivement ({count})",
-    "image": "Image"
+    "image": "Image",
+    "description": "View and manage your deleted items.",
+    "searchPlaceholder": "Search trash..."
   },
   "suppliers": {
     "name": "Nom",
     "email": "E-mail",
     "phone": "Téléphone",
     "noData": "Aucun fournisseur trouvé",
-    "noDataSearch": "Aucun fournisseur ne correspond."
+    "noDataSearch": "Aucun fournisseur ne correspond.",
+    "title": "Suppliers",
+    "description": "Manage your supplier information.",
+    "addButton": "Add Supplier",
+    "searchPlaceholder": "Search suppliers..."
   },
   "customers": {
     "name": "Nom",
     "email": "E-mail",
     "phone": "Téléphone",
     "noData": "Aucun client trouvé",
-    "noDataSearch": "Aucun client ne correspond."
+    "noDataSearch": "Aucun client ne correspond.",
+    "title": "Customers",
+    "description": "Manage your customer information.",
+    "addButton": "Add Customer",
+    "searchPlaceholder": "Search customers..."
   }
 }
