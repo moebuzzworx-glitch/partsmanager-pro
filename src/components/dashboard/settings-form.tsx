@@ -17,15 +17,15 @@ export function SettingsForm({ dictionary }: { dictionary?: any }) {
                     <TabsTrigger value="subscription">{dictionary?.settings?.subscriptionTab || 'Subscription'}</TabsTrigger>
                 </TabsList>
 
-            <TabsContent value="company">
-                <Card className="hover:shadow-md transition-shadow">
+            <TabsContent value="company" dir="inherit">
+                <Card className="hover:shadow-md transition-shadow" dir="inherit">
                     <CardHeader>
                         <CardTitle>{dictionary?.settings?.companyTitle || 'Company Information'}</CardTitle>
                         <CardDescription>
                             {dictionary?.settings?.companyDescription || 'This information will be displayed on your invoices.'}
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent dir="inherit">
                         <div className="space-y-4">
                             <p className="text-sm text-muted-foreground">
                                 {dictionary?.settings?.companySubtext || 'Manage your company details including registration numbers and bank information.'}
@@ -36,15 +36,15 @@ export function SettingsForm({ dictionary }: { dictionary?: any }) {
                 </Card>
             </TabsContent>
 
-            <TabsContent value="business">
-                <Card className="hover:shadow-md transition-shadow">
+            <TabsContent value="business" dir="inherit">
+                <Card className="hover:shadow-md transition-shadow" dir="inherit">
                     <CardHeader>
                         <CardTitle>{dictionary?.settings?.businessTitle || 'Business Rules'}</CardTitle>
                         <CardDescription>
                             {dictionary?.settings?.businessDescription || 'Set default values for business logic like pricing.'}
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent dir="inherit">
                         <div className="space-y-4">
                             <p className="text-sm text-muted-foreground">
                                 {dictionary?.settings?.businessSubtext || 'Configure default profit margins and VAT settings for your business.'}
@@ -55,7 +55,7 @@ export function SettingsForm({ dictionary }: { dictionary?: any }) {
                 </Card>
             </TabsContent>
 
-            <TabsContent value="subscription">
+            <TabsContent value="subscription" dir="inherit">
                 <BillingPanel dictionary={dictionary} />
             </TabsContent>
         </Tabs>
