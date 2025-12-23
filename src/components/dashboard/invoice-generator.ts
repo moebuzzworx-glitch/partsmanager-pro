@@ -340,11 +340,11 @@ export async function generateInvoicePdf(data: InvoiceFormData, companyInfo?: Co
   let currentRightY = clientBoxY + clientPadding;
   
   const rcLines = doc.splitTextToSize(`R.C : ${data.clientRc || ''}`, availableWidth);
-  doc.text(rcLines, clientTextRightX, currentRightY);
+  doc.text(rcLines, 130, currentRightY);
   currentRightY += rcLines.length * lineSpacing;
   
   const nifLines = doc.splitTextToSize(`NIF : ${data.clientNif || ''}`, availableWidth);
-  doc.text(nifLines, clientTextRightX, currentRightY);
+  doc.text(nifLines, 130, currentRightY);
   const rightColumnHeight = currentRightY - (clientBoxY + clientPadding) + lineSpacing;
   
   // Calculate total client box height based on taller column
