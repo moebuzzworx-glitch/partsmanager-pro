@@ -25,7 +25,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { User as AppUser } from '@/lib/types';
 import { canExport, getExportRestrictionMessage } from '@/lib/trial-utils';
 import { getUserSettings, getNextInvoiceNumber, updateLastInvoiceNumber, AppSettings } from '@/lib/settings-utils';
-import { saveInvoiceData, calculateInvoiceTotals } from '@/lib/invoices-utils';
+import { saveInvoiceData, calculateInvoiceTotals, deductStockFromInvoice } from '@/lib/invoices-utils';
 import { useToast } from '@/hooks/use-toast';
 import type { Locale } from '@/lib/config';
 import { generateInvoicePdf } from './invoice-generator';
@@ -213,7 +213,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
         );
 
         // Save invoice data to Firestore (for future regeneration)
-        await saveInvoiceData(
+        const invoiceId = await saveInvoiceData(
           firestore,
           user.uid,
           values,
@@ -223,6 +223,34 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
           subtotal,
           vatAmount
         );
+
+        // Deduct stock from products for non-proforma invoices
+        if (!values.isProforma) {
+          const invoiceData = {
+            id: invoiceId,
+            userId: user.uid,
+            invoiceNumber: values.invoiceNumber,
+            invoiceDate: values.invoiceDate,
+            isProforma: values.isProforma,
+            clientName: values.clientName,
+            clientAddress: values.clientAddress,
+            clientNis: values.clientNis,
+            clientNif: values.clientNif,
+            clientRc: values.clientRc,
+            clientArt: values.clientArt,
+            clientRib: values.clientRib,
+            lineItems: values.lineItems,
+            paymentMethod: values.paymentMethod,
+            applyVatToAll: values.applyVatToAll,
+            companyInfo,
+            defaultVat,
+            total,
+            subtotal,
+            vatAmount,
+            paid: false,
+          };
+          await deductStockFromInvoice(firestore, invoiceData);
+        }
 
         // Update last invoice number in Firestore settings
         await updateLastInvoiceNumber(firestore, user.uid, settings);

@@ -215,3 +215,57 @@ export async function updateInvoice(
     return false;
   }
 }
+
+/**
+ * Deduct stock quantities from products based on invoice line items
+ * Called when invoice is created (non-proforma only)
+ */
+export async function deductStockFromInvoice(
+  firestore: Firestore,
+  invoice: StoredInvoice
+): Promise<boolean> {
+  try {
+    // Only deduct stock for non-proforma invoices
+    if (invoice.isProforma) {
+      return true;
+    }
+
+    // For each line item, deduct from product stock
+    for (const lineItem of invoice.lineItems) {
+      const productsRef = collection(firestore, 'products');
+      
+      // Find product by reference or designation
+      let querySnapshot;
+      if (lineItem.reference) {
+        const q = query(
+          productsRef,
+          where('reference', '==', lineItem.reference)
+        );
+        querySnapshot = await getDocs(q);
+      } else {
+        const q = query(
+          productsRef,
+          where('name', '==', lineItem.designation)
+        );
+        querySnapshot = await getDocs(q);
+      }
+
+      if (!querySnapshot.empty) {
+        const productDoc = querySnapshot.docs[0];
+        const productData = productDoc.data();
+        const currentStock = productData.stock || 0;
+        const newStock = Math.max(0, currentStock - lineItem.quantity);
+
+        await updateDoc(productDoc.ref, {
+          stock: newStock,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error deducting stock from invoice:', error);
+    return false;
+  }
+}
