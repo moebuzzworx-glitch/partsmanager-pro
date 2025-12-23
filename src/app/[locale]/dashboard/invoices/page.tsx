@@ -279,7 +279,8 @@ export default function InvoicesPage({
               </TableHeader>
               <TableBody>
                 {filteredAndSortedInvoices.length === 0 ? (
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       {invoices.length === 0 ? (dictionary.invoices?.noDataTitle || 'No invoices found. Create one to get started!') : (dictionary.invoices?.noDataSearch || 'No invoices match your search.')}
                     </TableCell>
                   </TableRow>
