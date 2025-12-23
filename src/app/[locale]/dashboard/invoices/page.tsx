@@ -269,12 +269,12 @@ export default function InvoicesPage({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Invoice Number</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{dictionary.table?.invoiceNumber || 'Invoice Number'}</TableHead>
+                  <TableHead>{dictionary.table?.client || 'Client'}</TableHead>
+                  <TableHead>{dictionary.table?.date || 'Date'}</TableHead>
+                  <TableHead className="text-right">{dictionary.table?.amount || 'Amount'}</TableHead>
+                  <TableHead>{dictionary.table?.status || 'Status'}</TableHead>
+                  <TableHead className="text-right">{dictionary.table?.actions || 'Actions'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

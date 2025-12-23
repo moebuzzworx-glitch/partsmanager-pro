@@ -388,6 +388,13 @@
     "date": "Date",
     "quantity": "Quantité",
     "amount": "Montant",
+    "supplier": "Fournisseur",
+    "items": "Éléments",
+    "totalAmount": "Montant Total",
+    "sku": "Référence SKU",
+    "invoiceNumber": "Numéro de Facture",
+    "client": "Client",
+    "status": "Statut",
     "noDataSuppliers": "Aucun fournisseur trouvé. Ajoutez-en un pour commencer!",
     "noDataCustomers": "No customers found. Add one to get started!",
     "noDataCustomersSearch": "No customers match your search."
