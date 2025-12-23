@@ -58,31 +58,36 @@ export function DashboardStats({ dictionary }: DashboardStatsProps) {
     return 'text-gray-600';
   };
 
+  const currency = dictionary.dashboard?.currency || 'DZD';
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <StatsCard
-        title={dictionary.dashboard.revenue || 'Total Revenue'}
-        value={isLoading ? '--' : `${formatRevenue(stats.totalRevenue)} DZD`}
+        title={dictionary.dashboard?.totalRevenue || 'Total Revenue'}
+        value={isLoading ? '--' : `${formatRevenue(stats.totalRevenue)} ${currency}`}
         icon={<Banknote className="h-4 w-4" />}
-        description="Income from paid invoices & sales"
+        description={dictionary.dashboard?.totalRevenueDesc || 'Income from paid invoices & sales'}
       />
       <StatsCard
-        title="Net Profit"
-        value={isLoading ? '--' : `${formatRevenue(stats.netProfit)} DZD`}
+        title={dictionary.dashboard?.netProfit || 'Net Profit'}
+        value={isLoading ? '--' : `${formatRevenue(stats.netProfit)} ${currency}`}
         icon={<TrendingUp className={`h-4 w-4 ${getNetProfitColor(stats.netProfit)}`} />}
-        description={`Revenue ${stats.totalRevenue.toFixed(0)} - Expenses ${stats.totalExpenses.toFixed(0)}`}
+        description={(dictionary.dashboard?.netProfitDesc || 'Revenue {revenue} - Expenses {expenses}')
+          .replace('{revenue}', stats.totalRevenue.toFixed(0))
+          .replace('{expenses}', stats.totalExpenses.toFixed(0))
+        }
       />
       <StatsCard
-        title={dictionary.dashboard.salesToday || 'Sales Today'}
+        title={dictionary.dashboard?.salesToday || 'Today\'s Sales'}
         value={isLoading ? '--' : `+${stats.totalSalesToday}`}
         icon={<ShoppingCart className="h-4 w-4" />}
-        description="Sales completed today"
+        description={dictionary.dashboard?.salesTodayDesc || 'Sales completed today'}
       />
       <StatsCard
-        title={dictionary.dashboard.totalProducts || 'Total Products'}
-        value={isLoading ? '--' : `${stats.totalProducts} / ${stats.lowStockItems} low`}
+        title={dictionary.dashboard?.totalProducts || 'Total Products'}
+        value={isLoading ? '--' : `${stats.totalProducts} / ${stats.lowStockItems} ${dictionary.dashboard?.lowStockLabel || 'low'}`}
         icon={<Package className="h-4 w-4" />}
-        description="Items needing reorder"
+        description={dictionary.dashboard?.totalProductsDesc || 'Items needing reorder'}
       />
     </div>
   );
