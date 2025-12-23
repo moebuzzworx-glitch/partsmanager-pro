@@ -381,6 +381,8 @@
     "email": "E-mail",
     "phone": "Téléphone",
     "actions": "Actions",
+    "edit": "Modifier",
+    "delete": "Supprimer",
     "product": "Produit",
     "customer": "Client",
     "date": "Date",

@@ -177,13 +177,13 @@ export default function SalesPage({
                           <DropdownMenuTrigger asChild>
                             <Button aria-haspopup="true" size="icon" variant="ghost">
                               <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Toggle menu</span>
+                              <span className="sr-only">{dictionary?.table?.actions || 'Actions'}</span>
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>View Details</DropdownMenuItem>
-                            <DropdownMenuItem>Generate Invoice</DropdownMenuItem>
+                            <DropdownMenuLabel>{dictionary?.table?.actions || 'Actions'}</DropdownMenuLabel>
+                            <DropdownMenuItem>{dictionary?.table?.edit || 'Edit'}</DropdownMenuItem>
+                            <DropdownMenuItem>{dictionary?.table?.delete || 'Delete'}</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

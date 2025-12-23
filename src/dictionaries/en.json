@@ -380,6 +380,8 @@
     "email": "Email",
     "phone": "Phone",
     "actions": "Actions",
+    "edit": "Edit",
+    "delete": "Delete",
     "product": "Product",
     "customer": "Customer",
     "date": "Date",
