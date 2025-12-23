@@ -50,7 +50,9 @@
     "recentActivityPlaceholder": "L'activité récente s'affichera ici",
     "addSupplier": "Ajouter un Fournisseur",
     "addProduct": "Ajouter un Produit",
-    "currency": "DA"
+    "currency": "DA",
+    "million": "M",
+    "thousand": "K"
   },
   "stockPage": {
     "title": "Gestion des Stocks",

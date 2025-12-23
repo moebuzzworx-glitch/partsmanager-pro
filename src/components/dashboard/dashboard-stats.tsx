@@ -44,10 +44,13 @@ export function DashboardStats({ dictionary }: DashboardStatsProps) {
   }, [firestore]);
 
   const formatRevenue = (revenue: number) => {
+    const millionAbbrev = dictionary.dashboard?.million || 'M';
+    const thousandAbbrev = dictionary.dashboard?.thousand || 'K';
+    
     if (revenue >= 1000000) {
-      return `${(revenue / 1000000).toFixed(2)}M`;
+      return `${(revenue / 1000000).toFixed(2)}${millionAbbrev}`;
     } else if (revenue >= 1000) {
-      return `${(revenue / 1000).toFixed(2)}K`;
+      return `${(revenue / 1000).toFixed(2)}${thousandAbbrev}`;
     }
     return revenue.toFixed(2);
   };

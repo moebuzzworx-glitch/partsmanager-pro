@@ -50,7 +50,9 @@
     "recentActivityPlaceholder": "سيتم عرض النشاط الأخير هنا",
     "addSupplier": "إضافة مورد",
     "addProduct": "إضافة منتج",
-    "currency": "د.ج"
+    "currency": "د.ج",
+    "million": "مليون",
+    "thousand": "ألف"
   },
   "stockPage": {
     "title": "إدارة المخزون",

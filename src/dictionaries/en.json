@@ -51,7 +51,9 @@
     "recentActivityPlaceholder": "Recent activity will be shown here",
     "addSupplier": "Add Supplier",
     "addProduct": "Add Product",
-    "currency": "DZD"
+    "currency": "DZD",
+    "million": "M",
+    "thousand": "K"
   },
   "stockPage": {
     "title": "Stock Management",
