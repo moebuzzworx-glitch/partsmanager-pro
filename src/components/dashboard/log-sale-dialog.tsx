@@ -15,10 +15,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, ChevronDown } from 'lucide-react';
 import { getDictionary } from '@/lib/dictionaries';
 import type { Product, Contact } from '@/lib/types';
-import { Autocomplete, AutocompleteOption } from './autocomplete';
 import {
     Table,
     TableBody,
@@ -50,6 +49,9 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [customerInput, setCustomerInput] = useState<string>('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>();
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [productInput, setProductInput] = useState<string>('');
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -111,22 +113,28 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
     return customers.filter(c => c.name.toLowerCase().includes(lowerInput));
   }, [customers, customerInput]);
 
-  const productOptions = useMemo(() => products.map(p => ({ value: p.id, label: `${p.name} (${p.reference})` })), [products]);
-  const customerOptions = useMemo(() => filteredCustomers.map(c => ({ value: c.id, label: c.name })), [filteredCustomers]);
+  // Filter products based on input (by name or reference)
+  const filteredProducts = useMemo(() => {
+    if (!productInput.trim()) return products;
+    const lowerInput = productInput.toLowerCase();
+    return products.filter(p => 
+      p.name.toLowerCase().includes(lowerInput) || 
+      p.reference.toLowerCase().includes(lowerInput)
+    );
+  }, [products, productInput]);
 
-  const handleAddProduct = (option: AutocompleteOption) => {
-    const product = products.find(p => p.id === option.value);
-    if (product && !saleItems.find(item => item.id === product.id)) {
+  const handleAddProduct = (product: Product) => {
+    if (!saleItems.find(item => item.id === product.id)) {
       setSaleItems(prev => [...prev, { ...product, saleQuantity: 1 }]);
+      setProductInput('');
+      setShowProductDropdown(false);
     }
   };
 
-  const handleCustomerSelect = (option: AutocompleteOption) => {
-    const customer = customers.find(c => c.id === option.value);
-    if (customer) {
-      setSelectedCustomer(customer);
-      setCustomerInput(customer.name);
-    }
+  const handleCustomerSelect = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setCustomerInput(customer.name);
+    setShowCustomerDropdown(false);
   };
 
   const handleQuantityChange = (productId: string, quantity: number) => {
@@ -192,116 +200,166 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <PlusCircle className="mr-2" />
+          <PlusCircle className="mr-2 h-4 w-4" />
           {d.logSale}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[800px]">
+      <DialogContent className="sm:max-w-[900px]">
         <DialogHeader>
           <DialogTitle>{d.title}</DialogTitle>
           <DialogDescription>{d.description}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-            <div className="grid gap-2">
-                <Label htmlFor="customer">{d.customer}</Label>
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <Input
-                        type="text"
-                        placeholder={d.customerPlaceholder}
-                        value={customerInput}
-                        onChange={(e) => {
-                          setCustomerInput(e.target.value);
-                          // Clear selection if user is typing
-                          if (selectedCustomer && e.target.value !== selectedCustomer.name) {
-                            setSelectedCustomer(undefined);
-                          }
-                        }}
-                        className="w-full"
-                    />
-                    {/* Show dropdown suggestions */}
-                    {customerInput.trim() && customerOptions.length > 0 && (
-                      <div className="border border-t-0 rounded-b bg-white mt-0 max-h-48 overflow-y-auto z-50">
-                        {customerOptions.map((option) => (
-                          <div
-                            key={option.value}
-                            onClick={() => handleCustomerSelect(option)}
-                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                          >
-                            {option.label}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {customerInput.trim() && customerOptions.length === 0 && (
-                      <div className="border border-t-0 rounded-b bg-white mt-0 px-3 py-2 text-sm text-gray-500">
-                        {d.noCustomerFound}
-                      </div>
-                    )}
-                  </div>
+        <div className="space-y-6 py-4">
+          {/* Customer Field with Autocomplete */}
+          <div className="grid gap-3">
+            <Label htmlFor="customer" className="text-base font-semibold">{d.customer}</Label>
+            <div className="relative">
+              <Input
+                id="customer"
+                type="text"
+                placeholder={d.customerPlaceholder}
+                value={customerInput}
+                onChange={(e) => {
+                  setCustomerInput(e.target.value);
+                  setShowCustomerDropdown(true);
+                  if (selectedCustomer && e.target.value !== selectedCustomer.name) {
+                    setSelectedCustomer(undefined);
+                  }
+                }}
+                onFocus={() => setShowCustomerDropdown(true)}
+                className="w-full"
+              />
+              {/* Customer Dropdown - Theme Styled */}
+              {showCustomerDropdown && customerInput.trim() && filteredCustomers.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-primary/20 rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
+                  {filteredCustomers.map((customer) => (
+                    <div
+                      key={customer.id}
+                      onClick={() => handleCustomerSelect(customer)}
+                      className="px-4 py-3 hover:bg-primary/10 cursor-pointer text-sm transition-colors border-b border-primary/10 last:border-b-0 flex justify-between items-center"
+                    >
+                      <span className="font-medium text-foreground">{customer.name}</span>
+                      {customer.phone && <span className="text-xs text-muted-foreground">{customer.phone}</span>}
+                    </div>
+                  ))}
                 </div>
-                {customerInput.trim() && !selectedCustomer && (
-                  <p className="text-xs text-blue-600">{customerInput} - {d.newCustomer}</p>
-                )}
+              )}
+              {showCustomerDropdown && customerInput.trim() && filteredCustomers.length === 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-primary/20 rounded-md shadow-lg px-4 py-3 text-sm text-muted-foreground z-50">
+                  {d.noCustomerFound}
+                </div>
+              )}
             </div>
-            <div className="grid gap-2">
-                <Label htmlFor="product">{d.product}</Label>
-                <Autocomplete
-                    options={productOptions}
+            {customerInput.trim() && !selectedCustomer && (
+              <p className="text-xs text-primary font-medium">✓ {customerInput} - {d.newCustomer}</p>
+            )}
+          </div>
+
+          {/* Product Field with Autocomplete */}
+          <div className="grid gap-3">
+            <Label htmlFor="product" className="text-base font-semibold">{d.product}</Label>
+            <div className="relative">
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <Input
+                    id="product"
+                    type="text"
                     placeholder={d.productPlaceholder}
-                    emptyMessage={d.noProductFound}
-                    onValueChange={handleAddProduct}
-                />
+                    value={productInput}
+                    onChange={(e) => {
+                      setProductInput(e.target.value);
+                      setShowProductDropdown(true);
+                    }}
+                    onFocus={() => setShowProductDropdown(true)}
+                    className="w-full"
+                  />
+                  {/* Product Dropdown - Theme Styled */}
+                  {showProductDropdown && filteredProducts.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-primary/20 rounded-md shadow-lg z-50 max-h-56 overflow-y-auto">
+                      {filteredProducts.map((product) => (
+                        <div
+                          key={product.id}
+                          onClick={() => handleAddProduct(product)}
+                          className="px-4 py-3 hover:bg-primary/10 cursor-pointer text-sm transition-colors border-b border-primary/10 last:border-b-0"
+                        >
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1">
+                              <p className="font-medium text-foreground">{product.name}</p>
+                              <p className="text-xs text-muted-foreground">Ref: {product.reference} • Stock: {product.stock}</p>
+                            </div>
+                            <p className="font-semibold text-primary whitespace-nowrap">{product.price.toFixed(2)} DZD</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {showProductDropdown && productInput.trim() && filteredProducts.length === 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-primary/20 rounded-md shadow-lg px-4 py-3 text-sm text-muted-foreground z-50">
+                      {d.noProductFound}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          
+          </div>
+
+          {/* Sale Items Table */}
           {saleItems.length > 0 && (
-            <Card>
-                <CardContent className="p-0">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>{d.product}</TableHead>
-                                <TableHead className="w-[120px]">{d.quantity}</TableHead>
-                                <TableHead className="text-right w-[120px]">{d.price}</TableHead>
-                                <TableHead className="text-right w-[120px]">{d.total}</TableHead>
-                                <TableHead className="w-[50px]"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {saleItems.map(item => (
-                                <TableRow key={item.id}>
-                                    <TableCell>{item.name}</TableCell>
-                                    <TableCell>
-                                        <Input 
-                                            type="number" 
-                                            value={item.saleQuantity}
-                                            onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value, 10))}
-                                            className="w-full"
-                                            min="0"
-                                        />
-                                    </TableCell>
-                                    <TableCell className="text-right">{item.price.toFixed(2)} DZD</TableCell>
-                                    <TableCell className="text-right">{(item.price * item.saleQuantity).toFixed(2)} DZD</TableCell>
-                                    <TableCell>
-                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
-                                            <Trash2 className="h-4 w-4 text-destructive"/>
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
+            <Card className="border-primary/20">
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader className="bg-primary/5">
+                    <TableRow className="border-primary/10">
+                      <TableHead className="font-semibold text-primary">{d.product}</TableHead>
+                      <TableHead className="font-semibold text-primary w-[100px]">{d.quantity}</TableHead>
+                      <TableHead className="font-semibold text-primary text-right w-[120px]">{d.price}</TableHead>
+                      <TableHead className="font-semibold text-primary text-right w-[120px]">{d.total}</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {saleItems.map((item, index) => (
+                      <TableRow key={item.id} className={index % 2 === 0 ? 'bg-primary/[0.02]' : ''}>
+                        <TableCell className="font-medium">
+                          <div>
+                            <p>{item.name}</p>
+                            <p className="text-xs text-muted-foreground">Ref: {item.reference}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Input 
+                            type="number" 
+                            value={item.saleQuantity}
+                            onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value, 10))}
+                            className="w-full text-center"
+                            min="0"
+                          />
+                        </TableCell>
+                        <TableCell className="text-right font-medium">{item.price.toFixed(2)} DZD</TableCell>
+                        <TableCell className="text-right font-semibold text-primary">{(item.price * item.saleQuantity).toFixed(2)} DZD</TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive"/>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
             </Card>
           )}
 
-          <div className="flex justify-end font-bold text-lg">
-            <span>{d.total}: {totalAmount.toFixed(2)} DZD</span>
-          </div>
-
+          {/* Total Amount */}
+          {saleItems.length > 0 && (
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 flex justify-between items-center">
+              <span className="text-lg font-semibold text-foreground">{d.total}:</span>
+              <span className="text-2xl font-bold text-primary">{totalAmount.toFixed(2)} DZD</span>
+            </div>
+          )}
         </div>
         <DialogFooter>
-          <Button onClick={handleSubmit} disabled={!customerInput.trim() || saleItems.length === 0}>
+          <Button onClick={handleSubmit} disabled={!customerInput.trim() || saleItems.length === 0} className="w-full">
             {d.submit}
           </Button>
         </DialogFooter>
