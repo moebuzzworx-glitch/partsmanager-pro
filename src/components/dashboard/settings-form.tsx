@@ -9,12 +9,13 @@ import { BillingPanel } from './billing-panel';
 
 export function SettingsForm({ dictionary }: { dictionary?: any }) {
     return (
-        <Tabs defaultValue="company">
-            <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="company">{dictionary?.settings?.companyTab || 'Company'}</TabsTrigger>
-                <TabsTrigger value="business">{dictionary?.settings?.businessTab || 'Business'}</TabsTrigger>
-                <TabsTrigger value="subscription">{dictionary?.settings?.subscriptionTab || 'Subscription'}</TabsTrigger>
-            </TabsList>
+        <div dir="inherit">
+            <Tabs defaultValue="company">
+                <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="company">{dictionary?.settings?.companyTab || 'Company'}</TabsTrigger>
+                    <TabsTrigger value="business">{dictionary?.settings?.businessTab || 'Business'}</TabsTrigger>
+                    <TabsTrigger value="subscription">{dictionary?.settings?.subscriptionTab || 'Subscription'}</TabsTrigger>
+                </TabsList>
 
             <TabsContent value="company">
                 <Card className="hover:shadow-md transition-shadow">
@@ -58,5 +59,6 @@ export function SettingsForm({ dictionary }: { dictionary?: any }) {
                 <BillingPanel dictionary={dictionary} />
             </TabsContent>
         </Tabs>
+        </div>
     )
 }

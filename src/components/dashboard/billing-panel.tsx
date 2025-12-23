@@ -48,7 +48,7 @@ export function BillingPanel({ dictionary }: { dictionary?: any }) {
   }
 
   return (
-    <Card>
+    <Card dir="inherit">
       <CardHeader>
         <CardTitle>{dictionary?.billing?.title || 'Subscription'}</CardTitle>
         <CardDescription>{dictionary?.billing?.description || 'Manage your plan and renewal.'}</CardDescription>

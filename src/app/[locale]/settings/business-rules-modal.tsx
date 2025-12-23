@@ -128,7 +128,7 @@ export function BusinessRulesModal({ dictionary }: { dictionary?: any }) {
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" dir="inherit">
             <FormField
               control={form.control}
               name="profitMargin"
