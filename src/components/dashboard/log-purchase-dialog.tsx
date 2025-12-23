@@ -219,7 +219,7 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
                     />
                     {/* Show dropdown suggestions */}
                     {supplierInput.trim() && supplierOptions.length > 0 && (
-                      <div className="border border-t-0 rounded-b bg-white mt-0 max-h-48 overflow-y-auto z-50">
+                      <div className="border border-t-0 rounded-b bg-background mt-0 max-h-48 overflow-y-auto z-50">
                         {supplierOptions.map((option) => (
                           <div
                             key={option.value}
@@ -232,7 +232,7 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
                       </div>
                     )}
                     {supplierInput.trim() && supplierOptions.length === 0 && (
-                      <div className="border border-t-0 rounded-b bg-white mt-0 px-3 py-2 text-sm text-gray-500">
+                      <div className="border border-t-0 rounded-b bg-background mt-0 px-3 py-2 text-sm text-gray-500">
                         {d.noSupplierFound}
                       </div>
                     )}
