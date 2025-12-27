@@ -256,7 +256,7 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
 
           // First try to find by reference
           if (reference) {
-            const referenceQuery = query(productsRef, where('reference', '==', reference));
+            const referenceQuery = query(productsRef, where('reference', '==', reference), where('userId', '==', user?.uid));
             const referenceSnapshot = await getDocs(referenceQuery);
             if (!referenceSnapshot.empty) {
               existingProductId = referenceSnapshot.docs[0].id;
@@ -266,7 +266,7 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
 
           // If not found by reference, try by designation
           if (!existingProductId) {
-            const designationQuery = query(productsRef, where('name', '==', designation));
+            const designationQuery = query(productsRef, where('name', '==', designation), where('userId', '==', user?.uid));
             const designationSnapshot = await getDocs(designationQuery);
             if (!designationSnapshot.empty) {
               existingProductId = designationSnapshot.docs[0].id;
