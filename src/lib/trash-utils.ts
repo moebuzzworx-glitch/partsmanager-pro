@@ -1,14 +1,16 @@
 import { Firestore, doc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 
 /**
- * Move product(s) to trash (soft delete) - OPTIMIZED with batch operations
+ * Move product(s) to trash (soft delete) - OPTIMIZED with batch operations and progress tracking
  * @param firestore - Firestore instance
  * @param productIds - Single product ID or array of product IDs to move to trash
+ * @param onProgress - Optional callback to track progress (0-100)
  * @returns true if successful, false otherwise
  */
 export async function moveToTrash(
   firestore: Firestore,
-  productIds: string | string[]
+  productIds: string | string[],
+  onProgress?: (progress: number) => void
 ): Promise<boolean> {
   try {
     const ids = Array.isArray(productIds) ? productIds : [productIds];
@@ -18,6 +20,7 @@ export async function moveToTrash(
     let batch = writeBatch(firestore);
     let batchCount = 0;
     const BATCH_LIMIT = 500;
+    let processedCount = 0;
 
     for (const productId of ids) {
       const productRef = doc(firestore, 'products', productId);
@@ -27,6 +30,13 @@ export async function moveToTrash(
       });
 
       batchCount++;
+      processedCount++;
+
+      // Report progress
+      if (onProgress) {
+        const progress = Math.min(Math.round((processedCount / ids.length) * 100), 100);
+        onProgress(progress);
+      }
 
       // Commit batch when reaching limit and create new one
       if (batchCount === BATCH_LIMIT) {
@@ -39,6 +49,11 @@ export async function moveToTrash(
     // Commit remaining batch
     if (batchCount > 0) {
       await batch.commit();
+    }
+    
+    // Final progress update
+    if (onProgress) {
+      onProgress(100);
     }
     
     return true;
@@ -49,14 +64,16 @@ export async function moveToTrash(
 }
 
 /**
- * Restore product(s) from trash - OPTIMIZED with batch operations
+ * Restore product(s) from trash - OPTIMIZED with batch operations and progress tracking
  * @param firestore - Firestore instance
  * @param productIds - Single product ID or array of product IDs to restore
+ * @param onProgress - Optional callback to track progress (0-100)
  * @returns true if successful, false otherwise
  */
 export async function restoreFromTrash(
   firestore: Firestore,
-  productIds: string | string[]
+  productIds: string | string[],
+  onProgress?: (progress: number) => void
 ): Promise<boolean> {
   try {
     const ids = Array.isArray(productIds) ? productIds : [productIds];
@@ -66,6 +83,7 @@ export async function restoreFromTrash(
     let batch = writeBatch(firestore);
     let batchCount = 0;
     const BATCH_LIMIT = 500;
+    let processedCount = 0;
 
     for (const productId of ids) {
       const productRef = doc(firestore, 'products', productId);
@@ -75,6 +93,13 @@ export async function restoreFromTrash(
       });
 
       batchCount++;
+      processedCount++;
+
+      // Report progress
+      if (onProgress) {
+        const progress = Math.min(Math.round((processedCount / ids.length) * 100), 100);
+        onProgress(progress);
+      }
 
       // Commit batch when reaching limit and create new one
       if (batchCount === BATCH_LIMIT) {
@@ -87,6 +112,11 @@ export async function restoreFromTrash(
     // Commit remaining batch
     if (batchCount > 0) {
       await batch.commit();
+    }
+    
+    // Final progress update
+    if (onProgress) {
+      onProgress(100);
     }
     
     return true;
@@ -97,14 +127,16 @@ export async function restoreFromTrash(
 }
 
 /**
- * Permanently delete product(s) - OPTIMIZED with batch operations
+ * Permanently delete product(s) - OPTIMIZED with batch operations and progress tracking
  * @param firestore - Firestore instance
  * @param productIds - Single product ID or array of product IDs to permanently delete
+ * @param onProgress - Optional callback to track progress (0-100)
  * @returns true if successful, false otherwise
  */
 export async function permanentlyDelete(
   firestore: Firestore,
-  productIds: string | string[]
+  productIds: string | string[],
+  onProgress?: (progress: number) => void
 ): Promise<boolean> {
   try {
     const ids = Array.isArray(productIds) ? productIds : [productIds];
@@ -114,12 +146,20 @@ export async function permanentlyDelete(
     let batch = writeBatch(firestore);
     let batchCount = 0;
     const BATCH_LIMIT = 500;
+    let processedCount = 0;
 
     for (const productId of ids) {
       const productRef = doc(firestore, 'products', productId);
       batch.delete(productRef);
 
       batchCount++;
+      processedCount++;
+
+      // Report progress
+      if (onProgress) {
+        const progress = Math.min(Math.round((processedCount / ids.length) * 100), 100);
+        onProgress(progress);
+      }
 
       // Commit batch when reaching limit and create new one
       if (batchCount === BATCH_LIMIT) {
@@ -132,6 +172,11 @@ export async function permanentlyDelete(
     // Commit remaining batch
     if (batchCount > 0) {
       await batch.commit();
+    }
+    
+    // Final progress update
+    if (onProgress) {
+      onProgress(100);
     }
     
     return true;

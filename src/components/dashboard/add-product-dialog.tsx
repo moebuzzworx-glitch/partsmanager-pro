@@ -1,6 +1,4 @@
 
-'use client';
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PlusCircle, Upload, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { ProgressModal } from '@/components/ui/progress-modal';
 import { getDictionary } from '@/lib/dictionaries';
 import { useFirebase } from '@/firebase/provider';
 import { doc, getDoc, addDoc, collection, query, where, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
@@ -82,6 +81,7 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
   const [isLoading, setIsLoading] = useState(false);
   const [importStatus, setImportStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
   const [importMessage, setImportMessage] = useState('');
+  const [importProgress, setImportProgress] = useState(0);
   const [formData, setFormData] = useState({
     designation: '',
     reference: '',
@@ -234,7 +234,7 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
       return `${prefix}-${timestamp}-${suffix}`;
     };
 
-    // Function to process products from parsed data - OPTIMIZED with batch operations and parallel processing
+    // Function to process products from parsed data - OPTIMIZED with batch operations and progress tracking
     const processProducts = async (products: ProductRow[]) => {
       let successCount = 0;
       let errorCount = 0;
@@ -289,6 +289,7 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
 
       // Update progress
       setImportMessage(`Validating ${validRows.length} products...`);
+      setImportProgress(5); // 5% - parsing complete
 
       // STEP 2: Fetch all existing products in parallel (optimized)
       const existingProductsMap = new Map<string, any>();
@@ -340,10 +341,12 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
 
       // Update progress
       setImportMessage(`Processing ${validRows.length} products...`);
+      setImportProgress(20); // 20% - validation complete
 
       // STEP 3: Prepare batch operations
       let batch = writeBatch(firestore);
       let batchCount = 0;
+      let itemsProcessed = 0;
       const BATCH_LIMIT = 500; // Firestore batch limit
 
       for (const row of validRows) {
@@ -388,6 +391,14 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
         }
 
         batchCount++;
+        itemsProcessed++;
+
+        // Update progress regularly (every 10 items or when batch commits)
+        if (itemsProcessed % 10 === 0 || itemsProcessed === validRows.length) {
+          const progress = 20 + Math.round((itemsProcessed / validRows.length) * 75); // 20-95%
+          setImportProgress(progress);
+          setImportMessage(`Processing ${validRows.length} products... (${itemsProcessed}/${validRows.length})`);
+        }
 
         // Commit batch when reaching limit and create new one
         if (batchCount === BATCH_LIMIT) {
@@ -407,6 +418,8 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
       const message = `Processed ${totalProcessed} products (${successCount} new, ${updateCount} updated)${errorCount > 0 ? `, ${errorCount} errors` : ''}`;
       setImportStatus(errorCount === 0 ? 'success' : 'error');
       setImportMessage(message);
+      setImportProgress(100);
+
 
       if (errorCount === 0) {
         toast({
@@ -602,7 +615,15 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <>
+      <ProgressModal
+        isOpen={importStatus === 'processing'}
+        progress={importProgress}
+        title="Importing Products"
+        message={importMessage}
+        isCancelable={false}
+      />
+      <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
           <PlusCircle className="mr-2" />
@@ -752,5 +773,6 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
         </Tabs>
       </DialogContent>
     </Dialog>
+    </>
   );
 }

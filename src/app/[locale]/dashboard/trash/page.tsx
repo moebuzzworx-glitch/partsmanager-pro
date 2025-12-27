@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RotateCcw, Trash, Loader2 } from "lucide-react";
+import { ProgressModal } from "@/components/ui/progress-modal";
 import {
   Table,
   TableBody,
@@ -38,6 +39,9 @@ export default function TrashPage({
   const [deletedItems, setDeletedItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [actionProgress, setActionProgress] = useState(0);
+  const [isActioning, setIsActioning] = useState(false);
+
 
   // Load dictionary
   useEffect(() => {
@@ -82,8 +86,12 @@ export default function TrashPage({
   const handleRestore = async (productId: string) => {
     if (!firestore) return;
     
+    setIsActioning(true);
+    setActionProgress(0);
     try {
-      const success = await restoreFromTrash(firestore, productId);
+      const success = await restoreFromTrash(firestore, productId, (progress) => {
+        setActionProgress(progress);
+      });
       if (success) {
         setDeletedItems(deletedItems.filter(item => item.id !== productId));
         toast({
@@ -104,6 +112,9 @@ export default function TrashPage({
         description: dictionary?.trash?.restoreErrorGeneral || 'An error occurred while restoring the product',
         variant: 'destructive',
       });
+    } finally {
+      setIsActioning(false);
+      setActionProgress(0);
     }
   };
 
@@ -114,8 +125,12 @@ export default function TrashPage({
       return;
     }
     
+    setIsActioning(true);
+    setActionProgress(0);
     try {
-      const success = await permanentlyDelete(firestore, productId);
+      const success = await permanentlyDelete(firestore, productId, (progress) => {
+        setActionProgress(progress);
+      });
       if (success) {
         setDeletedItems(deletedItems.filter(item => item.id !== productId));
         toast({
@@ -136,6 +151,9 @@ export default function TrashPage({
         description: dictionary?.trash?.deleteErrorGeneral || 'An error occurred while deleting the product',
         variant: 'destructive',
       });
+    } finally {
+      setIsActioning(false);
+      setActionProgress(0);
     }
   };
 
@@ -162,8 +180,12 @@ export default function TrashPage({
 
     if (!firestore) return;
 
+    setIsActioning(true);
+    setActionProgress(0);
     try {
-      const success = await restoreFromTrash(firestore, Array.from(selectedItems));
+      const success = await restoreFromTrash(firestore, Array.from(selectedItems), (progress) => {
+        setActionProgress(progress);
+      });
       if (success) {
         setDeletedItems(deletedItems.filter(item => !selectedItems.has(item.id)));
         setSelectedItems(new Set());
@@ -185,6 +207,9 @@ export default function TrashPage({
         description: dictionary?.trash?.batchRestoreErrorGeneral || 'An error occurred while restoring items',
         variant: 'destructive',
       });
+    } finally {
+      setIsActioning(false);
+      setActionProgress(0);
     }
   };
 
@@ -198,8 +223,12 @@ export default function TrashPage({
 
     if (!firestore) return;
 
+    setIsActioning(true);
+    setActionProgress(0);
     try {
-      const success = await permanentlyDelete(firestore, Array.from(selectedItems));
+      const success = await permanentlyDelete(firestore, Array.from(selectedItems), (progress) => {
+        setActionProgress(progress);
+      });
       if (success) {
         setDeletedItems(deletedItems.filter(item => !selectedItems.has(item.id)));
         setSelectedItems(new Set());
@@ -221,6 +250,9 @@ export default function TrashPage({
         description: dictionary?.trash?.batchDeleteErrorGeneral || 'An error occurred while deleting items',
         variant: 'destructive',
       });
+    } finally {
+      setIsActioning(false);
+      setActionProgress(0);
     }
   };
 
@@ -228,6 +260,13 @@ export default function TrashPage({
 
   return (
     <div className="space-y-8">
+      <ProgressModal
+        isOpen={isActioning}
+        progress={actionProgress}
+        title="Processing"
+        message="Processing your request..."
+        isCancelable={false}
+      />
       <div>
         <h1 className="text-3xl font-headline font-bold">
           {dictionary.dashboard.trash}

@@ -33,6 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { ProgressModal } from "@/components/ui/progress-modal";
 
 import { getDictionary } from "@/lib/dictionaries";
 import { Locale } from "@/lib/config";
@@ -66,6 +67,8 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [displayLimit, setDisplayLimit] = useState(50); // Initial load: 50 items
+  const [deleteProgress, setDeleteProgress] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
   const LOAD_MORE_INCREMENT = 50;
 
   const fetchProducts = async () => {
@@ -133,8 +136,12 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
   const handleDeleteProduct = async (productId: string) => {
     if (!firestore) return;
     
+    setIsDeleting(true);
+    setDeleteProgress(0);
     try {
-      const success = await moveToTrash(firestore, productId);
+      const success = await moveToTrash(firestore, productId, (progress) => {
+        setDeleteProgress(progress);
+      });
       if (success) {
         setProducts(products.filter(p => p.id !== productId));
         toast({
@@ -155,6 +162,9 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
         description: d.deleteErrorGeneralSingle || 'An error occurred while deleting the product',
         variant: 'destructive',
       });
+    } finally {
+      setIsDeleting(false);
+      setDeleteProgress(0);
     }
   };
 
@@ -188,8 +198,12 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
 
     if (!firestore) return;
 
+    setIsDeleting(true);
+    setDeleteProgress(0);
     try {
-      const success = await moveToTrash(firestore, Array.from(selectedProducts));
+      const success = await moveToTrash(firestore, Array.from(selectedProducts), (progress) => {
+        setDeleteProgress(progress);
+      });
       if (success) {
         setProducts(products.filter(p => !selectedProducts.has(p.id)));
         setSelectedProducts(new Set());
@@ -212,6 +226,9 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
         description: d.deleteErrorGeneral || 'An error occurred while deleting products',
         variant: 'destructive',
       });
+    } finally {
+      setIsDeleting(false);
+      setDeleteProgress(0);
     }
   };
 
@@ -234,6 +251,13 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
 
   return (
     <div className="space-y-8">
+      <ProgressModal
+        isOpen={isDeleting}
+        progress={deleteProgress}
+        title="Deleting Products"
+        message={`Deleting ${selectedProducts.size} product(s)...`}
+        isCancelable={false}
+      />
       <div>
         <h1 className="text-3xl font-headline font-bold">{d.title}</h1>
         <p className="text-muted-foreground">{d.description}</p>
