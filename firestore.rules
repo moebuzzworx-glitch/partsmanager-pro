@@ -2,19 +2,28 @@
  * This ruleset enforces a security model for an internal store management system with Role-Based Access Control (RBAC).
  *
  * Core Philosophy:
- * The security model enforces three user roles: admin, trial users, and premium users.
- * - Admins: Full read/write access to all collections
- * - Premium users: Full read/write access to all collections
- * - Trial users: Read-only access, no export/write capabilities, expires after 5 days
- * - Unverified users: No access until email is verified
+ * The security model has two distinct domains:
+ * 
+ * 1. USER BUSINESS DATA (suppliers, customers, products, purchases, sales, invoices):
+ *    - Any verified user can read/write their own data (per-user isolation via userId field)
+ *    - Subscription-based restrictions (trial read-only) are handled at the application level
+ *    - Admin role has NO access to user business data
+ *
+ * 2. ADMIN USER MANAGEMENT (users, accessRights):
+ *    - Admins can create new user accounts
+ *    - Admins can update user subscription (trial/premium), status, role
+ *    - Admins can delete regular users but NOT other admin accounts
+ *    - Admins can manage access rights and permissions
  *
  * Data Structure:
- * The data is organized into several top-level collections: /suppliers, /customers, /products, /purchases, and /sales.
- * User profiles are stored in /users collection with role, subscription, and verification status.
+ * - Business data: /suppliers, /customers, /products, /purchases, /sales, /invoices
+ * - User management: /users, /accessRights
+ * - Shared: /notifications (per-user), /settings (per-user)
  *
  * Key Security Decisions:
- * - Email Verification Required: Users must verify their email before accessing data
- * - Role-Based Access: Admin and premium users have full access; trial users have read-only access
+ * - Email Verification Required: Users must verify their email before accessing any data
+ * - Multi-Tenancy: All business data enforces userId isolation for data separation between users
+ * - Admin Isolation: Admins manage accounts only; business data access is purely user-based
  * - Trial Expiry: Trial users lose write access after 5 days (role will be updated server-side)
  * - Relational Integrity: Subcollection items must correctly reference their parent documents
  */
@@ -175,83 +184,88 @@ service cloud.firestore {
 
     /**
      * @description Manages supplier data with per-user isolation
-     * @access Users can only read/write their own suppliers
+     * @access Any verified user can read/write their own suppliers
      * Each supplier document MUST have a userId field matching the authenticated user
+     * Note: Subscription-based restrictions (trial read-only) are handled at application level
      */
     match /suppliers/{supplierId} {
-      allow read: if canRead() && resource.data.userId == request.auth.uid;
-      allow create: if canWrite() && request.resource.data.userId == request.auth.uid;
-      allow update: if canWrite() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
-      allow delete: if canWrite() && resource.data.userId == request.auth.uid;
+      allow read: if isEmailVerified() && resource.data.userId == request.auth.uid;
+      allow create: if isEmailVerified() && request.resource.data.userId == request.auth.uid;
+      allow update: if isEmailVerified() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
+      allow delete: if isEmailVerified() && resource.data.userId == request.auth.uid;
     }
 
     /**
      * @description Manages customer data with per-user isolation
-     * @access Users can only read/write their own customers
+     * @access Any verified user can read/write their own customers
      * Each customer document MUST have a userId field matching the authenticated user
+     * Note: Subscription-based restrictions (trial read-only) are handled at application level
      */
     match /customers/{customerId} {
-      allow read: if canRead() && resource.data.userId == request.auth.uid;
-      allow create: if canWrite() && request.resource.data.userId == request.auth.uid;
-      allow update: if canWrite() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
-      allow delete: if canWrite() && resource.data.userId == request.auth.uid;
+      allow read: if isEmailVerified() && resource.data.userId == request.auth.uid;
+      allow create: if isEmailVerified() && request.resource.data.userId == request.auth.uid;
+      allow update: if isEmailVerified() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
+      allow delete: if isEmailVerified() && resource.data.userId == request.auth.uid;
     }
 
     /**
      * @description Manages product inventory with per-user isolation
-     * @access Users can only read/write their own products
+     * @access Any verified user can read/write their own products
      * Each product document MUST have a userId field matching the authenticated user
+     * Note: Subscription-based restrictions (trial read-only) are handled at application level
      */
     match /products/{productId} {
-      allow read: if canRead() && resource.data.userId == request.auth.uid;
-      allow create: if canWrite() && request.resource.data.userId == request.auth.uid;
-      allow update: if canWrite() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
-      allow delete: if canWrite() && resource.data.userId == request.auth.uid;
+      allow read: if isEmailVerified() && resource.data.userId == request.auth.uid;
+      allow create: if isEmailVerified() && request.resource.data.userId == request.auth.uid;
+      allow update: if isEmailVerified() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
+      allow delete: if isEmailVerified() && resource.data.userId == request.auth.uid;
     }
 
     /**
      * @description Manages purchase orders with per-user isolation
-     * @access Users can only read/write their own purchases
+     * @access Any verified user can read/write their own purchases
      * Each purchase document MUST have a userId field matching the authenticated user
+     * Note: Subscription-based restrictions (trial read-only) are handled at application level
      */
     match /purchases/{purchaseId} {
-      allow read: if canRead() && resource.data.userId == request.auth.uid;
-      allow create: if canWrite() && request.resource.data.userId == request.auth.uid;
-      allow update: if canWrite() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
-      allow delete: if canWrite() && resource.data.userId == request.auth.uid;
+      allow read: if isEmailVerified() && resource.data.userId == request.auth.uid;
+      allow create: if isEmailVerified() && request.resource.data.userId == request.auth.uid;
+      allow update: if isEmailVerified() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
+      allow delete: if isEmailVerified() && resource.data.userId == request.auth.uid;
 
       /**
        * @description Manages line items within a purchase order
        * Users can only access purchase items from their own purchases
        */
       match /purchaseItems/{purchaseItemId} {
-        allow read: if canRead() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.userId == request.auth.uid && parentPurchaseExists(purchaseId);
-        allow create: if canWrite() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.userId == request.auth.uid && parentPurchaseExists(purchaseId) && hasValidPurchaseItemData(purchaseId);
-        allow update: if canWrite() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.userId == request.auth.uid && parentPurchaseExists(purchaseId) && resource != null && isPurchaseItemImmutable();
-        allow delete: if canWrite() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.userId == request.auth.uid && parentPurchaseExists(purchaseId) && resource != null;
+        allow read: if isEmailVerified() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.userId == request.auth.uid && parentPurchaseExists(purchaseId);
+        allow create: if isEmailVerified() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.userId == request.auth.uid && parentPurchaseExists(purchaseId) && hasValidPurchaseItemData(purchaseId);
+        allow update: if isEmailVerified() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.userId == request.auth.uid && parentPurchaseExists(purchaseId) && resource != null && isPurchaseItemImmutable();
+        allow delete: if isEmailVerified() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.userId == request.auth.uid && parentPurchaseExists(purchaseId) && resource != null;
       }
     }
 
     /**
      * @description Manages sales to customers with per-user isolation
-     * @access Users can only read/write their own sales
+     * @access Any verified user can read/write their own sales
      * Each sale document MUST have a userId field matching the authenticated user
+     * Note: Subscription-based restrictions (trial read-only) are handled at application level
      */
     match /sales/{saleId} {
-      allow read: if canRead() && resource.data.userId == request.auth.uid;
-      allow create: if canWrite() && request.resource.data.userId == request.auth.uid;
-      allow update: if canWrite() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
-      allow delete: if canWrite() && resource.data.userId == request.auth.uid;
+      allow read: if isEmailVerified() && resource.data.userId == request.auth.uid;
+      allow create: if isEmailVerified() && request.resource.data.userId == request.auth.uid;
+      allow update: if isEmailVerified() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
+      allow delete: if isEmailVerified() && resource.data.userId == request.auth.uid;
 
       /**
        * @description Manages line items within a sale
        * Users can only access sale items from their own sales
        */
       match /saleItems/{saleItemId} {
-        allow read: if canRead() && get(/databases/$(database)/documents/sales/$(saleId)).data.userId == request.auth.uid && parentSaleExists(saleId);
-        allow create: if canWrite() && get(/databases/$(database)/documents/sales/$(saleId)).data.userId == request.auth.uid && parentSaleExists(saleId) && hasValidSaleItemData(saleId);
-        allow update: if canWrite() && get(/databases/$(database)/documents/sales/$(saleId)).data.userId == request.auth.uid && parentSaleExists(saleId) && resource != null && isSaleItemImmutable();
-        allow delete: if canWrite() && get(/databases/$(database)/documents/sales/$(saleId)).data.userId == request.auth.uid && parentSaleExists(saleId) && resource != null;
+        allow read: if isEmailVerified() && get(/databases/$(database)/documents/sales/$(saleId)).data.userId == request.auth.uid && parentSaleExists(saleId);
+        allow create: if isEmailVerified() && get(/databases/$(database)/documents/sales/$(saleId)).data.userId == request.auth.uid && parentSaleExists(saleId) && hasValidSaleItemData(saleId);
+        allow update: if isEmailVerified() && get(/databases/$(database)/documents/sales/$(saleId)).data.userId == request.auth.uid && parentSaleExists(saleId) && resource != null && isSaleItemImmutable();
+        allow delete: if isEmailVerified() && get(/databases/$(database)/documents/sales/$(saleId)).data.userId == request.auth.uid && parentSaleExists(saleId) && resource != null;
       }
     }
 
@@ -277,14 +291,15 @@ service cloud.firestore {
 
     /**
      * @description Invoices collection with per-user isolation
-     * @access Users can only read/write their own invoices
+     * @access Any verified user can read/write their own invoices
      * Each invoice document MUST have a userId field matching the authenticated user
+     * Note: Subscription-based restrictions (trial read-only) are handled at application level
      */
     match /invoices/{invoiceId} {
-      allow read: if canRead() && resource.data.userId == request.auth.uid;
-      allow create: if canWrite() && request.resource.data.userId == request.auth.uid;
-      allow update: if canWrite() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
-      allow delete: if canWrite() && resource.data.userId == request.auth.uid;
+      allow read: if isEmailVerified() && resource.data.userId == request.auth.uid;
+      allow create: if isEmailVerified() && request.resource.data.userId == request.auth.uid;
+      allow update: if isEmailVerified() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
+      allow delete: if isEmailVerified() && resource.data.userId == request.auth.uid;
     }
 
     /**
