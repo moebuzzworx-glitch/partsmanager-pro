@@ -341,8 +341,8 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
       // Update progress
       setImportMessage(`Processing ${validRows.length} products...`);
 
-      // STEP 3: Prepare batch operations (no await yet)
-      const batch = writeBatch(firestore);
+      // STEP 3: Prepare batch operations
+      let batch = writeBatch(firestore);
       let batchCount = 0;
       const BATCH_LIMIT = 500; // Firestore batch limit
 
@@ -389,9 +389,10 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
 
         batchCount++;
 
-        // Commit batch when reaching limit
+        // Commit batch when reaching limit and create new one
         if (batchCount === BATCH_LIMIT) {
           await batch.commit();
+          batch = writeBatch(firestore); // Create new batch
           batchCount = 0;
         }
       }
