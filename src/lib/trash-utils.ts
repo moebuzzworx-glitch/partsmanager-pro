@@ -1,6 +1,11 @@
 import { Firestore, doc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 
 /**
+ * Helper function to add a small delay to prevent Firebase backoff
+ */
+const addDelay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
  * Move product(s) to trash (soft delete) - OPTIMIZED with batch operations and progress tracking
  * @param firestore - Firestore instance
  * @param productIds - Single product ID or array of product IDs to move to trash
@@ -21,6 +26,7 @@ export async function moveToTrash(
     let batchCount = 0;
     const BATCH_LIMIT = 500;
     let processedCount = 0;
+    const progressInterval = Math.max(1, Math.ceil(ids.length / 20)); // Update every ~5%
 
     for (const productId of ids) {
       const productRef = doc(firestore, 'products', productId);
@@ -32,8 +38,8 @@ export async function moveToTrash(
       batchCount++;
       processedCount++;
 
-      // Report progress
-      if (onProgress) {
+      // Report progress (throttled to avoid excessive state updates)
+      if (onProgress && processedCount % progressInterval === 0) {
         const progress = Math.min(Math.round((processedCount / ids.length) * 100), 100);
         onProgress(progress);
       }
@@ -41,6 +47,8 @@ export async function moveToTrash(
       // Commit batch when reaching limit and create new one
       if (batchCount === BATCH_LIMIT) {
         await batch.commit();
+        // Add small delay to prevent Firebase backoff
+        await addDelay(100);
         batch = writeBatch(firestore);
         batchCount = 0;
       }
@@ -84,6 +92,7 @@ export async function restoreFromTrash(
     let batchCount = 0;
     const BATCH_LIMIT = 500;
     let processedCount = 0;
+    const progressInterval = Math.max(1, Math.ceil(ids.length / 20)); // Update every ~5%
 
     for (const productId of ids) {
       const productRef = doc(firestore, 'products', productId);
@@ -95,8 +104,8 @@ export async function restoreFromTrash(
       batchCount++;
       processedCount++;
 
-      // Report progress
-      if (onProgress) {
+      // Report progress (throttled to avoid excessive state updates)
+      if (onProgress && processedCount % progressInterval === 0) {
         const progress = Math.min(Math.round((processedCount / ids.length) * 100), 100);
         onProgress(progress);
       }
@@ -104,6 +113,8 @@ export async function restoreFromTrash(
       // Commit batch when reaching limit and create new one
       if (batchCount === BATCH_LIMIT) {
         await batch.commit();
+        // Add small delay to prevent Firebase backoff
+        await addDelay(100);
         batch = writeBatch(firestore);
         batchCount = 0;
       }
@@ -147,6 +158,7 @@ export async function permanentlyDelete(
     let batchCount = 0;
     const BATCH_LIMIT = 500;
     let processedCount = 0;
+    const progressInterval = Math.max(1, Math.ceil(ids.length / 20)); // Update every ~5%
 
     for (const productId of ids) {
       const productRef = doc(firestore, 'products', productId);
@@ -155,8 +167,8 @@ export async function permanentlyDelete(
       batchCount++;
       processedCount++;
 
-      // Report progress
-      if (onProgress) {
+      // Report progress (throttled to avoid excessive state updates)
+      if (onProgress && processedCount % progressInterval === 0) {
         const progress = Math.min(Math.round((processedCount / ids.length) * 100), 100);
         onProgress(progress);
       }
@@ -164,6 +176,8 @@ export async function permanentlyDelete(
       // Commit batch when reaching limit and create new one
       if (batchCount === BATCH_LIMIT) {
         await batch.commit();
+        // Add small delay to prevent Firebase backoff
+        await addDelay(100);
         batch = writeBatch(firestore);
         batchCount = 0;
       }

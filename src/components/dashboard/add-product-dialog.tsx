@@ -343,11 +343,12 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
       setImportMessage(`Processing ${validRows.length} products...`);
       setImportProgress(20); // 20% - validation complete
 
-      // STEP 3: Prepare batch operations
+      // STEP 3: Prepare batch operations with progress tracking
       let batch = writeBatch(firestore);
       let batchCount = 0;
       let itemsProcessed = 0;
       const BATCH_LIMIT = 500; // Firestore batch limit
+      const progressUpdateInterval = Math.max(1, Math.ceil(validRows.length / 50)); // Update progress every ~2%
 
       for (const row of validRows) {
         const r = row as any;
@@ -393,8 +394,8 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
         batchCount++;
         itemsProcessed++;
 
-        // Update progress regularly (every 10 items or when batch commits)
-        if (itemsProcessed % 10 === 0 || itemsProcessed === validRows.length) {
+        // Update progress regularly (using interval to avoid excessive state updates)
+        if (itemsProcessed % progressUpdateInterval === 0) {
           const progress = 20 + Math.round((itemsProcessed / validRows.length) * 75); // 20-95%
           setImportProgress(progress);
           setImportMessage(`Processing ${validRows.length} products... (${itemsProcessed}/${validRows.length})`);
@@ -403,6 +404,8 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
         // Commit batch when reaching limit and create new one
         if (batchCount === BATCH_LIMIT) {
           await batch.commit();
+          // Add small delay to prevent Firebase backoff
+          await new Promise(resolve => setTimeout(resolve, 100));
           batch = writeBatch(firestore); // Create new batch
           batchCount = 0;
         }
@@ -412,6 +415,9 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
       if (batchCount > 0) {
         await batch.commit();
       }
+
+      // Final progress update
+      setImportProgress(95);
 
       // Report results
       const totalProcessed = successCount + updateCount;
