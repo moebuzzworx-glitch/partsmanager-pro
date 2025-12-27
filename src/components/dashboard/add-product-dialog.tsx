@@ -23,7 +23,7 @@ import { Label } from '@/components/ui/label';
 import { PlusCircle, Upload, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { getDictionary } from '@/lib/dictionaries';
 import { useFirebase } from '@/firebase/provider';
-import { doc, getDoc, addDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, query, where, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
 import { User as AppUser } from '@/lib/types';
 import { canWrite, getExportRestrictionMessage } from '@/lib/trial-utils';
 import { useToast } from '@/hooks/use-toast';
@@ -40,6 +40,38 @@ interface ProductRow {
   purchasePrice?: string | number;
   [key: string]: any;
 }
+
+/**
+ * Multi-language column header mapping with all supported synonyms
+ * Supports: English, French, Arabic
+ */
+const COLUMN_HEADERS_MAP = {
+  designation: {
+    en: ['designation', 'name', 'product name', 'product', 'description', 'libelle'],
+    fr: ['désignation', 'nom', 'nom du produit', 'produit', 'description', 'libellé', 'designation'],
+    ar: ['التسمية', 'الاسم', 'اسم المنتج', 'المنتج', 'الوصف'],
+  },
+  reference: {
+    en: ['reference', 'ref', 'reference number', 'code', 'sku', 'product code'],
+    fr: ['référence', 'réf', 'numéro de référence', 'code', 'sku', 'code produit'],
+    ar: ['المرجع', 'رقم المرجع', 'الرمز', 'كود', 'كود المنتج'],
+  },
+  brand: {
+    en: ['brand', 'manufacturer', 'maker', 'marque'],
+    fr: ['marque', 'fabricant', 'producteur', 'constructeur'],
+    ar: ['العلامة التجارية', 'الصانع', 'المصنع'],
+  },
+  stock: {
+    en: ['stock', 'quantity', 'qty', 'inventory', 'amount', 'count'],
+    fr: ['stock', 'quantité', 'qté', 'inventaire', 'montant', 'nombre'],
+    ar: ['المخزون', 'الكمية', 'المخزون الفعلي', 'العدد'],
+  },
+  purchasePrice: {
+    en: ['purchase price', 'cost', 'unit cost', 'purchase cost', 'buying price', 'prix d\'achat'],
+    fr: ['prix d\'achat', 'coût', 'coût unitaire', 'prix d\'achat', 'prix d\'achat'],
+    ar: ['سعر الشراء', 'التكلفة', 'سعر الوحدة', 'تكلفة الشراء'],
+  },
+};
 
 export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: Dictionary; onProductAdded?: () => void }) {
   const d = dictionary.addProductDialog;
@@ -179,30 +211,18 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
       return;
     }
 
-    // Helper function to find column value case-insensitively and trim whitespace
-    const getColumnValue = (row: ProductRow, columnName: string): string => {
-      // Try exact match first
-      if (row[columnName]) {
-        return String(row[columnName] || '').trim();
-      }
+    // Helper function to find column value using multi-language mapping
+    const getColumnValue = (row: ProductRow, fieldName: keyof typeof COLUMN_HEADERS_MAP): string => {
+      // Get all possible column names for this field (all languages + synonyms)
+      const possibleNames = Object.values(COLUMN_HEADERS_MAP[fieldName]).flat();
       
-      // Try case-insensitive match
-      const key = Object.keys(row).find(k => 
-        k.trim().toLowerCase() === columnName.trim().toLowerCase()
-      );
+      // Try to find matching key in row (case-insensitive)
+      const key = Object.keys(row).find(k => {
+        const normalized = k.trim().toLowerCase();
+        return possibleNames.some(name => name.toLowerCase() === normalized);
+      });
       
-      if (key) {
-        return String(row[key] || '').trim();
-      }
-      
-      // If still not found, try partial matching (for flexibility)
-      const lowerColumnName = columnName.trim().toLowerCase();
-      const partialKey = Object.keys(row).find(k => 
-        k.trim().toLowerCase().includes(lowerColumnName) || 
-        lowerColumnName.includes(k.trim().toLowerCase())
-      );
-      
-      return partialKey ? String(row[partialKey] || '').trim() : '';
+      return key ? String(row[key] || '').trim() : '';
     };
 
     // Function to generate unique reference when missing
@@ -214,102 +234,171 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
       return `${prefix}-${timestamp}-${suffix}`;
     };
 
-    // Function to process products from parsed data
+    // Function to process products from parsed data - OPTIMIZED with batch operations and parallel processing
     const processProducts = async (products: ProductRow[]) => {
       let successCount = 0;
       let errorCount = 0;
       let updateCount = 0;
       const errors: string[] = [];
+      const productsRef = collection(firestore, 'products');
 
-      for (let i = 0; i < products.length; i++) {
-        try {
-          const row = products[i];
-          
-          // Extract values flexibly (case-insensitive)
-          const designation = getColumnValue(row, 'Designation').trim();
-          let reference = getColumnValue(row, 'Reference').trim();
-          const brand = getColumnValue(row, 'Brand').trim();
-          const stockStr = getColumnValue(row, 'Stock').trim();
-          const priceStr = getColumnValue(row, 'Purchase Price').trim();
+      // STEP 1: Parse all rows first (fast, synchronous)
+      const parsedRows = products.map((row, i) => {
+        const designation = getColumnValue(row, 'designation').trim();
+        let reference = getColumnValue(row, 'reference').trim();
+        const brand = getColumnValue(row, 'brand').trim();
+        const stockStr = getColumnValue(row, 'stock').trim();
+        const priceStr = getColumnValue(row, 'purchasePrice').trim();
 
-          // Validate required fields
-          if (!designation) {
-            errors.push(`Row ${i + 1}: Missing Designation`);
-            errorCount++;
-            continue;
-          }
-
-          // Generate reference if missing
-          if (!reference) {
-            reference = generateReference(designation, i + 1);
-          }
-
-          const stock = parseInt(stockStr) || 0;
-          const purchasePrice = parseFloat(priceStr) || 0;
-
-          // Purchase price can be 0 for unknown costs
-
-          // Check if product already exists by reference or designation
-          const productsRef = collection(firestore, 'products');
-          let existingProductId: string | null = null;
-          let existingProduct: any = null;
-
-          // First try to find by reference
-          if (reference) {
-            const referenceQuery = query(productsRef, where('reference', '==', reference), where('userId', '==', user?.uid));
-            const referenceSnapshot = await getDocs(referenceQuery);
-            if (!referenceSnapshot.empty) {
-              existingProductId = referenceSnapshot.docs[0].id;
-              existingProduct = referenceSnapshot.docs[0].data();
-            }
-          }
-
-          // If not found by reference, try by designation
-          if (!existingProductId) {
-            const designationQuery = query(productsRef, where('name', '==', designation), where('userId', '==', user?.uid));
-            const designationSnapshot = await getDocs(designationQuery);
-            if (!designationSnapshot.empty) {
-              existingProductId = designationSnapshot.docs[0].id;
-              existingProduct = designationSnapshot.docs[0].data();
-            }
-          }
-
-          if (existingProductId && existingProduct) {
-            // Update existing product: add stock and update price
-            const currentStock = existingProduct.stock || 0;
-            const newStock = currentStock + stock;
-            const newPrice = purchasePrice * 1.25; // Default 25% markup
-            
-            const existingProductRef = doc(firestore, 'products', existingProductId);
-            await updateDoc(existingProductRef, {
-              stock: newStock,
-              purchasePrice: purchasePrice,
-              price: newPrice,
-              updatedAt: new Date(),
-              isDeleted: false,
-            });
-
-            updateCount++;
-          } else {
-            // Create new product
-            await addDoc(productsRef, {
-              name: designation,
-              reference: reference,
-              brand: brand || null,
-              stock: stock,
-              purchasePrice: purchasePrice,
-              price: purchasePrice * 1.25, // Default 25% markup
-              userId: user?.uid, // ← Add userId for per-user isolation
-              createdAt: new Date(),
-              isDeleted: false,
-            });
-
-            successCount++;
-          }
-        } catch (error: any) {
-          errors.push(`Row ${i + 1}: ${error.message}`);
-          errorCount++;
+        // Validate required fields
+        if (!designation) {
+          errors.push(`Row ${i + 1}: Missing Designation`);
+          return { error: true, rowIndex: i };
         }
+
+        // Generate reference if missing
+        if (!reference) {
+          reference = generateReference(designation, i + 1);
+        }
+
+        return {
+          error: false,
+          rowIndex: i,
+          designation,
+          reference,
+          brand: brand || null,
+          stock: parseInt(stockStr) || 0,
+          purchasePrice: parseFloat(priceStr) || 0,
+        };
+      });
+
+      // Count errors from parsing
+      errorCount = errors.length;
+      const validRows = parsedRows.filter(r => !r.error);
+
+      if (validRows.length === 0) {
+        setImportStatus('error');
+        setImportMessage('No valid products to import');
+        toast({
+          title: 'Error',
+          description: 'All rows have errors',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Update progress
+      setImportMessage(`Validating ${validRows.length} products...`);
+
+      // STEP 2: Fetch all existing products in parallel (optimized)
+      const existingProductsMap = new Map<string, any>();
+      const referencesToCheck = validRows.map(r => (r as any).reference).filter(Boolean);
+      const designationsToCheck = validRows.map(r => (r as any).designation).filter(Boolean);
+
+      // Batch queries for existence checks
+      const checkExistingProducts = async () => {
+        const promises: Promise<any>[] = [];
+
+        // Query by references in parallel
+        if (referencesToCheck.length > 0) {
+          promises.push(
+            (async () => {
+              const refQuery = query(
+                productsRef,
+                where('reference', 'in', referencesToCheck.slice(0, 30)), // Firestore limit: 30 items in 'in' query
+                where('userId', '==', user?.uid)
+              );
+              const snapshot = await getDocs(refQuery);
+              snapshot.docs.forEach(doc => {
+                existingProductsMap.set(`ref:${doc.data().reference}`, doc);
+              });
+            })()
+          );
+        }
+
+        // Query by designations in parallel
+        if (designationsToCheck.length > 0) {
+          promises.push(
+            (async () => {
+              const desQuery = query(
+                productsRef,
+                where('name', 'in', designationsToCheck.slice(0, 30)), // Firestore limit: 30 items in 'in' query
+                where('userId', '==', user?.uid)
+              );
+              const snapshot = await getDocs(desQuery);
+              snapshot.docs.forEach(doc => {
+                existingProductsMap.set(`des:${doc.data().name}`, doc);
+              });
+            })()
+          );
+        }
+
+        await Promise.all(promises);
+      };
+
+      await checkExistingProducts();
+
+      // Update progress
+      setImportMessage(`Processing ${validRows.length} products...`);
+
+      // STEP 3: Prepare batch operations (no await yet)
+      const batch = writeBatch(firestore);
+      let batchCount = 0;
+      const BATCH_LIMIT = 500; // Firestore batch limit
+
+      for (const row of validRows) {
+        const r = row as any;
+        
+        // Check if product exists
+        const existingByRef = existingProductsMap.get(`ref:${r.reference}`);
+        const existingByDes = existingProductsMap.get(`des:${r.designation}`);
+        const existingDoc = existingByRef || existingByDes;
+
+        if (existingDoc) {
+          // Update existing product
+          const currentStock = existingDoc.data().stock || 0;
+          const newStock = currentStock + r.stock;
+          const newPrice = r.purchasePrice * 1.25;
+
+          batch.update(existingDoc.ref, {
+            stock: newStock,
+            purchasePrice: r.purchasePrice,
+            price: newPrice,
+            updatedAt: new Date(),
+            isDeleted: false,
+          });
+
+          updateCount++;
+        } else {
+          // Create new product
+          const newDocRef = doc(collection(firestore, 'products'));
+          batch.set(newDocRef, {
+            name: r.designation,
+            reference: r.reference,
+            brand: r.brand,
+            stock: r.stock,
+            purchasePrice: r.purchasePrice,
+            price: r.purchasePrice * 1.25,
+            userId: user?.uid,
+            createdAt: new Date(),
+            isDeleted: false,
+          });
+
+          successCount++;
+        }
+
+        batchCount++;
+
+        // Commit batch when reaching limit
+        if (batchCount === BATCH_LIMIT) {
+          await batch.commit();
+          batchCount = 0;
+        }
+      }
+
+      // Commit remaining batch
+      if (batchCount > 0) {
+        await batch.commit();
       }
 
       // Report results
