@@ -56,8 +56,8 @@ export default function ResetPasswordPage({
     } catch (error: any) {
       console.error("Password reset error:", error)
       toast({
-        title: "Error",
-        description: error.message || "Failed to send password reset email. Please try again.",
+        title: dictionary?.errors?.title || "Error",
+        description: error.message || dictionary?.resetEmailError || "Failed to send password reset email. Please try again.",
         variant: "destructive",
       })
     } finally {

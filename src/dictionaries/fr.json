@@ -46,7 +46,28 @@
     "verifyingResetLink": "Vérification du lien de réinitialisation...",
     "userNotFound": "Aucun utilisateur trouvé avec cette adresse email.",
     "resetLinkExpired": "Le lien de réinitialisation a expiré ou est invalide. Veuillez demander une nouvelle réinitialisation.",
-    "backToLogin": "Retour à la connexion"
+    "backToLogin": "Retour à la connexion",
+    "adminAccessDenied": "Accès refusé",
+    "adminAccessDeniedMsg": "Seuls les administrateurs peuvent accéder à cette zone.",
+    "loginFailed": "Échec de la connexion",
+    "invalidCredentials": "Email ou mot de passe invalide. Veuillez réessayer.",
+    "resetEmailError": "Impossible d'envoyer l'email de réinitialisation. Veuillez réessayer.",
+    "invalidResetLinkError": "Lien de réinitialisation invalide. Veuillez demander une nouvelle réinitialisation.",
+    "resetPasswordFailed": "Impossible de réinitialiser le mot de passe. Veuillez demander un nouveau lien.",
+    "passwordResetSuccessMsg": "Votre mot de passe a été réinitialisé. Vous pouvez maintenant vous connecter."
+  },
+  "errors": {
+    "title": "Erreur",
+    "tryAgain": "Veuillez réessayer.",
+    "unexpectedError": "Une erreur inattendue s'est produite.",
+    "networkError": "Erreur réseau. Veuillez vérifier votre connexion.",
+    "permissionDenied": "Vous n'avez pas la permission d'effectuer cette action.",
+    "notFound": "La ressource demandée n'a pas été trouvée.",
+    "validation": "Veuillez vérifier vos données et réessayer.",
+    "saveFailed": "Impossible d'enregistrer les modifications.",
+    "uploadFailed": "Le téléchargement a échoué. Enregistré localement à la place.",
+    "deleteFailed": "Impossible de supprimer. Veuillez réessayer.",
+    "loadFailed": "Impossible de charger les données. Veuillez réessayer."
   },
   "dashboard": {
     "title": "Tableau de Bord",

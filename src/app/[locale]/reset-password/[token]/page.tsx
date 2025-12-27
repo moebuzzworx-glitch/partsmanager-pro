@@ -57,8 +57,8 @@ export default function ResetPasswordConfirmPage({
     async function verifyToken() {
       if (!auth || !token) {
         toast({
-          title: "Error",
-          description: "Invalid reset link. Please request a new password reset.",
+          title: dictionary?.errors?.title || "Error",
+          description: dictionary?.invalidResetLinkError || "Invalid reset link. Please request a new password reset.",
           variant: "destructive",
         })
         setIsVerifying(false)
@@ -70,10 +70,10 @@ export default function ResetPasswordConfirmPage({
         setIsValid(true)
       } catch (error: any) {
         toast({
-          title: "Error",
+          title: dictionary?.errors?.title || "Error",
           description:
             error.message ||
-            "This password reset link is invalid or has expired.",
+            dictionary?.resetLinkExpired || "This password reset link is invalid or has expired.",
           variant: "destructive",
         })
       } finally {
@@ -92,16 +92,16 @@ export default function ResetPasswordConfirmPage({
       await resetPassword(auth, token, values.password)
       toast({
         title: "Success",
-        description: "Your password has been reset. You can now log in.",
+        description: dictionary?.passwordResetSuccessMsg || "Your password has been reset. You can now log in.",
       })
       router.push(`/${locale}/login`)
     } catch (error: any) {
       console.error("Password reset error:", error)
       toast({
-        title: "Error",
+        title: dictionary?.errors?.title || "Error",
         description:
           error.message ||
-          "Failed to reset password. Please request a new reset link.",
+          dictionary?.resetPasswordFailed || "Failed to reset password. Please request a new reset link.",
         variant: "destructive",
       })
     } finally {

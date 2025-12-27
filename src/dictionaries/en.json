@@ -47,7 +47,28 @@
     "verifyingResetLink": "Verifying reset link...",
     "userNotFound": "No user found with this email address.",
     "resetLinkExpired": "Reset link has expired or is invalid. Please request a new password reset.",
-    "backToLogin": "Back to Login"
+    "backToLogin": "Back to Login",
+    "adminAccessDenied": "Access Denied",
+    "adminAccessDeniedMsg": "Only administrators can access this area.",
+    "loginFailed": "Login Failed",
+    "invalidCredentials": "Invalid email or password. Please try again.",
+    "resetEmailError": "Failed to send password reset email. Please try again.",
+    "invalidResetLinkError": "Invalid reset link. Please request a new password reset.",
+    "resetPasswordFailed": "Failed to reset password. Please request a new reset link.",
+    "passwordResetSuccessMsg": "Your password has been reset. You can now log in."
+  },
+  "errors": {
+    "title": "Error",
+    "tryAgain": "Please try again.",
+    "unexpectedError": "An unexpected error occurred.",
+    "networkError": "Network error. Please check your connection.",
+    "permissionDenied": "You don't have permission to perform this action.",
+    "notFound": "The requested resource was not found.",
+    "validation": "Please check your input and try again.",
+    "saveFailed": "Failed to save changes.",
+    "uploadFailed": "Upload failed. Saved locally instead.",
+    "deleteFailed": "Failed to delete. Please try again.",
+    "loadFailed": "Failed to load data. Please try again."
   },
   "dashboard": {
     "title": "Dashboard",

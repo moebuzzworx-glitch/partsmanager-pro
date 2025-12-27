@@ -100,7 +100,7 @@ export function CompanyInfoForm() {
           uploadedLogoUrl = await getDownloadURL(sRef);
         } catch (err) {
           console.error('Logo upload failed', err);
-          toast({ title: 'Upload failed', description: 'Could not upload logo. Saved locally instead.', variant: 'destructive' });
+          toast({ title: dictionary?.errors?.title, description: dictionary?.errors?.uploadFailed, variant: 'destructive' });
         }
       }
 
@@ -133,8 +133,8 @@ export function CompanyInfoForm() {
     } catch (error) {
       console.error(error);
       toast({
-        title: 'Error Saving',
-        description: 'Could not save company information.',
+        title: dictionary?.errors?.title,
+        description: dictionary?.errors?.saveFailed,
         variant: 'destructive',
       });
     }

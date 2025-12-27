@@ -61,8 +61,8 @@ export function AdminLoginForm({ dictionary, locale = 'en' }: { dictionary: Awai
       // Admin login should only allow admins
       if (userRole !== 'admin') {
         toast({
-          title: "Access Denied",
-          description: "Only administrators can access this area.",
+          title: dictionary.adminAccessDenied,
+          description: dictionary.adminAccessDeniedMsg,
           variant: "destructive",
         })
         return;
@@ -78,8 +78,8 @@ export function AdminLoginForm({ dictionary, locale = 'en' }: { dictionary: Awai
     } catch (error: any) {
       console.error("Login error:", error)
       toast({
-        title: "Login Failed",
-        description: error.message || "Invalid email or password.",
+        title: dictionary.loginFailed,
+        description: error.message || dictionary.invalidCredentials,
         variant: "destructive",
       })
     } finally {
