@@ -16,15 +16,18 @@ const nextConfig: NextConfig = {
   // Enable compression
   compress: true,
   
-  // Reduce .next folder size
+  // Reduce .next folder size - exclude build dependencies
   outputFileTracingExcludes: {
     '*': [
       'node_modules/@swc/core-*',
       'node_modules/esbuild',
       'node_modules/@esbuild/*',
+      'node_modules/typescript',
+      'node_modules/eslint*',
       '.git',
       '.gitignore',
       '.env.example',
+      'docs/**',
     ],
   },
   
@@ -43,11 +46,11 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
-    // Optimize image delivery
+    // Optimize image delivery with modern formats only
     formats: ['image/avif', 'image/webp'],
   },
   
-  // Enable static optimization
+  // Reduce static page generation time
   staticPageGenerationTimeout: 300,
 };
 

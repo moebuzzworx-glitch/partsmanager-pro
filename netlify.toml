@@ -3,16 +3,21 @@
 
 [build]
 # Command to build the Next.js application
-command = "next build"
+command = "npm run build"
 
 # The directory that contains the built site
 publish = ".next"
+
+# Reduce deployment blob size by excluding unnecessary files
+ignore = "git diff --quiet HEAD~1 HEAD -- docs/ "
 
 # Build environment variables
 [build.environment]
 NODE_ENV = "production"
 # Ensure Git submodules are handled (if any added in future)
 GIT_SUBMODULE_STRATEGY = "recursive"
+# Disable source maps in production to reduce size
+NEXT_DISABLE_STATIC_IMAGES = "false"
 
 [dev]
 # Local development server settings
@@ -25,4 +30,26 @@ autoLaunch = true
 # The functions directory for serverless functions, including Next.js API routes and server components.
 [functions]
 directory = ".netlify/functions-internal"
+
+# Production context settings
+[context.production]
+  command = "npm run build"
+  publish = ".next"
+
+# Security headers for all routes
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+    Cache-Control = "public, max-age=3600, must-revalidate"
+
+# Cache static assets longer
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
 
