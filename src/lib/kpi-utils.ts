@@ -1,4 +1,4 @@
-import { Firestore, collection, getDocs, query } from 'firebase/firestore';
+import { Firestore, collection, getDocs, query, where } from 'firebase/firestore';
 import type { StoredInvoice } from './invoices-utils';
 
 export interface KPIMetrics {
@@ -17,14 +17,15 @@ export interface KPIMetrics {
  * Calculate total revenue from:
  * 1. Paid invoices (non-proforma)
  * 2. Sales transactions
+ * Only includes data for the specified userId
  */
-async function calculateTotalRevenue(firestore: Firestore): Promise<number> {
+async function calculateTotalRevenue(firestore: Firestore, userId: string): Promise<number> {
   let revenue = 0;
 
   try {
-    // Revenue from paid invoices (non-proforma only)
+    // Revenue from paid invoices (non-proforma only, user's invoices only)
     const invoicesRef = collection(firestore, 'invoices');
-    const invoicesSnap = await getDocs(query(invoicesRef));
+    const invoicesSnap = await getDocs(query(invoicesRef, where('userId', '==', userId)));
     
     invoicesSnap.forEach((doc) => {
       const invoice = doc.data() as StoredInvoice;
@@ -34,9 +35,9 @@ async function calculateTotalRevenue(firestore: Firestore): Promise<number> {
       }
     });
 
-    // Revenue from sales transactions
+    // Revenue from sales transactions (user's sales only)
     const salesRef = collection(firestore, 'sales');
-    const salesSnap = await getDocs(query(salesRef));
+    const salesSnap = await getDocs(query(salesRef, where('userId', '==', userId)));
     
     salesSnap.forEach((doc) => {
       const sale = doc.data();
@@ -56,14 +57,15 @@ async function calculateTotalRevenue(firestore: Firestore): Promise<number> {
  * 1. Stock additions (purchases)
  * 2. Purchase orders
  * 3. Updates to existing products (treated as additional cost)
+ * Only includes data for the specified userId
  */
-async function calculateTotalExpenses(firestore: Firestore): Promise<number> {
+async function calculateTotalExpenses(firestore: Firestore, userId: string): Promise<number> {
   let expenses = 0;
 
   try {
-    // Expenses from purchase orders
+    // Expenses from purchase orders (user's purchases only)
     const purchasesRef = collection(firestore, 'purchases');
-    const purchasesSnap = await getDocs(query(purchasesRef));
+    const purchasesSnap = await getDocs(query(purchasesRef, where('userId', '==', userId)));
     
     purchasesSnap.forEach((doc) => {
       const purchase = doc.data();
@@ -71,10 +73,10 @@ async function calculateTotalExpenses(firestore: Firestore): Promise<number> {
       expenses += totalAmount;
     });
 
-    // Expenses from stock additions (products added to inventory)
+    // Expenses from stock additions (products added to inventory - user's products only)
     // Each product addition is a cost
     const productsRef = collection(firestore, 'products');
-    const productsSnap = await getDocs(query(productsRef));
+    const productsSnap = await getDocs(query(productsRef, where('userId', '==', userId)));
     
     productsSnap.forEach((doc) => {
       const product = doc.data();
@@ -97,15 +99,15 @@ async function calculateTotalExpenses(firestore: Firestore): Promise<number> {
 }
 
 /**
- * Get sales count for today
+ * Get sales count for today (user's sales only)
  */
-async function getSalesToday(firestore: Firestore): Promise<number> {
+async function getSalesToday(firestore: Firestore, userId: string): Promise<number> {
   let salesToday = 0;
   const today = new Date().toDateString();
 
   try {
     const salesRef = collection(firestore, 'sales');
-    const salesSnap = await getDocs(query(salesRef));
+    const salesSnap = await getDocs(query(salesRef, where('userId', '==', userId)));
     
     salesSnap.forEach((doc) => {
       const data = doc.data();
@@ -127,12 +129,12 @@ async function getSalesToday(firestore: Firestore): Promise<number> {
 }
 
 /**
- * Get total product count
+ * Get total product count (user's products only)
  */
-async function getTotalProducts(firestore: Firestore): Promise<number> {
+async function getTotalProducts(firestore: Firestore, userId: string): Promise<number> {
   try {
     const productsRef = collection(firestore, 'products');
-    const productsSnap = await getDocs(query(productsRef));
+    const productsSnap = await getDocs(query(productsRef, where('userId', '==', userId)));
     // Only count non-deleted products
     let count = 0;
     productsSnap.forEach(doc => {
@@ -148,12 +150,12 @@ async function getTotalProducts(firestore: Firestore): Promise<number> {
 }
 
 /**
- * Get low stock items count
+ * Get low stock items count (user's products only)
  */
-async function getLowStockItems(firestore: Firestore): Promise<number> {
+async function getLowStockItems(firestore: Firestore, userId: string): Promise<number> {
   try {
     const productsRef = collection(firestore, 'products');
-    const productsSnap = await getDocs(query(productsRef));
+    const productsSnap = await getDocs(query(productsRef, where('userId', '==', userId)));
     let count = 0;
     
     productsSnap.forEach(doc => {
@@ -172,12 +174,12 @@ async function getLowStockItems(firestore: Firestore): Promise<number> {
 }
 
 /**
- * Get count of paid invoices
+ * Get count of paid invoices (user's invoices only)
  */
-async function getPaidInvoicesCount(firestore: Firestore): Promise<number> {
+async function getPaidInvoicesCount(firestore: Firestore, userId: string): Promise<number> {
   try {
     const invoicesRef = collection(firestore, 'invoices');
-    const invoicesSnap = await getDocs(query(invoicesRef));
+    const invoicesSnap = await getDocs(query(invoicesRef, where('userId', '==', userId)));
     let count = 0;
     
     invoicesSnap.forEach(doc => {
@@ -196,12 +198,12 @@ async function getPaidInvoicesCount(firestore: Firestore): Promise<number> {
 }
 
 /**
- * Get count of unpaid invoices
+ * Get count of unpaid invoices (user's invoices only)
  */
-async function getUnpaidInvoicesCount(firestore: Firestore): Promise<number> {
+async function getUnpaidInvoicesCount(firestore: Firestore, userId: string): Promise<number> {
   try {
     const invoicesRef = collection(firestore, 'invoices');
-    const invoicesSnap = await getDocs(query(invoicesRef));
+    const invoicesSnap = await getDocs(query(invoicesRef, where('userId', '==', userId)));
     let count = 0;
     
     invoicesSnap.forEach(doc => {
@@ -220,12 +222,12 @@ async function getUnpaidInvoicesCount(firestore: Firestore): Promise<number> {
 }
 
 /**
- * Get total sales count (all sales transactions)
+ * Get total sales count (all sales transactions - user's sales only)
  */
-async function getTotalSalesCount(firestore: Firestore): Promise<number> {
+async function getTotalSalesCount(firestore: Firestore, userId: string): Promise<number> {
   try {
     const salesRef = collection(firestore, 'sales');
-    const salesSnap = await getDocs(query(salesRef));
+    const salesSnap = await getDocs(query(salesRef, where('userId', '==', userId)));
     return salesSnap.size;
   } catch (error) {
     console.error('Error getting total sales count:', error);
@@ -235,8 +237,9 @@ async function getTotalSalesCount(firestore: Firestore): Promise<number> {
 
 /**
  * Fetch all KPI metrics comprehensively
+ * Now requires userId to filter data to only the current user
  */
-export async function fetchKPIMetrics(firestore: Firestore): Promise<KPIMetrics> {
+export async function fetchKPIMetrics(firestore: Firestore, userId: string): Promise<KPIMetrics> {
   try {
     const [
       totalRevenue,
@@ -248,14 +251,14 @@ export async function fetchKPIMetrics(firestore: Firestore): Promise<KPIMetrics>
       unpaidInvoices,
       totalSales,
     ] = await Promise.all([
-      calculateTotalRevenue(firestore),
-      calculateTotalExpenses(firestore),
-      getSalesToday(firestore),
-      getTotalProducts(firestore),
-      getLowStockItems(firestore),
-      getPaidInvoicesCount(firestore),
-      getUnpaidInvoicesCount(firestore),
-      getTotalSalesCount(firestore),
+      calculateTotalRevenue(firestore, userId),
+      calculateTotalExpenses(firestore, userId),
+      getSalesToday(firestore, userId),
+      getTotalProducts(firestore, userId),
+      getLowStockItems(firestore, userId),
+      getPaidInvoicesCount(firestore, userId),
+      getUnpaidInvoicesCount(firestore, userId),
+      getTotalSalesCount(firestore, userId),
     ]);
 
     const netProfit = totalRevenue - totalExpenses;

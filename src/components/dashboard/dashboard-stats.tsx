@@ -11,7 +11,7 @@ interface DashboardStatsProps {
 }
 
 export function DashboardStats({ dictionary }: DashboardStatsProps) {
-  const { firestore } = useFirebase();
+  const { firestore, user } = useFirebase();
   const [stats, setStats] = useState<KPIMetrics>({
     totalRevenue: 0,
     totalExpenses: 0,
@@ -26,12 +26,12 @@ export function DashboardStats({ dictionary }: DashboardStatsProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!firestore) return;
+    if (!firestore || !user?.uid) return;
 
     const fetchStats = async () => {
       try {
         setIsLoading(true);
-        const kpiMetrics = await fetchKPIMetrics(firestore);
+        const kpiMetrics = await fetchKPIMetrics(firestore, user.uid);
         setStats(kpiMetrics);
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);
@@ -41,7 +41,7 @@ export function DashboardStats({ dictionary }: DashboardStatsProps) {
     };
 
     fetchStats();
-  }, [firestore]);
+  }, [firestore, user?.uid]);
 
   const formatRevenue = (revenue: number) => {
     const millionAbbrev = dictionary.dashboard?.million || 'M';
