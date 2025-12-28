@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/table";
 import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { restoreFromTrash, permanentlyDelete } from "@/lib/trash-utils";
+import { bulkRestoreViaAPI, bulkDeleteViaAPI } from "@/lib/api-bulk-operations";
 import { useToast } from "@/hooks/use-toast";
 
 export default function TrashPage({
@@ -84,32 +84,25 @@ export default function TrashPage({
   }, [firestore, user?.uid]);
 
   const handleRestore = async (productId: string) => {
-    if (!firestore) return;
+    if (!user) return;
     
     setIsActioning(true);
     setActionProgress(0);
     try {
-      const success = await restoreFromTrash(firestore, productId, (progress) => {
+      // Call API endpoint for single restore
+      await bulkRestoreViaAPI(user, [productId], 'products', (progress: number) => {
         setActionProgress(progress);
       });
-      if (success) {
-        setDeletedItems(deletedItems.filter(item => item.id !== productId));
-        toast({
-          title: dictionary?.table?.success || 'Success',
-          description: dictionary?.trash?.restoreSuccess || 'Product restored successfully',
-        });
-      } else {
-        toast({
-          title: dictionary?.table?.error || 'Error',
-          description: dictionary?.trash?.restoreError || 'Failed to restore product',
-          variant: 'destructive',
-        });
-      }
+      setDeletedItems(deletedItems.filter(item => item.id !== productId));
+      toast({
+        title: dictionary?.table?.success || 'Success',
+        description: dictionary?.trash?.restoreSuccess || 'Product restored successfully',
+      });
     } catch (error) {
       console.error('Error restoring product:', error);
       toast({
         title: dictionary?.table?.error || 'Error',
-        description: dictionary?.trash?.restoreErrorGeneral || 'An error occurred while restoring the product',
+        description: error instanceof Error ? error.message : (dictionary?.trash?.restoreErrorGeneral || 'An error occurred while restoring the product'),
         variant: 'destructive',
       });
     } finally {
@@ -119,7 +112,7 @@ export default function TrashPage({
   };
 
   const handlePermanentDelete = async (productId: string) => {
-    if (!firestore) return;
+    if (!user) return;
     
     if (!confirm(dictionary?.trash?.confirmDeleteMessage || 'Are you sure you want to permanently delete this product? This action cannot be undone.')) {
       return;
@@ -128,27 +121,20 @@ export default function TrashPage({
     setIsActioning(true);
     setActionProgress(0);
     try {
-      const success = await permanentlyDelete(firestore, productId, (progress) => {
+      // Call API endpoint for single permanent delete
+      await bulkDeleteViaAPI(user, [productId], 'products', (progress: number) => {
         setActionProgress(progress);
       });
-      if (success) {
-        setDeletedItems(deletedItems.filter(item => item.id !== productId));
-        toast({
-          title: dictionary?.table?.success || 'Success',
-          description: dictionary?.trash?.deleteSuccess || 'Product permanently deleted',
-        });
-      } else {
-        toast({
-          title: dictionary?.table?.error || 'Error',
-          description: dictionary?.trash?.deleteError || 'Failed to permanently delete product',
-          variant: 'destructive',
-        });
-      }
+      setDeletedItems(deletedItems.filter(item => item.id !== productId));
+      toast({
+        title: dictionary?.table?.success || 'Success',
+        description: dictionary?.trash?.deleteSuccess || 'Product permanently deleted',
+      });
     } catch (error) {
       console.error('Error permanently deleting product:', error);
       toast({
         title: dictionary?.table?.error || 'Error',
-        description: dictionary?.trash?.deleteErrorGeneral || 'An error occurred while deleting the product',
+        description: error instanceof Error ? error.message : (dictionary?.trash?.deleteErrorGeneral || 'An error occurred while deleting the product'),
         variant: 'destructive',
       });
     } finally {
@@ -178,33 +164,26 @@ export default function TrashPage({
   const handleBatchRestore = async () => {
     if (selectedItems.size === 0) return;
 
-    if (!firestore) return;
+    if (!user) return;
 
     setIsActioning(true);
     setActionProgress(0);
     try {
-      const success = await restoreFromTrash(firestore, Array.from(selectedItems), (progress) => {
+      // Call API endpoint for batch restore
+      await bulkRestoreViaAPI(user, Array.from(selectedItems), 'products', (progress: number) => {
         setActionProgress(progress);
       });
-      if (success) {
-        setDeletedItems(deletedItems.filter(item => !selectedItems.has(item.id)));
-        setSelectedItems(new Set());
-        toast({
-          title: dictionary?.table?.success || 'Success',
-          description: dictionary?.trash?.batchRestoreSuccess?.replace('{count}', String(selectedItems.size)) || `${selectedItems.size} item(s) restored successfully`,
-        });
-      } else {
-        toast({
-          title: dictionary?.table?.error || 'Error',
-          description: dictionary?.trash?.batchRestoreError || 'Failed to restore items',
-          variant: 'destructive',
-        });
-      }
+      setDeletedItems(deletedItems.filter(item => !selectedItems.has(item.id)));
+      setSelectedItems(new Set());
+      toast({
+        title: dictionary?.table?.success || 'Success',
+        description: dictionary?.trash?.batchRestoreSuccess?.replace('{count}', String(selectedItems.size)) || `${selectedItems.size} item(s) restored successfully`,
+      });
     } catch (error) {
       console.error('Error batch restoring items:', error);
       toast({
         title: dictionary?.table?.error || 'Error',
-        description: dictionary?.trash?.batchRestoreErrorGeneral || 'An error occurred while restoring items',
+        description: error instanceof Error ? error.message : (dictionary?.trash?.batchRestoreErrorGeneral || 'An error occurred while restoring items'),
         variant: 'destructive',
       });
     } finally {
@@ -221,33 +200,26 @@ export default function TrashPage({
       return;
     }
 
-    if (!firestore) return;
+    if (!user) return;
 
     setIsActioning(true);
     setActionProgress(0);
     try {
-      const success = await permanentlyDelete(firestore, Array.from(selectedItems), (progress) => {
+      // Call API endpoint for batch permanent delete
+      await bulkDeleteViaAPI(user, Array.from(selectedItems), 'products', (progress: number) => {
         setActionProgress(progress);
       });
-      if (success) {
-        setDeletedItems(deletedItems.filter(item => !selectedItems.has(item.id)));
-        setSelectedItems(new Set());
-        toast({
-          title: dictionary?.table?.success || 'Success',
-          description: dictionary?.trash?.batchDeleteSuccess?.replace('{count}', String(selectedItems.size)) || `${selectedItems.size} item(s) permanently deleted`,
-        });
-      } else {
-        toast({
-          title: dictionary?.table?.error || 'Error',
-          description: dictionary?.trash?.batchDeleteError || 'Failed to delete items',
-          variant: 'destructive',
-        });
-      }
+      setDeletedItems(deletedItems.filter(item => !selectedItems.has(item.id)));
+      setSelectedItems(new Set());
+      toast({
+        title: dictionary?.table?.success || 'Success',
+        description: dictionary?.trash?.batchDeleteSuccess?.replace('{count}', String(selectedItems.size)) || `${selectedItems.size} item(s) permanently deleted`,
+      });
     } catch (error) {
       console.error('Error batch deleting items:', error);
       toast({
         title: dictionary?.table?.error || 'Error',
-        description: dictionary?.trash?.batchDeleteErrorGeneral || 'An error occurred while deleting items',
+        description: error instanceof Error ? error.message : (dictionary?.trash?.batchDeleteErrorGeneral || 'An error occurred while deleting items'),
         variant: 'destructive',
       });
     } finally {

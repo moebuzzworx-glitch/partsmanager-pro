@@ -40,8 +40,8 @@ import { Locale } from "@/lib/config";
 import { cn } from "@/lib/utils";
 import { AddProductDialog } from "@/components/dashboard/add-product-dialog";
 import { useFirebase } from "@/firebase/provider";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { moveToTrash, ensureAllProductsHaveDeletedField } from "@/lib/trash-utils";
+import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
+import { bulkDeleteViaAPI } from "@/lib/api-bulk-operations";
 import { useToast } from "@/hooks/use-toast";
 
 interface Product {
@@ -134,32 +134,25 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
   }, [firestore]);
 
   const handleDeleteProduct = async (productId: string) => {
-    if (!firestore) return;
+    if (!user) return;
     
     setIsDeleting(true);
     setDeleteProgress(0);
     try {
-      const success = await moveToTrash(firestore, productId, (progress) => {
+      // Call API endpoint for single delete
+      await bulkDeleteViaAPI(user, [productId], 'products', (progress: number) => {
         setDeleteProgress(progress);
       });
-      if (success) {
-        setProducts(products.filter(p => p.id !== productId));
-        toast({
-          title: d.deletedSuccessTitle || 'Success',
-          description: d.deletedSuccessMessageSingle || 'Product moved to trash',
-        });
-      } else {
-        toast({
-          title: d.deleteErrorTitle || 'Error',
-          description: d.deleteErrorMessageSingle || 'Failed to delete product',
-          variant: 'destructive',
-        });
-      }
+      setProducts(products.filter(p => p.id !== productId));
+      toast({
+        title: d.deletedSuccessTitle || 'Success',
+        description: d.deletedSuccessMessageSingle || 'Product moved to trash',
+      });
     } catch (error) {
       console.error('Error deleting product:', error);
       toast({
         title: d.deleteErrorTitle || 'Error',
-        description: d.deleteErrorGeneralSingle || 'An error occurred while deleting the product',
+        description: error instanceof Error ? error.message : (d.deleteErrorGeneralSingle || 'An error occurred while deleting the product'),
         variant: 'destructive',
       });
     } finally {
@@ -196,34 +189,29 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
       return;
     }
 
-    if (!firestore) return;
+    if (!user) return;
 
     setIsDeleting(true);
     setDeleteProgress(0);
     try {
-      const success = await moveToTrash(firestore, Array.from(selectedProducts), (progress) => {
+      // Call API endpoint for bulk delete (server-side batching)
+      await bulkDeleteViaAPI(user, Array.from(selectedProducts), 'products', (progress: number) => {
         setDeleteProgress(progress);
       });
-      if (success) {
-        setProducts(products.filter(p => !selectedProducts.has(p.id)));
-        setSelectedProducts(new Set());
-        toast({
-          title: d.deletedSuccessTitle || 'Success',
-          description: (d.deletedSuccessMessage || '{count} product(s) moved to trash')
-            .replace('{count}', selectedProducts.size.toString()),
-        });
-      } else {
-        toast({
-          title: d.deleteErrorTitle || 'Error',
-          description: d.deleteErrorMessage || 'Failed to delete products',
-          variant: 'destructive',
-        });
-      }
+
+      // Remove deleted items from local state
+      setProducts(products.filter(p => !selectedProducts.has(p.id)));
+      setSelectedProducts(new Set());
+      toast({
+        title: d.deletedSuccessTitle || 'Success',
+        description: (d.deletedSuccessMessage || '{count} product(s) moved to trash')
+          .replace('{count}', selectedProducts.size.toString()),
+      });
     } catch (error) {
       console.error('Error batch deleting products:', error);
       toast({
         title: d.deleteErrorTitle || 'Error',
-        description: d.deleteErrorGeneral || 'An error occurred while deleting products',
+        description: error instanceof Error ? error.message : (d.deleteErrorGeneral || 'An error occurred while deleting products'),
         variant: 'destructive',
       });
     } finally {

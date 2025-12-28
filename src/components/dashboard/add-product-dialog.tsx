@@ -22,10 +22,11 @@ import { PlusCircle, Upload, Loader2, CheckCircle, AlertCircle } from 'lucide-re
 import { ProgressModal } from '@/components/ui/progress-modal';
 import { getDictionary } from '@/lib/dictionaries';
 import { useFirebase } from '@/firebase/provider';
-import { doc, getDoc, addDoc, collection, query, where, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
 import { User as AppUser } from '@/lib/types';
 import { canWrite, getExportRestrictionMessage } from '@/lib/trial-utils';
 import { useToast } from '@/hooks/use-toast';
+import { importProductsViaAPI } from '@/lib/api-bulk-operations';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
@@ -288,161 +289,66 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
       }
 
       // Update progress
-      setImportMessage(`Validating ${validRows.length} products...`);
-      setImportProgress(5); // 5% - parsing complete
+      setImportMessage(`Preparing ${validRows.length} products...`);
+      setImportProgress(10);
 
-      // STEP 2: Fetch all existing products in parallel (optimized)
-      const existingProductsMap = new Map<string, any>();
-      const referencesToCheck = validRows.map(r => (r as any).reference).filter(Boolean);
-      const designationsToCheck = validRows.map(r => (r as any).designation).filter(Boolean);
+      // Convert rows to API format
+      const productsToImport = validRows.map((row: any) => ({
+        name: row.designation,
+        reference: row.reference,
+        brand: row.brand,
+        stock: row.stock,
+        purchasePrice: row.purchasePrice,
+        price: row.purchasePrice * 1.25,
+        createdAt: new Date(),
+        isDeleted: false,
+      }));
 
-      // Batch queries for existence checks
-      const checkExistingProducts = async () => {
-        const promises: Promise<any>[] = [];
-
-        // Query by references in parallel
-        if (referencesToCheck.length > 0) {
-          promises.push(
-            (async () => {
-              const refQuery = query(
-                productsRef,
-                where('reference', 'in', referencesToCheck.slice(0, 30)), // Firestore limit: 30 items in 'in' query
-                where('userId', '==', user?.uid)
-              );
-              const snapshot = await getDocs(refQuery);
-              snapshot.docs.forEach(doc => {
-                existingProductsMap.set(`ref:${doc.data().reference}`, doc);
-              });
-            })()
-          );
-        }
-
-        // Query by designations in parallel
-        if (designationsToCheck.length > 0) {
-          promises.push(
-            (async () => {
-              const desQuery = query(
-                productsRef,
-                where('name', 'in', designationsToCheck.slice(0, 30)), // Firestore limit: 30 items in 'in' query
-                where('userId', '==', user?.uid)
-              );
-              const snapshot = await getDocs(desQuery);
-              snapshot.docs.forEach(doc => {
-                existingProductsMap.set(`des:${doc.data().name}`, doc);
-              });
-            })()
-          );
-        }
-
-        await Promise.all(promises);
-      };
-
-      await checkExistingProducts();
-
-      // Update progress
-      setImportMessage(`Processing ${validRows.length} products...`);
-      setImportProgress(20); // 20% - validation complete
-
-      // STEP 3: Prepare batch operations with progress tracking
-      let batch = writeBatch(firestore);
-      let batchCount = 0;
-      let itemsProcessed = 0;
-      const BATCH_LIMIT = 500; // Firestore batch limit
-      const progressUpdateInterval = Math.max(1, Math.ceil(validRows.length / 50)); // Update progress every ~2%
-
-      for (const row of validRows) {
-        const r = row as any;
-        
-        // Check if product exists
-        const existingByRef = existingProductsMap.get(`ref:${r.reference}`);
-        const existingByDes = existingProductsMap.get(`des:${r.designation}`);
-        const existingDoc = existingByRef || existingByDes;
-
-        if (existingDoc) {
-          // Update existing product
-          const currentStock = existingDoc.data().stock || 0;
-          const newStock = currentStock + r.stock;
-          const newPrice = r.purchasePrice * 1.25;
-
-          batch.update(existingDoc.ref, {
-            stock: newStock,
-            purchasePrice: r.purchasePrice,
-            price: newPrice,
-            updatedAt: new Date(),
-            isDeleted: false,
-          });
-
-          updateCount++;
-        } else {
-          // Create new product
-          const newDocRef = doc(collection(firestore, 'products'));
-          batch.set(newDocRef, {
-            name: r.designation,
-            reference: r.reference,
-            brand: r.brand,
-            stock: r.stock,
-            purchasePrice: r.purchasePrice,
-            price: r.purchasePrice * 1.25,
-            userId: user?.uid,
-            createdAt: new Date(),
-            isDeleted: false,
-          });
-
-          successCount++;
-        }
-
-        batchCount++;
-        itemsProcessed++;
-
-        // Update progress regularly (using interval to avoid excessive state updates)
-        if (itemsProcessed % progressUpdateInterval === 0) {
-          const progress = 20 + Math.round((itemsProcessed / validRows.length) * 75); // 20-95%
-          setImportProgress(progress);
-          setImportMessage(`Processing ${validRows.length} products... (${itemsProcessed}/${validRows.length})`);
-        }
-
-        // Commit batch when reaching limit and create new one
-        if (batchCount === BATCH_LIMIT) {
-          await batch.commit();
-          // Add small delay to prevent Firebase backoff
-          await new Promise(resolve => setTimeout(resolve, 100));
-          batch = writeBatch(firestore); // Create new batch
-          batchCount = 0;
-        }
-      }
-
-      // Commit remaining batch
-      if (batchCount > 0) {
-        await batch.commit();
-      }
-
-      // Final progress update
-      setImportProgress(95);
-
-      // Report results
-      const totalProcessed = successCount + updateCount;
-      const message = `Processed ${totalProcessed} products (${successCount} new, ${updateCount} updated)${errorCount > 0 ? `, ${errorCount} errors` : ''}`;
-      setImportStatus(errorCount === 0 ? 'success' : 'error');
-      setImportMessage(message);
-      setImportProgress(100);
-
-
-      if (errorCount === 0) {
-        toast({
-          title: 'Success',
-          description: message,
+      try {
+        // Call API endpoint for bulk import (server-side batching)
+        setImportMessage(`Importing ${validRows.length} products...`);
+        const result = await importProductsViaAPI(user, productsToImport, (progress: number) => {
+          const displayProgress = 10 + Math.round((progress / 100) * 85); // 10-95%
+          setImportProgress(displayProgress);
+          if (progress > 0 && progress < 100) {
+            setImportMessage(`Importing ${validRows.length} products... (${Math.round(progress)}%)`);
+          }
         });
-        setOpen(false);
-        if (onProductAdded) {
-          onProductAdded();
+
+        successCount = result.processed;
+        const totalProcessed = successCount;
+        const message = `Successfully imported ${totalProcessed} products${errorCount > 0 ? `, ${errorCount} errors` : ''}`;
+        setImportStatus(errorCount === 0 ? 'success' : 'error');
+        setImportMessage(message);
+        setImportProgress(100);
+
+        if (errorCount === 0) {
+          toast({
+            title: 'Success',
+            description: message,
+          });
+          setOpen(false);
+          if (onProductAdded) {
+            onProductAdded();
+          }
+        } else {
+          toast({
+            title: 'Partial Import',
+            description: message,
+            variant: 'destructive',
+          });
+          console.log('Import errors:', errors);
         }
-      } else {
+      } catch (error: any) {
+        console.error('Import API error:', error);
+        setImportStatus('error');
+        const errorMessage = error.message || 'Failed to import products';
+        setImportMessage(errorMessage);
         toast({
-          title: 'Partial Import',
-          description: message,
+          title: 'Import Error',
+          description: errorMessage,
           variant: 'destructive',
         });
-        console.log('Import errors:', errors);
       }
     };
 
