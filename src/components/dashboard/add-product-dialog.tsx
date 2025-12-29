@@ -226,6 +226,29 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
       return key ? String(row[key] || '').trim() : '';
     };
 
+    // Helper function to get numeric value from row
+    const getNumericValue = (row: ProductRow, fieldName: keyof typeof COLUMN_HEADERS_MAP): number => {
+      // Get all possible column names for this field (all languages + synonyms)
+      const possibleNames = Object.values(COLUMN_HEADERS_MAP[fieldName]).flat();
+      
+      // Try to find matching key in row (case-insensitive)
+      const key = Object.keys(row).find(k => {
+        const normalized = k.trim().toLowerCase();
+        return possibleNames.some(name => name.toLowerCase() === normalized);
+      });
+      
+      if (!key) return 0;
+      const value = row[key];
+      
+      // Handle both string and number types
+      if (typeof value === 'number') {
+        return isNaN(value) ? 0 : value;
+      }
+      
+      const parsed = parseFloat(String(value || '').trim());
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
     // Function to generate unique reference when missing
     const generateReference = (designation: string, rowIndex: number): string => {
       // Create a reference from the first 3 letters of designation + timestamp + row index
@@ -248,8 +271,8 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
         const designation = getColumnValue(row, 'designation').trim();
         let reference = getColumnValue(row, 'reference').trim();
         const brand = getColumnValue(row, 'brand').trim();
-        const stockStr = getColumnValue(row, 'stock').trim();
-        const priceStr = getColumnValue(row, 'purchasePrice').trim();
+        const stock = getNumericValue(row, 'stock');
+        const purchasePrice = getNumericValue(row, 'purchasePrice');
 
         // Validate required fields
         if (!designation) {
@@ -268,8 +291,8 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
           designation,
           reference,
           brand: brand || null,
-          stock: parseInt(stockStr) || 0,
-          purchasePrice: !isNaN(parseFloat(priceStr)) ? parseFloat(priceStr) : 0,
+          stock: stock || 0,
+          purchasePrice: purchasePrice || 0,
         };
       });
 
@@ -293,16 +316,18 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
       setImportProgress(10);
 
       // Convert rows to API format
-      const productsToImport = validRows.map((row: any) => ({
-        name: row.designation,
-        reference: row.reference,
-        brand: row.brand,
-        stock: row.stock,
-        purchasePrice: row.purchasePrice,
-        price: row.purchasePrice * 1.25,
-        createdAt: new Date(),
-        isDeleted: false,
-      }));
+      const productsToImport = validRows.map((row: any) => {
+        const purchasePrice = row.purchasePrice || 0;
+        return {
+          name: row.designation,
+          reference: row.reference,
+          brand: row.brand,
+          stock: row.stock,
+          purchasePrice: Number(purchasePrice) || 0,
+          price: Number(purchasePrice) * 1.25 || 0,
+          isDeleted: false,
+        };
+      });
 
       try {
         // Call API endpoint for bulk import (server-side batching)
