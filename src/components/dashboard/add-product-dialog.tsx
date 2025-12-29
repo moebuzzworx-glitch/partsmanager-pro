@@ -317,14 +317,26 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
 
       // Convert rows to API format
       const productsToImport = validRows.map((row: any) => {
-        const purchasePrice = row.purchasePrice || 0;
+        const purchasePrice = Number(row.purchasePrice) || 0;
+        const price = purchasePrice > 0 ? purchasePrice * 1.25 : 0;
+        
+        // Log first 3 rows for debugging
+        if (validRows.indexOf(row) < 3) {
+          console.log(`[Import Debug] Row ${validRows.indexOf(row)}:`, {
+            name: row.designation,
+            purchasePrice: row.purchasePrice,
+            purchasePriceNumber: purchasePrice,
+            price,
+          });
+        }
+        
         return {
           name: row.designation,
           reference: row.reference,
           brand: row.brand,
           stock: row.stock,
-          purchasePrice: Number(purchasePrice) || 0,
-          price: Number(purchasePrice) * 1.25 || 0,
+          purchasePrice,
+          price,
           isDeleted: false,
         };
       });
@@ -342,7 +354,7 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
 
         successCount = result.processed;
         const totalProcessed = successCount;
-        const message = `Successfully imported ${totalProcessed} products${errorCount > 0 ? `, ${errorCount} errors` : ''}`;
+        const message = `Successfully imported ${totalProcessed} products${errorCount > 0 ? `, ${errorCount} errors` : ''}${result.updated ? ` (${result.updated} updated)` : ''}`;
         setImportStatus(errorCount === 0 ? 'success' : 'error');
         setImportMessage(message);
         setImportProgress(100);
