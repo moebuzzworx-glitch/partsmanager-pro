@@ -10,9 +10,16 @@ function getAdminApp() {
     return apps[0];
   }
 
-  const serviceAccount = JSON.parse(
-    process.env.FIREBASE_SERVICE_ACCOUNT || '{}'
-  );
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!serviceAccountJson) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not set');
+  }
+
+  const serviceAccount = JSON.parse(serviceAccountJson);
+  
+  if (!serviceAccount.project_id) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT is missing project_id');
+  }
 
   return initializeApp({
     credential: cert(serviceAccount),
@@ -110,8 +117,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Server-side batching (500 items per batch)
-    let processed = 0;
-    let updated = 0;
+    let processedCount = 0;
+    let updatedCount = 0;
     const batchSize = 500;
 
     for (let i = 0; i < products.length; i += batchSize) {
@@ -119,6 +126,11 @@ export async function POST(req: NextRequest) {
       const chunk = products.slice(i, Math.min(i + batchSize, products.length));
 
       chunk.forEach((product: any) => {
+        // Validate product has required fields
+        if (!product.name || !product.reference) {
+          return; // Skip invalid products
+        }
+
         // Check if product already exists
         const existingIdByRef = existingProductsMap.get(`ref:${product.reference}`);
         const existingIdByName = existingProductsMap.get(`name:${product.name}`);
@@ -127,18 +139,17 @@ export async function POST(req: NextRequest) {
         if (existingId) {
           // Update existing product
           const docRef = productsRef.doc(existingId);
-          const currentStock = 0; // Will be fetched and added
           batch.update(docRef, {
             name: product.name,
             reference: product.reference,
             brand: product.brand || null,
-            stock: (product.stock || 0),
-            purchasePrice: product.purchasePrice || 0,
-            price: product.price || 0,
+            stock: Number(product.stock) || 0,
+            purchasePrice: Number(product.purchasePrice) || 0,
+            price: Number(product.price) || 0,
             updatedAt: new Date(),
             isDeleted: false,
           });
-          updated++;
+          updatedCount++;
         } else {
           // Create new product
           const docRef = productsRef.doc();
@@ -146,39 +157,44 @@ export async function POST(req: NextRequest) {
             name: product.name,
             reference: product.reference,
             brand: product.brand || null,
-            stock: product.stock || 0,
-            purchasePrice: product.purchasePrice || 0,
-            price: product.price || 0,
+            stock: Number(product.stock) || 0,
+            purchasePrice: Number(product.purchasePrice) || 0,
+            price: Number(product.price) || 0,
             userId,
             createdAt: new Date(),
             updatedAt: new Date(),
             isDeleted: false,
           });
-          processed++;
+          processedCount++;
         }
       });
 
       await batch.commit();
-      processed += updated;
 
       // Small delay between batches to be safe
       await new Promise(resolve => setTimeout(resolve, 100));
     }
 
+    const totalProcessed = processedCount + updatedCount;
+
     return NextResponse.json(
       {
         success: true,
-        processed,
-        updated,
-        message: `Successfully imported ${processed} products (${processed - updated} new, ${updated} updated)`,
+        processed: processedCount,
+        updated: updatedCount,
+        total: totalProcessed,
+        message: `Successfully processed ${totalProcessed} products (${processedCount} new, ${updatedCount} updated)`,
       },
       { status: 200 }
     );
   } catch (error) {
     console.error('Import products error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Import failed';
+    console.error('Full error:', error);
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Import failed',
+        error: errorMessage,
+        details: error instanceof Error ? error.stack : 'Unknown error',
       },
       { status: 500 }
     );
