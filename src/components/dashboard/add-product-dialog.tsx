@@ -48,29 +48,29 @@ interface ProductRow {
  */
 const COLUMN_HEADERS_MAP = {
   designation: {
-    en: ['designation', 'name', 'product name', 'product', 'description', 'libelle'],
-    fr: ['désignation', 'nom', 'nom du produit', 'produit', 'description', 'libellé', 'designation'],
-    ar: ['التسمية', 'الاسم', 'اسم المنتج', 'المنتج', 'الوصف'],
+    en: ['designation', 'name', 'product name', 'product', 'description', 'libelle', 'designations'],
+    fr: ['désignation', 'nom', 'nom du produit', 'produit', 'description', 'libellé', 'designation', 'désignations'],
+    ar: ['التسمية', 'الاسم', 'اسم المنتج', 'المنتج', 'الوصف', 'التسميات'],
   },
   reference: {
-    en: ['reference', 'ref', 'reference number', 'code', 'sku', 'product code'],
-    fr: ['référence', 'réf', 'numéro de référence', 'code', 'sku', 'code produit'],
-    ar: ['المرجع', 'رقم المرجع', 'الرمز', 'كود', 'كود المنتج'],
+    en: ['reference', 'ref', 'reference number', 'code', 'sku', 'product code', 'part number'],
+    fr: ['référence', 'réf', 'numéro de référence', 'code', 'sku', 'code produit', 'numéro de pièce'],
+    ar: ['المرجع', 'رقم المرجع', 'الرمز', 'كود', 'كود المنتج', 'رقم الجزء'],
   },
   brand: {
-    en: ['brand', 'manufacturer', 'maker', 'marque'],
-    fr: ['marque', 'fabricant', 'producteur', 'constructeur'],
-    ar: ['العلامة التجارية', 'الصانع', 'المصنع'],
+    en: ['brand', 'manufacturer', 'maker', 'marque', 'supplier', 'vendor'],
+    fr: ['marque', 'fabricant', 'producteur', 'constructeur', 'fournisseur'],
+    ar: ['العلامة التجارية', 'الصانع', 'المصنع', 'المورد'],
   },
   stock: {
-    en: ['stock', 'quantity', 'qty', 'inventory', 'amount', 'count'],
-    fr: ['stock', 'quantité', 'qté', 'inventaire', 'montant', 'nombre'],
-    ar: ['المخزون', 'الكمية', 'المخزون الفعلي', 'العدد'],
+    en: ['stock', 'quantity', 'qty', 'inventory', 'amount', 'count', 'quantité'],
+    fr: ['stock', 'quantité', 'qté', 'inventaire', 'montant', 'nombre', 'stock initial'],
+    ar: ['المخزون', 'الكمية', 'المخزون الفعلي', 'العدد', 'الكمية المتاحة'],
   },
   purchasePrice: {
-    en: ['purchase price', 'cost', 'unit cost', 'purchase cost', 'buying price', 'prix d\'achat'],
-    fr: ['prix d\'achat', 'coût', 'coût unitaire', 'prix d\'achat', 'prix d\'achat'],
-    ar: ['سعر الشراء', 'التكلفة', 'سعر الوحدة', 'تكلفة الشراء'],
+    en: ['purchase price', 'cost', 'unit cost', 'purchase cost', 'buying price', 'cost price', 'unit price'],
+    fr: ['prix d\'achat', 'coût', 'coût unitaire', 'prix d\'achat unitaire', 'prix de revient', 'prix d\'achat unitaire'],
+    ar: ['سعر الشراء', 'التكلفة', 'سعر الوحدة', 'تكلفة الشراء', 'تكلفة الوحدة'],
   },
 };
 
@@ -228,6 +228,13 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
         return possibleNames.some(name => name.toLowerCase() === normalized);
       });
       
+      if (!key) {
+        console.warn(`[Header Mapping] Could not find column for '${fieldName}'`);
+        console.warn(`[Header Mapping] Available row keys:`, Object.keys(row));
+        console.warn(`[Header Mapping] Expected one of:`, possibleNames);
+        return '';
+      }
+      
       return key ? String(row[key] || '').trim() : '';
     };
 
@@ -242,7 +249,11 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
         return possibleNames.some(name => name.toLowerCase() === normalized);
       });
       
-      if (!key) return 0;
+      if (!key) {
+        console.warn(`[Header Mapping] Could not find column for '${fieldName}' in row keys:`, Object.keys(row));
+        console.warn(`[Header Mapping] Expected one of:`, possibleNames);
+        return 0;
+      }
       const value = row[key];
       
       // Handle both string and number types
@@ -278,6 +289,11 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
         const brand = getColumnValue(row, 'brand').trim();
         const stock = getNumericValue(row, 'stock');
         const purchasePrice = getNumericValue(row, 'purchasePrice');
+
+        // Debug: Log first row to verify extraction
+        if (i === 0) {
+          console.log(`[Parse Row 0] designation="${designation}" reference="${reference}" brand="${brand}" stock=${stock} purchasePrice=${purchasePrice}`);
+        }
 
         // Validate required fields
         if (!designation) {
@@ -471,6 +487,16 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
           // Log column headers for debugging
           console.log('CSV Column Headers:', Object.keys(products[0]));
           console.log('First row data:', products[0]);
+          
+          // Debug: Show which headers would match each field
+          const debugHeaderMapping = {
+            designation: getColumnValue(products[0], 'designation'),
+            reference: getColumnValue(products[0], 'reference'),
+            brand: getColumnValue(products[0], 'brand'),
+            stock: getNumericValue(products[0], 'stock'),
+            purchasePrice: getNumericValue(products[0], 'purchasePrice'),
+          };
+          console.log('Detected field values:', debugHeaderMapping);
           
           // If first row appears to be data (not headers), try parsing without headers
           const firstRowKeys = Object.keys(products[0]);
