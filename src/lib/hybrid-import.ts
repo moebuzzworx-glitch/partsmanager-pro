@@ -40,13 +40,19 @@ export async function hybridImportProducts(
     const batchSize = 100;
     let localSaved = 0;
 
-    for (let i = 0; i < products.length; i += batchSize) {
-      const batch = products.slice(i, i + batchSize);
+    // Add IDs to products before saving
+    const productsWithIds = products.map((product, index) => ({
+      id: product.id || `product-${Date.now()}-${index}`,
+      ...product,
+    }));
+
+    for (let i = 0; i < productsWithIds.length; i += batchSize) {
+      const batch = productsWithIds.slice(i, i + batchSize);
       const saved = await saveProductsBatch(batch, user.uid);
       localSaved += saved;
 
-      const progressPercent = Math.round((localSaved / products.length) * 100);
-      onLocalProgress?.(progressPercent, `Saved ${localSaved}/${products.length} to local storage`);
+      const progressPercent = Math.round((localSaved / productsWithIds.length) * 100);
+      onLocalProgress?.(progressPercent, `Saved ${localSaved}/${productsWithIds.length} to local storage`);
     }
 
     const localTime = Date.now() - localStartTime;
