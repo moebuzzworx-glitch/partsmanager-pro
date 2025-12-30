@@ -111,7 +111,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
       // STEP 2: Sync with Firebase in background (async, doesn't block UI)
       try {
         const productsRef = collection(firestore, 'products');
-        const q = query(productsRef, where('isDeleted', '==', false), where('userId', '==', user.uid));
+        const q = query(productsRef, where('deleted', '!=', true), where('userId', '==', user.uid));
         const querySnapshot = await getDocs(q);
         
         const freshProducts: Product[] = [];
@@ -129,10 +129,13 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
           });
         });
         
-        // Update with fresh data from Firebase
-        setProducts(freshProducts);
-        setDisplayedProducts(freshProducts.slice(0, 50));
-        setDisplayLimit(50);
+        // Only update if we got fresh data from Firebase
+        // If freshProducts is empty, it might mean sync hasn't completed yet, so keep IndexedDB data
+        if (freshProducts.length > 0) {
+          setProducts(freshProducts);
+          setDisplayedProducts(freshProducts.slice(0, 50));
+          setDisplayLimit(50);
+        }
         console.log(`✅ Updated from Firebase with ${freshProducts.length} products`);
       } catch (firebaseErr) {
         console.warn('Failed to fetch from Firebase (using cached data):', firebaseErr);

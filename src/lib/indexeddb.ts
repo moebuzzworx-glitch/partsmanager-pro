@@ -150,7 +150,7 @@ export async function saveProductsBatch(products: any[], userId: string): Promis
 }
 
 /**
- * Get all products for a user
+ * Get all products for a user (excluding deleted ones)
  */
 export async function getProductsByUser(userId: string): Promise<any[]> {
   const db = await getDB();
@@ -159,9 +159,23 @@ export async function getProductsByUser(userId: string): Promise<any[]> {
   const index = store.index('userId');
 
   return new Promise((resolve, reject) => {
-    const request = index.getAll(userId);
+    const items: any[] = [];
+    const request = index.openCursor();
+
     request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result || []);
+    request.onsuccess = (event: any) => {
+      const cursor = event.target.result;
+      if (cursor) {
+        const product = cursor.value;
+        // Only return non-deleted products for this user
+        if (product.userId === userId && product.deleted !== true) {
+          items.push(product);
+        }
+        cursor.continue();
+      } else {
+        resolve(items);
+      }
+    };
   });
 }
 
