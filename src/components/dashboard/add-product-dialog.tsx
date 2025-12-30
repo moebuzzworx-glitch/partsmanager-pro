@@ -104,6 +104,7 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
   const [localMessage, setLocalMessage] = useState('');
   const [firebaseProgress, setFirebaseProgress] = useState(0);
   const [firebaseMessage, setFirebaseMessage] = useState('');
+  const [firebaseSyncComplete, setFirebaseSyncComplete] = useState(false);
   const [formData, setFormData] = useState({
     designation: '',
     reference: '',
@@ -386,6 +387,7 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
         // Use hybrid import: local storage first, Firebase sync in background
         setLocalMessage('Saving to local storage...');
         setFirebaseMessage('Ready to sync...');
+        setFirebaseSyncComplete(false);
         
         const result = await hybridImportProducts(
           user,
@@ -411,11 +413,29 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
         setImportMessage(message);
         setImportProgress(100);
 
+        // Show success/completion messages
         if (!result.error) {
           toast({
-            title: 'Success',
-            description: message,
+            title: '✅ Products Saved Locally',
+            description: `${result.localSaved} products added to your inventory`,
           });
+          
+          // Show cloud sync status separately
+          setTimeout(() => {
+            if (result.firebaseSynced > 0) {
+              toast({
+                title: '☁️ Cloud Sync Complete',
+                description: `${result.firebaseSynced} products synced to cloud backup. Your inventory is fully secured!`,
+              });
+            } else if (result.error) {
+              toast({
+                title: '⚠️ Cloud Sync In Progress',
+                description: 'Your products are saved locally. Cloud backup will complete in the background.',
+                variant: 'default',
+              });
+            }
+          }, 500);
+          
           setOpen(false);
           if (onProductAdded) {
             onProductAdded();
