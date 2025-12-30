@@ -384,8 +384,8 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
       });
 
       try {
-        // Use hybrid import: local storage first, Firebase sync in background
-        setLocalMessage('Saving to local storage...');
+        // Use hybrid import: local storage first (visible), Firebase sync in background (invisible)
+        setLocalMessage('Saving to your inventory...');
         setFirebaseMessage('Ready to sync...');
         setFirebaseSyncComplete(false);
         
@@ -393,65 +393,49 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
           user,
           productsToImport,
           (progress, message) => {
+            // Local progress - shown in modal
             setLocalProgress(progress);
             setLocalMessage(message);
-            const combined = Math.round((progress * 0.5) / 100) * 100; // Local is 50% of progress
-            setImportProgress(combined);
           },
           (progress, message) => {
+            // Firebase progress - tracked but not shown (happens in background)
             setFirebaseProgress(progress);
             setFirebaseMessage(message);
-            const combined = 50 + Math.round((progress * 0.5) / 100) * 100; // Firebase is 50% of progress
-            setImportProgress(combined);
+            
+            // When Firebase sync reaches 100%, show a toast
+            if (progress === 100 && !firebaseSyncComplete) {
+              setFirebaseSyncComplete(true);
+              setTimeout(() => {
+                toast({
+                  title: '☁️ Cloud Backup Complete',
+                  description: `${result.localSaved} products synced to cloud. Your data is fully secured!`,
+                });
+              }, 1000);
+            }
           }
         );
 
         successCount = result.localSaved;
-        const message = result.message;
         
-        setImportStatus(result.error ? 'error' : 'success');
-        setImportMessage(message);
-        setImportProgress(100);
-
-        // Show success/completion messages
-        if (!result.error) {
-          toast({
-            title: '✅ Products Saved Locally',
-            description: `${result.localSaved} products added to your inventory`,
-          });
-          
-          // Show cloud sync status separately
-          setTimeout(() => {
-            if (result.firebaseSynced > 0) {
-              toast({
-                title: '☁️ Cloud Sync Complete',
-                description: `${result.firebaseSynced} products synced to cloud backup. Your inventory is fully secured!`,
-              });
-            } else if (result.error) {
-              toast({
-                title: '⚠️ Cloud Sync In Progress',
-                description: 'Your products are saved locally. Cloud backup will complete in the background.',
-                variant: 'default',
-              });
-            }
-          }, 500);
-          
+        // Close dialog immediately after local save completes
+        setImportStatus('success');
+        setLocalMessage(`✅ ${result.localSaved} products saved!`);
+        
+        // Show immediate toast that products are in inventory
+        toast({
+          title: '✅ Products Added to Inventory',
+          description: `${result.localSaved} products are now visible in your stock. Cloud backup is syncing in the background.`,
+        });
+        
+        // Close dialog after a brief moment to let user see the success message
+        setTimeout(() => {
           setOpen(false);
           if (onProductAdded) {
             onProductAdded();
           }
-        } else {
-          // Partial success - data is saved locally, sync failed
-          toast({
-            title: 'Partial Success',
-            description: message,
-            variant: 'destructive',
-          });
-          setOpen(false);
-          if (onProductAdded) {
-            onProductAdded();
-          }
-        }
+        }, 500);
+        
+        // Firebase sync continues in background, users don't wait for it
       } catch (error: any) {
         console.error('Import error:', error);
         setImportStatus('error');
@@ -652,10 +636,10 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
   return (
     <>
       <ProgressModal
-        isOpen={importStatus === 'processing'}
-        progress={importProgress}
-        title="Importing Products"
-        message={importMessage}
+        isOpen={importStatus === 'processing' && localProgress < 100}
+        progress={localProgress}
+        title="Saving Products to Inventory"
+        message={localMessage}
         isCancelable={false}
       />
       <Dialog open={open} onOpenChange={setOpen}>
