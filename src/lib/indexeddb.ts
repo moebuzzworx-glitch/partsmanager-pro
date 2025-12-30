@@ -31,12 +31,39 @@ const STORES = {
  * Initialize IndexedDB with all required stores
  */
 export async function initDB(): Promise<IDBDatabase> {
+  // getDB() now handles all initialization
+  return getDB();
+}
+
+/**
+ * Get database instance - ensures initialization
+ */
+async function getDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-
+    
     request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-
+    request.onsuccess = () => {
+      const db = request.result;
+      // Verify all stores exist
+      let allStoresExist = true;
+      for (const storeName of Object.values(STORES)) {
+        if (!db.objectStoreNames.contains(storeName)) {
+          allStoresExist = false;
+          break;
+        }
+      }
+      
+      if (allStoresExist) {
+        resolve(db);
+      } else {
+        // If stores don't exist, we need to reinitialize
+        db.close();
+        initDB().then(resolve).catch(reject);
+      }
+    };
+    
+    // Upgrade handler
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
 
@@ -80,17 +107,6 @@ export async function initDB(): Promise<IDBDatabase> {
         db.createObjectStore(STORES.METADATA, { keyPath: 'key' });
       }
     };
-  });
-}
-
-/**
- * Get database instance
- */
-async function getDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
   });
 }
 
@@ -580,11 +596,11 @@ export async function restoreProductFromTrash(
         // Queue the update for Firebase sync
         try {
           await addToSyncQueue(
-            userId,
             'products',
             productId,
             'update',
-            updatedProduct
+            updatedProduct,
+            userId
           );
           resolve();
         } catch (error) {
