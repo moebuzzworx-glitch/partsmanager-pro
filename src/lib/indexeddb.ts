@@ -397,14 +397,25 @@ export async function getUnsyncedItems(userId: string): Promise<SyncMetadata[]> 
   const index = store.index('synced');
 
   return new Promise((resolve, reject) => {
-    // Query for items where synced = false (using IDBKeyRange)
-    const range = IDBKeyRange.only(false);
-    const request = index.getAll(range);
+    // Iterate through ALL items in the synced index
+    // Then filter in JavaScript for synced === false and matching userId
+    const request = index.openCursor();
+    const items: SyncMetadata[] = [];
+    
     request.onerror = () => reject(request.error);
-    request.onsuccess = () => {
-      const items = request.result || [];
-      // Filter by userId
-      resolve(items.filter((item: any) => item.userId === userId) as SyncMetadata[]);
+    request.onsuccess = (event: any) => {
+      const cursor = event.target.result;
+      if (cursor) {
+        const item = cursor.value;
+        // Filter: synced must be false AND userId must match
+        if (item.synced === false && item.userId === userId) {
+          items.push(item);
+        }
+        cursor.continue();
+      } else {
+        // Done iterating through all items
+        resolve(items);
+      }
     };
   });
 }
