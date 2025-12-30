@@ -3,6 +3,8 @@
 import React, { useEffect } from 'react';
 import { ThemeProvider } from '@/components/theme-provider';
 import { FirebaseProvider, initializeFirebase } from '@/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { startBackgroundSync, setupOfflineListener } from '@/lib/sync-service';
 
 const { firebaseApp, firestore, auth } = initializeFirebase();
 
@@ -33,6 +35,30 @@ export function RootLayoutClient({ children }: { children: React.ReactNode }) {
 
     return () => {};
   }, []);
+
+  // Start background sync when user is authenticated
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user && firestore) {
+        console.log('User authenticated, starting background sync service...');
+        
+        // Start periodic background sync (every 30 seconds)
+        const cleanupSync = startBackgroundSync(firestore, user.uid, 30000);
+        
+        // Setup listener for when connection comes back online
+        const cleanupOffline = setupOfflineListener(firestore, user.uid);
+        
+        return () => {
+          cleanupSync();
+          cleanupOffline();
+        };
+      }
+    });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, [firestore]);
 
   return (
     <FirebaseProvider firebaseApp={firebaseApp} firestore={firestore} auth={auth}>
