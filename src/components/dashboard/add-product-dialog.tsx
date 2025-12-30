@@ -45,33 +45,49 @@ interface ProductRow {
 /**
  * Multi-language column header mapping with all supported synonyms
  * Supports: English, French, Arabic
+ * Includes common misspellings and variations for robustness
  */
 const COLUMN_HEADERS_MAP = {
   designation: {
-    en: ['designation', 'name', 'product name', 'product', 'description', 'libelle', 'designations'],
-    fr: ['désignation', 'nom', 'nom du produit', 'produit', 'description', 'libellé', 'designation', 'désignations'],
+    en: ['designation', 'name', 'product name', 'product', 'description', 'libelle', 'designations', 'title', 'item name', 'product title'],
+    fr: ['désignation', 'nom', 'nom du produit', 'produit', 'description', 'libellé', 'designation', 'désignations', 'nom produit', 'article'],
     ar: ['التسمية', 'الاسم', 'اسم المنتج', 'المنتج', 'الوصف', 'التسميات'],
   },
   reference: {
-    en: ['reference', 'ref', 'reference number', 'code', 'sku', 'product code', 'part number'],
-    fr: ['référence', 'réf', 'numéro de référence', 'code', 'sku', 'code produit', 'numéro de pièce'],
+    en: ['reference', 'ref', 'reference number', 'code', 'sku', 'product code', 'part number', 'item code', 'ref number'],
+    fr: ['référence', 'réf', 'numéro de référence', 'code', 'sku', 'code produit', 'numéro de pièce', 'reference', 'numero reference'],
     ar: ['المرجع', 'رقم المرجع', 'الرمز', 'كود', 'كود المنتج', 'رقم الجزء'],
   },
   brand: {
-    en: ['brand', 'manufacturer', 'maker', 'marque', 'supplier', 'vendor'],
-    fr: ['marque', 'fabricant', 'producteur', 'constructeur', 'fournisseur'],
+    en: ['brand', 'manufacturer', 'maker', 'marque', 'supplier', 'vendor', 'company', 'make'],
+    fr: ['marque', 'fabricant', 'producteur', 'constructeur', 'fournisseur', 'brand', 'societé'],
     ar: ['العلامة التجارية', 'الصانع', 'المصنع', 'المورد'],
   },
   stock: {
-    en: ['stock', 'quantity', 'qty', 'inventory', 'amount', 'count', 'quantité'],
-    fr: ['stock', 'quantité', 'qté', 'inventaire', 'montant', 'nombre', 'stock initial'],
+    en: ['stock', 'quantity', 'qty', 'inventory', 'amount', 'count', 'quantité', 'qty on hand', 'available'],
+    fr: ['stock', 'quantité', 'qté', 'inventaire', 'montant', 'nombre', 'stock initial', 'quantite', 'stock actuel'],
     ar: ['المخزون', 'الكمية', 'المخزون الفعلي', 'العدد', 'الكمية المتاحة'],
   },
   purchasePrice: {
-    en: ['purchase price', 'cost', 'unit cost', 'purchase cost', 'buying price', 'cost price', 'unit price'],
-    fr: ['prix d\'achat', 'coût', 'coût unitaire', 'prix d\'achat unitaire', 'prix de revient', 'prix d\'achat unitaire'],
+    en: ['purchase price', 'cost', 'unit cost', 'purchase cost', 'buying price', 'cost price', 'unit price', 'price', 'buy price', 'supplier price'],
+    fr: ['prix d\'achat', 'prix achat', 'prixachat', 'coût', 'coût unitaire', 'prix unitaire', 'prix d\'achat unitaire', 'prix de revient', 'prix dachat', 'prix d achat', 'cout', 'cout unitaire'],
     ar: ['سعر الشراء', 'التكلفة', 'سعر الوحدة', 'تكلفة الشراء', 'تكلفة الوحدة'],
   },
+};
+
+/**
+ * Normalize header text for fuzzy matching:
+ * - Remove accents (é → e, ç → c)
+ * - Remove special characters and spaces
+ * - Convert to lowercase
+ */
+const normalizeHeaderText = (text: string): string => {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .replace(/[^\w]/g, '') // Remove all non-word characters (spaces, apostrophes, dashes, etc.)
+    .trim();
 };
 
 export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: Dictionary; onProductAdded?: () => void }) {
@@ -217,15 +233,16 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
       return;
     }
 
-    // Helper function to find column value using multi-language mapping
+    // Helper function to find column value using fuzzy multi-language matching
     const getColumnValue = (row: ProductRow, fieldName: keyof typeof COLUMN_HEADERS_MAP): string => {
       // Get all possible column names for this field (all languages + synonyms)
       const possibleNames = Object.values(COLUMN_HEADERS_MAP[fieldName]).flat();
+      const normalizedPossibleNames = possibleNames.map(normalizeHeaderText);
       
-      // Try to find matching key in row (case-insensitive)
+      // Try to find matching key in row using fuzzy matching (case-insensitive, ignore special chars)
       const key = Object.keys(row).find(k => {
-        const normalized = k.trim().toLowerCase();
-        return possibleNames.some(name => name.toLowerCase() === normalized);
+        const normalized = normalizeHeaderText(k);
+        return normalizedPossibleNames.includes(normalized);
       });
       
       if (!key) {
@@ -238,15 +255,16 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
       return key ? String(row[key] || '').trim() : '';
     };
 
-    // Helper function to get numeric value from row
+    // Helper function to get numeric value from row using fuzzy matching
     const getNumericValue = (row: ProductRow, fieldName: keyof typeof COLUMN_HEADERS_MAP): number => {
       // Get all possible column names for this field (all languages + synonyms)
       const possibleNames = Object.values(COLUMN_HEADERS_MAP[fieldName]).flat();
+      const normalizedPossibleNames = possibleNames.map(normalizeHeaderText);
       
-      // Try to find matching key in row (case-insensitive)
+      // Try to find matching key in row using fuzzy matching
       const key = Object.keys(row).find(k => {
-        const normalized = k.trim().toLowerCase();
-        return possibleNames.some(name => name.toLowerCase() === normalized);
+        const normalized = normalizeHeaderText(k);
+        return normalizedPossibleNames.includes(normalized);
       });
       
       if (!key) {
@@ -533,7 +551,7 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
                     const headerRow = rows[0];
                     const dataProducts = rows.slice(1).map((row: any[]) => {
                       const obj: ProductRow = {};
-                      headerRow.forEach((header, index) => {
+                      headerRow.forEach((header: any, index: number) => {
                         obj[header || `column_${index}`] = row[index];
                       });
                       return obj;
@@ -716,7 +734,7 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
                       accept=".csv,.xlsx,.xls"
                       onChange={handleFileUpload}
                       className="hidden"
-                      disabled={importStatus === 'processing'}
+                      disabled={importStatus !== 'idle'}
                     />
                   </div>
                   <Button variant="outline" className="w-full" onClick={downloadTemplate}>
