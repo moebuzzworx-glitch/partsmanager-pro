@@ -43,7 +43,7 @@ import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
 import { markProductAsDeleted } from "@/lib/indexeddb";
 import { useToast } from "@/hooks/use-toast";
-import { getProductsByUser, getStorageSize, initDB } from "@/lib/indexeddb";
+import { getProductsByUser, getStorageSize, initDB, saveProduct } from "@/lib/indexeddb";
 import { useOffline } from "@/hooks/use-offline";
 
 interface Product {
@@ -133,6 +133,19 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
             });
           }
         });
+        
+        // IMPORTANT: Save Firebase products back to IndexedDB so they can be deleted/modified
+        if (freshProducts.length > 0) {
+          console.log('[Stock] Saving', freshProducts.length, 'products from Firebase to IndexedDB');
+          for (const product of freshProducts) {
+            try {
+              await saveProduct(product, user.uid);
+            } catch (saveErr) {
+              console.warn('[Stock] Failed to save product to IndexedDB:', product.id, saveErr);
+            }
+          }
+          console.log('[Stock] Finished syncing products to IndexedDB');
+        }
         
         // Only update if we got fresh data from Firebase
         // If freshProducts is empty, it might mean sync hasn't completed yet, so keep IndexedDB data

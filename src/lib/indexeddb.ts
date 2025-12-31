@@ -506,82 +506,94 @@ export async function addToSyncQueue(
 }
 
 /**
- * Get unsync'd items from queue
+ * Get unsync'd items from queue - SIMPLIFIED VERSION
  */
 export async function getUnsyncedItems(userId: string): Promise<SyncMetadata[]> {
   console.log('[IndexedDB] getUnsyncedItems called for user:', userId);
-  const db = await getDB();
-  console.log('[IndexedDB] Got database instance');
+  
+  try {
+    const db = await getDB();
+    console.log('[IndexedDB] Got database for getUnsyncedItems');
 
-  return new Promise((resolve, reject) => {
-    const items: SyncMetadata[] = [];
-    let completed = false;
-    
-    // Set a timeout to prevent infinite hanging
-    const timeoutId = setTimeout(() => {
-      console.error('[IndexedDB] getUnsyncedItems timeout (5s) - returning', items.length, 'items collected so far');
-      completed = true;
-      resolve(items);
-    }, 5000); // 5 second timeout
-    
-    try {
-      console.log('[IndexedDB] Creating transaction...');
-      const tx = db.transaction(STORES.SYNC_QUEUE, 'readonly');
-      console.log('[IndexedDB] Transaction created');
-      const store = tx.objectStore(STORES.SYNC_QUEUE);
-      console.log('[IndexedDB] Got object store');
+    return new Promise((resolve, reject) => {
+      let completed = false;
       
-      // Use getAll() - simpler and more reliable than cursor
-      console.log('[IndexedDB] Calling getAll...');
-      const request = store.getAll();
-      
-      request.onerror = () => {
+      // Hard timeout after 3 seconds
+      const timeoutId = setTimeout(() => {
         if (!completed) {
-          console.error('[IndexedDB] getAll request error:', request.error);
+          console.warn('[IndexedDB] getUnsyncedItems timeout - returning empty array');
           completed = true;
-          clearTimeout(timeoutId);
-          reject(request.error);
+          resolve([]); // Return empty instead of hanging
         }
-      };
-      
-      request.onsuccess = () => {
-        if (completed) {
-          console.log('[IndexedDB] getAll onsuccess but already completed');
-          return;
-        }
-        
-        console.log('[IndexedDB] getAll onsuccess called');
-        try {
-          const allItems = request.result as SyncMetadata[];
-          console.log('[IndexedDB] getAll returned', allItems.length, 'total items');
-          
-          // Filter for unsynced items from this user
-          for (const item of allItems) {
-            if (item.synced === false && item.userId === userId) {
-              items.push(item);
-              console.log('[IndexedDB] Found unsynced item:', item.id);
-            }
+      }, 3000);
+
+      try {
+        const tx = db.transaction(STORES.SYNC_QUEUE, 'readonly');
+        const store = tx.objectStore(STORES.SYNC_QUEUE);
+
+        // Simple getAll request
+        const getAllRequest = store.getAll();
+
+        getAllRequest.onerror = () => {
+          if (!completed) {
+            console.error('[IndexedDB] getAll error:', getAllRequest.error);
+            completed = true;
+            clearTimeout(timeoutId);
+            resolve([]); // Return empty on error instead of rejecting
           }
-          
-          console.log('[IndexedDB] Filtered to', items.length, 'unsynced items for user', userId);
-          
-          completed = true;
-          clearTimeout(timeoutId);
-          resolve(items);
-        } catch (err) {
-          console.error('[IndexedDB] Error processing getAll results:', err);
-          completed = true;
-          clearTimeout(timeoutId);
-          reject(err);
-        }
-      };
-    } catch (err) {
-      console.error('[IndexedDB] Error in getUnsyncedItems:', err);
-      completed = true;
-      clearTimeout(timeoutId);
-      reject(err);
-    }
-  });
+        };
+
+        getAllRequest.onsuccess = () => {
+          if (completed) return;
+
+          try {
+            const allItems = getAllRequest.result as SyncMetadata[];
+            console.log('[IndexedDB] getAll returned', allItems.length, 'items');
+
+            // Filter for unsynced items
+            const unsyncedItems = allItems.filter(
+              (item) => item.synced === false && item.userId === userId
+            );
+
+            console.log('[IndexedDB] Filtered to', unsyncedItems.length, 'unsynced items');
+
+            completed = true;
+            clearTimeout(timeoutId);
+            resolve(unsyncedItems);
+          } catch (err) {
+            console.error('[IndexedDB] Error processing results:', err);
+            completed = true;
+            clearTimeout(timeoutId);
+            resolve([]); // Return empty on error
+          }
+        };
+
+        // Transaction complete/error handlers
+        tx.oncomplete = () => {
+          if (!completed) {
+            console.log('[IndexedDB] Transaction completed');
+          }
+        };
+
+        tx.onerror = () => {
+          if (!completed) {
+            console.error('[IndexedDB] Transaction error:', tx.error);
+            completed = true;
+            clearTimeout(timeoutId);
+            resolve([]); // Return empty on transaction error
+          }
+        };
+      } catch (err) {
+        console.error('[IndexedDB] Exception in getUnsyncedItems:', err);
+        completed = true;
+        clearTimeout(timeoutId);
+        resolve([]); // Return empty on exception
+      }
+    });
+  } catch (err) {
+    console.error('[IndexedDB] Error getting database:', err);
+    return []; // Return empty if can't even get database
+  }
 }
 
 /**
