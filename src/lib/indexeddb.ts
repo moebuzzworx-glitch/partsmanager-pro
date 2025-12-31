@@ -465,13 +465,17 @@ export async function markAsSynced(id: string): Promise<void> {
       if (item) {
         item.synced = true;
         const putRequest = store.put(item);
-        putRequest.onsuccess = () => resolve();
+        putRequest.onsuccess = () => {
+          // Make sure transaction completes
+          tx.oncomplete = () => resolve();
+        };
         putRequest.onerror = () => reject(putRequest.error);
       } else {
-        resolve();
+        tx.oncomplete = () => resolve();
       }
     };
     getRequest.onerror = () => reject(getRequest.error);
+    tx.onerror = () => reject(tx.error);
   });
 }
 

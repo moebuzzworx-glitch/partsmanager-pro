@@ -88,6 +88,9 @@ export async function syncToFirebase(
       try {
         await syncItem(firestore, item, userId);
         syncProgress.syncedItems++;
+        
+        // Delete the synced item from queue
+        await deleteSyncQueueItem(item.id);
         updateProgress();
 
         // Throttle: wait 50ms between items to avoid quota issues
@@ -97,6 +100,13 @@ export async function syncToFirebase(
         console.error(`Failed to sync item ${item.id}:`, error);
         syncProgress.failedItems++;
         updateProgress();
+        
+        // For quota errors, stop trying for now
+        const errorMessage = error instanceof Error ? error.message : '';
+        if (errorMessage.includes('quota') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
+          console.warn('Firebase quota exceeded, pausing all syncs');
+          break;
+        }
       }
     }
   } catch (error) {
