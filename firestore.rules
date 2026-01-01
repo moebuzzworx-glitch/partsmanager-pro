@@ -183,54 +183,105 @@ service cloud.firestore {
     // --------------------------------------------------------------------
 
     /**
-     * @description Manages supplier data with per-user isolation
+     * @description Manages supplier data with per-user isolation and Git-like sync support
      * @access Any verified user can read/write their own suppliers
      * Each supplier document MUST have a userId field matching the authenticated user
+     * 
+     * Git-Like Sync Support:
+     * - Suppliers now include version and updatedAt fields for conflict resolution
+     * - userId field is required and immutable
+     * 
      * Note: Subscription-based restrictions (trial read-only) are handled at application level
      */
     match /suppliers/{supplierId} {
       allow read: if isEmailVerified() && resource.data.userId == request.auth.uid;
-      allow create: if isEmailVerified() && request.resource.data.userId == request.auth.uid;
-      allow update: if isEmailVerified() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
+      allow create: if isEmailVerified() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.version != null &&
+                       request.resource.data.updatedAt != null;
+      allow update: if isEmailVerified() && 
+                       resource.data.userId == request.auth.uid && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.version != null &&
+                       request.resource.data.updatedAt != null;
       allow delete: if isEmailVerified() && resource.data.userId == request.auth.uid;
     }
 
     /**
-     * @description Manages customer data with per-user isolation
+     * @description Manages customer data with per-user isolation and Git-like sync support
      * @access Any verified user can read/write their own customers
      * Each customer document MUST have a userId field matching the authenticated user
+     * 
+     * Git-Like Sync Support:
+     * - Customers now include version and updatedAt fields for conflict resolution
+     * - userId field is required and immutable
+     * 
      * Note: Subscription-based restrictions (trial read-only) are handled at application level
      */
     match /customers/{customerId} {
       allow read: if isEmailVerified() && resource.data.userId == request.auth.uid;
-      allow create: if isEmailVerified() && request.resource.data.userId == request.auth.uid;
-      allow update: if isEmailVerified() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
+      allow create: if isEmailVerified() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.version != null &&
+                       request.resource.data.updatedAt != null;
+      allow update: if isEmailVerified() && 
+                       resource.data.userId == request.auth.uid && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.version != null &&
+                       request.resource.data.updatedAt != null;
       allow delete: if isEmailVerified() && resource.data.userId == request.auth.uid;
     }
 
     /**
-     * @description Manages product inventory with per-user isolation
+     * @description Manages product inventory with per-user isolation and Git-like sync support
      * @access Any verified user can read/write their own products
      * Each product document MUST have a userId field matching the authenticated user
+     * 
+     * Git-Like Sync Support:
+     * - Products now include version and updatedAt fields for conflict resolution
+     * - Soft deletes: documents marked with deleted=true instead of being removed
+     * - Last-write-wins: version and updatedAt fields track changes
+     * - userId field is required and immutable
+     * 
      * Note: Subscription-based restrictions (trial read-only) are handled at application level
      */
     match /products/{productId} {
       allow read: if isEmailVerified() && resource.data.userId == request.auth.uid;
-      allow create: if isEmailVerified() && request.resource.data.userId == request.auth.uid;
-      allow update: if isEmailVerified() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
+      allow create: if isEmailVerified() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.version != null &&
+                       request.resource.data.updatedAt != null;
+      allow update: if isEmailVerified() && 
+                       resource.data.userId == request.auth.uid && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.version != null &&
+                       request.resource.data.updatedAt != null;
+      // Allow soft delete (marked with deleted=true) or permanent delete
       allow delete: if isEmailVerified() && resource.data.userId == request.auth.uid;
     }
 
     /**
-     * @description Manages purchase orders with per-user isolation
+     * @description Manages purchase orders with per-user isolation and Git-like sync support
      * @access Any verified user can read/write their own purchases
      * Each purchase document MUST have a userId field matching the authenticated user
+     * 
+     * Git-Like Sync Support:
+     * - Purchases now include version and updatedAt fields for conflict resolution
+     * - userId field is required and immutable
+     * 
      * Note: Subscription-based restrictions (trial read-only) are handled at application level
      */
     match /purchases/{purchaseId} {
       allow read: if isEmailVerified() && resource.data.userId == request.auth.uid;
-      allow create: if isEmailVerified() && request.resource.data.userId == request.auth.uid;
-      allow update: if isEmailVerified() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
+      allow create: if isEmailVerified() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.version != null &&
+                       request.resource.data.updatedAt != null;
+      allow update: if isEmailVerified() && 
+                       resource.data.userId == request.auth.uid && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.version != null &&
+                       request.resource.data.updatedAt != null;
       allow delete: if isEmailVerified() && resource.data.userId == request.auth.uid;
 
       /**
@@ -246,15 +297,27 @@ service cloud.firestore {
     }
 
     /**
-     * @description Manages sales to customers with per-user isolation
+     * @description Manages sales to customers with per-user isolation and Git-like sync support
      * @access Any verified user can read/write their own sales
      * Each sale document MUST have a userId field matching the authenticated user
+     * 
+     * Git-Like Sync Support:
+     * - Sales now include version and updatedAt fields for conflict resolution
+     * - userId field is required and immutable
+     * 
      * Note: Subscription-based restrictions (trial read-only) are handled at application level
      */
     match /sales/{saleId} {
       allow read: if isEmailVerified() && resource.data.userId == request.auth.uid;
-      allow create: if isEmailVerified() && request.resource.data.userId == request.auth.uid;
-      allow update: if isEmailVerified() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
+      allow create: if isEmailVerified() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.version != null &&
+                       request.resource.data.updatedAt != null;
+      allow update: if isEmailVerified() && 
+                       resource.data.userId == request.auth.uid && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.version != null &&
+                       request.resource.data.updatedAt != null;
       allow delete: if isEmailVerified() && resource.data.userId == request.auth.uid;
 
       /**
