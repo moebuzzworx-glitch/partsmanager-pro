@@ -4,7 +4,8 @@ import React, { useEffect } from 'react';
 import { ThemeProvider } from '@/components/theme-provider';
 import { FirebaseProvider, initializeFirebase } from '@/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { startBackgroundSync, setupOfflineListener } from '@/lib/sync-service';
+import { startSyncWorker, stopSyncWorker } from '@/lib/sync-worker';
+import { startPullService, stopPullService, onUserActivity } from '@/lib/pull-service';
 
 const { firebaseApp, firestore, auth } = initializeFirebase();
 
@@ -36,21 +37,33 @@ export function RootLayoutClient({ children }: { children: React.ReactNode }) {
     return () => {};
   }, []);
 
-  // Start background sync when user is authenticated
+  // Start background sync (push) and pull services when user is authenticated
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user && firestore) {
-        console.log('User authenticated, starting background sync service...');
+        console.log('User authenticated, starting Git-like sync services...');
         
-        // Start periodic background sync (every 30 seconds)
-        const cleanupSync = startBackgroundSync(firestore, user.uid, 30000);
+        // Start FIFO push worker (every 30 seconds, checks queue and syncs to Firebase)
+        const cleanupSync = startSyncWorker(30000);
         
-        // Setup listener for when connection comes back online
-        const cleanupOffline = setupOfflineListener(firestore, user.uid);
+        // Start adaptive pull service (every 10-30 minutes, fetches Firebase changes)
+        const cleanupPull = startPullService();
+        
+        // Register activity listener to reset pull interval
+        const activityHandler = () => onUserActivity();
+        ['click', 'keypress', 'scroll'].forEach(event => {
+          document.addEventListener(event, activityHandler);
+        });
         
         return () => {
+          // Cleanup: stop all services
+          stopSyncWorker();
+          stopPullService();
+          ['click', 'keypress', 'scroll'].forEach(event => {
+            document.removeEventListener(event, activityHandler);
+          });
           cleanupSync();
-          cleanupOffline();
+          cleanupPull();
         };
       }
     });
