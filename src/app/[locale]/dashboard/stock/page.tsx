@@ -254,13 +254,13 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
     setIsDeleting(true);
     setDeleteProgress(0);
     try {
-      // Mark each product as deleted in hybrid system (local + queued for Firebase)
+      // Delete each product using hybrid system (local + queued for Firebase)
       const productIds = Array.from(selectedProducts);
       const totalProducts = productIds.length;
       let processedCount = 0;
 
       for (const productId of productIds) {
-        await markProductAsDeleted(productId, user.uid);
+        await hybridDeleteProduct(user, productId);
         processedCount++;
         setDeleteProgress(Math.round((processedCount / totalProducts) * 100));
       }

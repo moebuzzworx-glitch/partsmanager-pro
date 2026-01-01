@@ -185,7 +185,10 @@ export default function TrashPage({
 
       // Process each item and update progress
       for (const productId of items) {
-        await restoreProduct(productId, user.uid);
+        const product = deletedItems.find(p => p.id === productId);
+        if (product) {
+          await hybridRestoreProduct(user, productId, product);
+        }
         processedCount++;
         setActionProgress(Math.round((processedCount / totalItems) * 100));
       }
