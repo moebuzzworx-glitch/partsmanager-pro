@@ -166,8 +166,9 @@ export async function saveProduct(product: any, userId: string): Promise<void> {
   const productWithMeta = {
     ...product,
     userId,
+    version: product.version || 1, // Track version for conflict resolution
     createdAt: product.createdAt || new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    updatedAt: product.updatedAt || Date.now(),
   };
 
   return new Promise((resolve, reject) => {
@@ -457,6 +458,10 @@ export async function deleteInvoice(invoiceId: string): Promise<void> {
 /**
  * Add item to sync queue (for offline changes)
  */
+/**
+ * @deprecated Use queueCommit from commit-queue.ts instead
+ * Kept for backward compatibility during migration
+ */
 export async function addToSyncQueue(
   collectionName: string,
   docId: string,
@@ -464,135 +469,45 @@ export async function addToSyncQueue(
   data: any,
   userId: string
 ): Promise<number> {
-  console.log('[IndexedDB] addToSyncQueue called:', collectionName, '/', docId, 'action:', action);
-  const db = await getDB();
-  console.log('[IndexedDB] Got database for addToSyncQueue');
-  const tx = db.transaction(STORES.SYNC_QUEUE, 'readwrite');
-  const store = tx.objectStore(STORES.SYNC_QUEUE);
-
-  const queueItem: SyncMetadata = {
-    id: `${collectionName}-${docId}-${Date.now()}`,
-    collectionName,
-    docId,
-    action,
-    data,
-    timestamp: Date.now(),
-    synced: false,
-    attempts: 0,
-    userId,
-  };
-
-  return new Promise((resolve, reject) => {
-    const request = store.add(queueItem);
-    request.onerror = () => {
-      console.error('[IndexedDB] Error adding to queue:', request.error);
-      reject(request.error);
-    };
-    request.onsuccess = () => {
-      console.log('[IndexedDB] Item added to queue:', queueItem.id);
-      
-      // Wait for transaction
-      tx.oncomplete = () => {
-        console.log('[IndexedDB] addToSyncQueue transaction complete');
-        resolve(request.result as number);
-      };
-      
-      tx.onerror = () => {
-        console.error('[IndexedDB] addToSyncQueue transaction error:', tx.error);
-        reject(tx.error);
-      };
-    };
-  });
+  console.warn('[IndexedDB] ⚠️ addToSyncQueue is deprecated, use queueCommit from commit-queue.ts');
+  
+  try {
+    const { queueCommit } = await import('./commit-queue');
+    await queueCommit(action as any, collectionName, docId, data, userId);
+    return 1; // Return dummy value for compatibility
+  } catch (err) {
+    console.error('[IndexedDB] Error in deprecated addToSyncQueue:', err);
+    throw err;
+  }
 }
 
 /**
- * Get unsync'd items from queue - SIMPLIFIED VERSION
+ * @deprecated Use getUnpushedCommits from commit-queue.ts instead
+ * Kept for backward compatibility during migration to Git-like sync
+ * This function is no longer needed with the new commit-based sync system
  */
 export async function getUnsyncedItems(userId: string): Promise<SyncMetadata[]> {
-  console.log('[IndexedDB] getUnsyncedItems called for user:', userId);
+  console.warn('[IndexedDB] ⚠️ getUnsyncedItems is deprecated, use getUnpushedCommits from commit-queue.ts');
   
   try {
-    const db = await getDB();
-    console.log('[IndexedDB] Got database for getUnsyncedItems');
-
-    return new Promise((resolve, reject) => {
-      let completed = false;
-      
-      // Hard timeout after 3 seconds
-      const timeoutId = setTimeout(() => {
-        if (!completed) {
-          console.warn('[IndexedDB] getUnsyncedItems timeout - returning empty array');
-          completed = true;
-          resolve([]); // Return empty instead of hanging
-        }
-      }, 3000);
-
-      try {
-        const tx = db.transaction(STORES.SYNC_QUEUE, 'readonly');
-        const store = tx.objectStore(STORES.SYNC_QUEUE);
-
-        // Simple getAll request
-        const getAllRequest = store.getAll();
-
-        getAllRequest.onerror = () => {
-          if (!completed) {
-            console.error('[IndexedDB] getAll error:', getAllRequest.error);
-            completed = true;
-            clearTimeout(timeoutId);
-            resolve([]); // Return empty on error instead of rejecting
-          }
-        };
-
-        getAllRequest.onsuccess = () => {
-          if (completed) return;
-
-          try {
-            const allItems = getAllRequest.result as SyncMetadata[];
-            console.log('[IndexedDB] getAll returned', allItems.length, 'items');
-
-            // Filter for unsynced items
-            const unsyncedItems = allItems.filter(
-              (item) => item.synced === false && item.userId === userId
-            );
-
-            console.log('[IndexedDB] Filtered to', unsyncedItems.length, 'unsynced items');
-
-            completed = true;
-            clearTimeout(timeoutId);
-            resolve(unsyncedItems);
-          } catch (err) {
-            console.error('[IndexedDB] Error processing results:', err);
-            completed = true;
-            clearTimeout(timeoutId);
-            resolve([]); // Return empty on error
-          }
-        };
-
-        // Transaction complete/error handlers
-        tx.oncomplete = () => {
-          if (!completed) {
-            console.log('[IndexedDB] Transaction completed');
-          }
-        };
-
-        tx.onerror = () => {
-          if (!completed) {
-            console.error('[IndexedDB] Transaction error:', tx.error);
-            completed = true;
-            clearTimeout(timeoutId);
-            resolve([]); // Return empty on transaction error
-          }
-        };
-      } catch (err) {
-        console.error('[IndexedDB] Exception in getUnsyncedItems:', err);
-        completed = true;
-        clearTimeout(timeoutId);
-        resolve([]); // Return empty on exception
-      }
-    });
+    const { getUnpushedCommits } = await import('./commit-queue');
+    const commits = await getUnpushedCommits(userId);
+    
+    // Convert new CommitObject format to old SyncMetadata format for compatibility
+    return commits.map((commit: any) => ({
+      id: commit.id,
+      collectionName: commit.collectionName,
+      docId: commit.docId,
+      action: commit.type,
+      data: commit.data,
+      timestamp: commit.timestamp,
+      synced: commit.synced,
+      attempts: commit.retries || 0,
+      userId: commit.userId,
+    }));
   } catch (err) {
-    console.error('[IndexedDB] Error getting database:', err);
-    return []; // Return empty if can't even get database
+    console.error('[IndexedDB] Error in deprecated getUnsyncedItems:', err);
+    return []; // Return empty on error for backward compatibility
   }
 }
 
@@ -815,101 +730,48 @@ export async function permanentlyDeleteProduct(
 }
 
 /**
- * Mark product as deleted (move to trash) - stores deletion flag locally and queues to sync
+ * @deprecated Use hybridDeleteProduct from hybrid-import-v2.ts instead
+ * Kept for backward compatibility during migration to Git-like sync
  */
 export async function markProductAsDeleted(productId: string, userId: string): Promise<void> {
-  const db = await getDB();
-  const tx = db.transaction([STORES.PRODUCTS, STORES.SYNC_QUEUE], 'readwrite');
-  const productStore = tx.objectStore(STORES.PRODUCTS);
-  const syncStore = tx.objectStore(STORES.SYNC_QUEUE);
-
-  return new Promise((resolve, reject) => {
-    // First, get the product
-    const getRequest = productStore.get(productId);
-
-    getRequest.onerror = () => reject(getRequest.error);
-    getRequest.onsuccess = () => {
-      const product = getRequest.result;
-      if (!product) {
-        reject(new Error('Product not found'));
-        return;
-      }
-
-      // Mark as deleted locally
-      product.deleted = true;
-      product.deletedAt = new Date().toISOString();
-      
-      const updateRequest = productStore.put(product);
-      updateRequest.onerror = () => reject(updateRequest.error);
-      updateRequest.onsuccess = () => {
-        // Queue the deletion for sync
-        const syncItem: SyncMetadata = {
-          id: `${productId}-delete-${Date.now()}`,
-          collectionName: STORES.PRODUCTS,
-          docId: productId,
-          action: 'delete',
-          data: { deleted: true, deletedAt: product.deletedAt },
-          timestamp: Date.now(),
-          synced: false,
-          attempts: 0,
-          userId,
-        };
-
-        const syncRequest = syncStore.add(syncItem);
-        syncRequest.onerror = () => reject(syncRequest.error);
-        syncRequest.onsuccess = () => resolve();
-      };
-    };
-  });
+  console.warn('[IndexedDB] ⚠️ markProductAsDeleted is deprecated, use hybridDeleteProduct from hybrid-import-v2.ts');
+  
+  try {
+    const { hybridDeleteProduct } = await import('./hybrid-import-v2');
+    const user = { uid: userId } as any;
+    await hybridDeleteProduct(user, productId);
+  } catch (err) {
+    console.error('[IndexedDB] Error in deprecated markProductAsDeleted:', err);
+    throw err;
+  }
 }
 
 /**
- * Restore product from trash - clears deletion flag locally and queues update to sync
+ * @deprecated Use hybridRestoreProduct from hybrid-import-v2.ts instead
+ * Kept for backward compatibility during migration to Git-like sync
  */
 export async function restoreProduct(productId: string, userId: string): Promise<void> {
-  const db = await getDB();
-  const tx = db.transaction([STORES.PRODUCTS, STORES.SYNC_QUEUE], 'readwrite');
-  const productStore = tx.objectStore(STORES.PRODUCTS);
-  const syncStore = tx.objectStore(STORES.SYNC_QUEUE);
-
-  return new Promise((resolve, reject) => {
-    // First, get the product
-    const getRequest = productStore.get(productId);
-
-    getRequest.onerror = () => reject(getRequest.error);
-    getRequest.onsuccess = () => {
-      const product = getRequest.result;
-      if (!product) {
-        reject(new Error('Product not found'));
-        return;
-      }
-
-      // Remove deletion flag
-      product.deleted = false;
-      delete product.deletedAt;
-      
-      const updateRequest = productStore.put(product);
-      updateRequest.onerror = () => reject(updateRequest.error);
-      updateRequest.onsuccess = () => {
-        // Queue the restoration update for sync
-        const syncItem: SyncMetadata = {
-          id: `${productId}-restore-${Date.now()}`,
-          collectionName: STORES.PRODUCTS,
-          docId: productId,
-          action: 'update',
-          data: { deleted: false },
-          timestamp: Date.now(),
-          synced: false,
-          attempts: 0,
-          userId,
-        };
-
-        const syncRequest = syncStore.add(syncItem);
-        syncRequest.onerror = () => reject(syncRequest.error);
-        syncRequest.onsuccess = () => resolve();
-      };
-    };
-  });
+  console.warn('[IndexedDB] ⚠️ restoreProduct is deprecated, use hybridRestoreProduct from hybrid-import-v2.ts');
+  
+  try {
+    const { hybridRestoreProduct } = await import('./hybrid-import-v2');
+    const db = await getDB();
+    const tx = db.transaction(STORES.PRODUCTS, 'readonly');
+    const store = tx.objectStore(STORES.PRODUCTS);
+    
+    const product = await new Promise<any>((resolve) => {
+      const req = store.get(productId);
+      req.onsuccess = () => resolve(req.result);
+    });
+    
+    if (product) {
+      const user = { uid: userId } as any;
+      await hybridRestoreProduct(user, productId, product);
+    }
+  } catch (err) {
+    console.error('[IndexedDB] Error in deprecated restoreProduct:', err);
+    throw err;
+  }
 }
 
 /**
