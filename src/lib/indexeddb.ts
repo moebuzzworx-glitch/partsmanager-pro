@@ -169,7 +169,7 @@ export async function saveProduct(product: any, userId: string): Promise<void> {
     version: product.version || 1, // Track version for conflict resolution
     createdAt: product.createdAt || new Date().toISOString(),
     updatedAt: product.updatedAt || Date.now(),
-    isDeleted: product.isDeleted || false, // Ensure isDeleted is always set (default: false)
+    isDeleted: product.isDeleted ?? false, // Ensure isDeleted is always set (default: false)
   };
 
   return new Promise((resolve, reject) => {
@@ -214,7 +214,7 @@ export async function saveProductsBatch(products: any[], userId: string): Promis
         userId,
         createdAt: product.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        isDeleted: product.isDeleted || false, // Ensure isDeleted is always set (default: false)
+        isDeleted: product.isDeleted ?? false, // Ensure isDeleted is always set (default: false)
       };
 
       const request = store.put(productWithMeta);
@@ -263,6 +263,38 @@ export async function getProductsByUser(userId: string): Promise<any[]> {
         cursor.continue();
       } else {
         resolve(items);
+      }
+    };
+  });
+}
+
+/**
+ * Remove all deleted products from IndexedDB for a user
+ * (cleanup deleted items from cache so they don't keep appearing)
+ */
+export async function removeDeletedProductsFromCache(userId: string): Promise<number> {
+  const db = await getDB();
+  const tx = db.transaction(STORES.PRODUCTS, 'readwrite');
+  const store = tx.objectStore(STORES.PRODUCTS);
+  const index = store.index('userId');
+
+  return new Promise((resolve, reject) => {
+    let removed = 0;
+    const request = index.openCursor();
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = (event: any) => {
+      const cursor = event.target.result;
+      if (cursor) {
+        const product = cursor.value;
+        // Delete products that are marked as deleted
+        if (product.userId === userId && product.isDeleted === true) {
+          cursor.delete();
+          removed++;
+        }
+        cursor.continue();
+      } else {
+        resolve(removed);
       }
     };
   });

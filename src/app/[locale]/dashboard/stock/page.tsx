@@ -43,7 +43,7 @@ import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
 import { hybridDeleteProduct } from "@/lib/hybrid-import-v2";
 import { useToast } from "@/hooks/use-toast";
-import { getProductsByUser, getStorageSize, initDB, saveProduct } from "@/lib/indexeddb";
+import { getProductsByUser, getStorageSize, initDB, saveProduct, removeDeletedProductsFromCache } from "@/lib/indexeddb";
 import { useOffline } from "@/hooks/use-offline";
 
 interface Product {
@@ -110,6 +110,12 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
       
       // STEP 2: Sync with Firebase in background (async, doesn't block UI)
       try {
+        // First, clean up any deleted products from IndexedDB cache
+        const removed = await removeDeletedProductsFromCache(user.uid);
+        if (removed > 0) {
+          console.log(`[Stock] Removed ${removed} deleted products from IndexedDB cache`);
+        }
+
         const productsRef = collection(firestore, 'products');
         // Query only by userId to avoid needing composite indexes
         // We'll filter deleted products in JavaScript
