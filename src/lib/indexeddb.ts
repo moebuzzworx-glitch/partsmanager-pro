@@ -169,6 +169,7 @@ export async function saveProduct(product: any, userId: string): Promise<void> {
     version: product.version || 1, // Track version for conflict resolution
     createdAt: product.createdAt || new Date().toISOString(),
     updatedAt: product.updatedAt || Date.now(),
+    isDeleted: product.isDeleted || false, // Ensure isDeleted is always set (default: false)
   };
 
   return new Promise((resolve, reject) => {
@@ -213,6 +214,7 @@ export async function saveProductsBatch(products: any[], userId: string): Promis
         userId,
         createdAt: product.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        isDeleted: product.isDeleted || false, // Ensure isDeleted is always set (default: false)
       };
 
       const request = store.put(productWithMeta);
