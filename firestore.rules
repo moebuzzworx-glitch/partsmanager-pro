@@ -240,8 +240,14 @@ service cloud.firestore {
      * Git-Like Sync Support:
      * - Products now include version and updatedAt fields for conflict resolution
      * - Soft deletes: documents marked with isDeleted=true instead of being removed
+     * - Permanent deletes: documents completely removed from Firebase (from trash page)
      * - Last-write-wins: version and updatedAt fields track changes
      * - userId field is required and immutable
+     * 
+     * Deletion Flow:
+     * 1. Soft Delete (Stock page): Marks product with isDeleted=true via update operation
+     * 2. Restore (Trash page): Restores product by setting isDeleted=false via update operation
+     * 3. Permanent Delete (Trash page): Completely removes document via delete operation
      * 
      * Note: Subscription-based restrictions (trial read-only) are handled at application level
      */
@@ -256,7 +262,7 @@ service cloud.firestore {
                        request.resource.data.userId == request.auth.uid &&
                        request.resource.data.version != null &&
                        request.resource.data.updatedAt != null;
-      // Allow soft delete (marked with isDeleted=true) or permanent delete
+      // Allow soft delete (marked with isDeleted=true) and permanent delete (document removal)
       allow delete: if isEmailVerified() && resource.data.userId == request.auth.uid;
     }
 
