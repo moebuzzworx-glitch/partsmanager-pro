@@ -6,7 +6,7 @@
 
 import { User } from 'firebase/auth';
 import { queueCommit } from './commit-queue';
-import { saveProduct, initDB, deleteProductById } from './indexeddb';
+import { saveProduct, initDB, deleteProduct } from './indexeddb';
 import { onUserActivity } from './pull-service';
 import { triggerImmediateSync } from './sync-worker';
 
@@ -242,7 +242,7 @@ export async function hybridPermanentlyDeleteProduct(
     console.log('[HybridImport] Permanently deleting product:', productId);
 
     // STEP 1: Delete from IndexedDB immediately (local-first)
-    await deleteProductById(productId);
+    await deleteProduct(productId);
     console.log('[HybridImport] Product removed from IndexedDB:', productId);
 
     // STEP 2: Queue permanent delete commit for Firebase
