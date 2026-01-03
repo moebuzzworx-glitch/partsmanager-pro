@@ -5,7 +5,6 @@ import { StatsCard } from './stats-card';
 import { Banknote, Package, ShoppingCart, TrendingUp } from 'lucide-react';
 import { useFirebase } from '@/firebase/provider';
 import { fetchKPIMetrics, type KPIMetrics } from '@/lib/kpi-utils';
-import { sendLowStockNotifications } from '@/lib/low-stock-notifications';
 
 interface DashboardStatsProps {
   dictionary: any;
@@ -34,11 +33,6 @@ export function DashboardStats({ dictionary }: DashboardStatsProps) {
         setIsLoading(true);
         const kpiMetrics = await fetchKPIMetrics(firestore, user.uid);
         setStats(kpiMetrics);
-        
-        // Trigger low stock notifications based on current KPI awareness
-        sendLowStockNotifications(firestore, 10).catch(error => 
-          console.warn('Failed to send low stock notifications:', error)
-        );
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);
       } finally {

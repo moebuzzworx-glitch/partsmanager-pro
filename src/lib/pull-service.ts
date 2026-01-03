@@ -5,6 +5,7 @@
 
 import { Firestore, collection, getDocs, query, where } from 'firebase/firestore';
 import { saveProduct } from './indexeddb';
+import { sendLowStockNotificationForUser } from './low-stock-notifications';
 
 interface PullState {
   isRunning: boolean;
@@ -173,6 +174,12 @@ async function pullFirebaseChanges(firestore: Firestore, userId: string): Promis
     }
 
     pullState.lastPullTime = now;
+
+    // Trigger low stock notification check for this user
+    // Runs non-blocking as part of the sync cycle
+    sendLowStockNotificationForUser(firestore, userId, 10).catch(error => {
+      console.warn('[Pull] Low stock notification check skipped:', error);
+    });
   } catch (err) {
     console.error('[Pull] Error fetching changes:', err);
     // Continue trying on next interval

@@ -30,9 +30,49 @@ export interface LowStockProduct {
 }
 
 /**
+ * Detects products with stock levels below the configured threshold for a specific user
+ * @param firestore - Firestore database instance
+ * @param userId - User ID to check products for
+ * @param threshold - Stock level threshold (default: 10)
+ * @returns Array of low stock products for that user
+ */
+export async function detectLowStockProductsForUser(
+  firestore: Firestore,
+  userId: string,
+  threshold: number = LOW_STOCK_THRESHOLD
+): Promise<LowStockProduct[]> {
+  try {
+    const productsRef = collection(firestore, 'products');
+    const lowStockQuery = query(
+      productsRef,
+      where('userId', '==', userId),
+      where('stock', '<', threshold)
+    );
+
+    const snapshot = await getDocs(lowStockQuery);
+    const lowStockProducts: LowStockProduct[] = [];
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      lowStockProducts.push({
+        productId: doc.id,
+        productName: data.name || 'Unknown Product',
+        currentStock: data.stock || 0,
+        threshold: threshold,
+      });
+    });
+
+    return lowStockProducts;
+  } catch (error) {
+    console.error('Error detecting low stock products for user:', error);
+    throw error;
+  }
+}
+
+/**
  * Detects products with stock levels below the configured threshold
  * @param firestore - Firestore database instance
- * @param threshold - Stock level threshold (default: 20)
+ * @param threshold - Stock level threshold (default: 10)
  * @returns Array of low stock products
  */
 export async function detectLowStockProducts(
@@ -305,5 +345,56 @@ export async function getLowStockAlerts(
   } catch (error) {
     console.error('Error getting low stock alerts:', error);
     return [];
+  }
+}
+
+/**
+ * Creates or updates a single grouped low stock notification for the current user
+ * Only notifies about the user's own low stock products
+ * @param firestore - Firestore database instance
+ * @param userId - Current user ID
+ * @param threshold - Stock level threshold (default: 10)
+ * @returns Statistics object with notification creation details
+ */
+export async function sendLowStockNotificationForUser(
+  firestore: Firestore,
+  userId: string,
+  threshold: number = LOW_STOCK_THRESHOLD
+): Promise<{
+  lowStockProducts: number;
+  notificationCreated: boolean;
+  error: string | null;
+}> {
+  try {
+    // Get only this user's low stock products
+    const lowStockProducts = await detectLowStockProductsForUser(firestore, userId, threshold);
+    
+    if (lowStockProducts.length === 0) {
+      console.log(`No low stock products for user ${userId}`);
+      return {
+        lowStockProducts: 0,
+        notificationCreated: false,
+        error: null,
+      };
+    }
+
+    console.log(`Found ${lowStockProducts.length} low stock products for user ${userId}`);
+
+    // Create or update grouped notification for this user
+    const notificationId = await createGroupedLowStockNotification(firestore, userId, lowStockProducts);
+
+    return {
+      lowStockProducts: lowStockProducts.length,
+      notificationCreated: !!notificationId,
+      error: null,
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`Error sending low stock notification for user ${userId}:`, error);
+    return {
+      lowStockProducts: 0,
+      notificationCreated: false,
+      error: errorMessage,
+    };
   }
 }
