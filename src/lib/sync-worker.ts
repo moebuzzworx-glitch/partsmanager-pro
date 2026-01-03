@@ -128,6 +128,7 @@ async function processPendingCommitsFromContext(): Promise<void> {
  */
 async function processPendingCommits(firestore: Firestore, userId: string): Promise<void> {
   // GUARD: Free/trial users only store data locally in IndexedDB (no Firebase sync)
+  // Expired users also cannot sync
   try {
     const userRef = doc(firestore, 'users', userId);
     const userSnap = await getDoc(userRef);
@@ -136,6 +137,10 @@ async function processPendingCommits(firestore: Firestore, userId: string): Prom
       const userData = userSnap.data();
       if (userData.subscription === 'trial') {
         console.log('[SyncWorker] Trial user detected - skipping Firebase sync (data persists only in IndexedDB)');
+        return;
+      }
+      if (userData.subscription === 'expired') {
+        console.log('[SyncWorker] Expired user detected - skipping Firebase sync');
         return;
       }
     }

@@ -164,8 +164,8 @@ function AdminUsersPageContent() {
                       <TableCell className="font-medium">{user.email}</TableCell>
                       <TableCell>{user.name || '-'}</TableCell>
                       <TableCell>
-                        <Badge variant={user.subscription === 'premium' ? 'default' : 'secondary'}>
-                          {user.subscription === 'premium' ? 'Premium' : 'Trial'}
+                        <Badge variant={user.subscription === 'premium' ? 'default' : user.subscription === 'expired' ? 'destructive' : 'secondary'}>
+                          {user.subscription === 'premium' ? 'Premium' : user.subscription === 'expired' ? 'Expired' : 'Trial'}
                         </Badge>
                       </TableCell>
                       <TableCell>

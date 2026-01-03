@@ -1,7 +1,7 @@
 import { Timestamp } from "firebase/firestore";
 
 export type UserRole = "admin" | "user";
-export type UserSubscription = "trial" | "premium";
+export type UserSubscription = "trial" | "premium" | "expired";
 export type AuthMethod = "google" | "email";
 
 export type User = {

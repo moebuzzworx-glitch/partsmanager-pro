@@ -110,6 +110,10 @@ export function canWrite(user: User | null): boolean {
     return true; // Trial users CAN write (all data stored locally in IndexedDB only)
   }
 
+  if (user.subscription === "expired") {
+    return false; // Expired users cannot write
+  }
+
   return false; // Default deny
 }
 

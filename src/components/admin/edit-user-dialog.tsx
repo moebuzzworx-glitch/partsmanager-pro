@@ -41,7 +41,7 @@ import type { AccessRightProfile } from '@/lib/access-rights';
 const editUserSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Valid email is required'),
-  subscription: z.enum(['trial', 'premium'], {
+  subscription: z.enum(['trial', 'premium', 'expired'], {
     errorMap: () => ({ message: 'Select a valid subscription' }),
   }),
   role: z.enum(['user', 'admin'], {
@@ -225,8 +225,9 @@ export function EditUserDialog({ user, onUserUpdated }: EditUserDialogProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="trial">Trial (Free - 5 days)</SelectItem>
+                      <SelectItem value="trial">Trial (Free - 10 days)</SelectItem>
                       <SelectItem value="premium">Premium (5000 DA/year)</SelectItem>
+                      <SelectItem value="expired">Expired (No Access)</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

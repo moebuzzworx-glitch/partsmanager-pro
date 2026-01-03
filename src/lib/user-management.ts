@@ -27,7 +27,7 @@ export interface UserProfile {
   id: string;
   email: string;
   name: string;
-  subscription: 'trial' | 'premium';
+  subscription: 'trial' | 'premium' | 'expired';
   role: 'user' | 'admin';
   emailVerified: boolean;
   status?: 'active' | 'suspended';
@@ -207,7 +207,7 @@ export async function deleteUser(
 export async function changeUserSubscription(
   firestore: Firestore,
   userId: string,
-  subscription: 'trial' | 'premium'
+  subscription: 'trial' | 'premium' | 'expired'
 ): Promise<boolean> {
   try {
     const userRef = doc(firestore, 'users', userId);
@@ -240,6 +240,10 @@ export async function changeUserSubscription(
       } catch (err) {
         console.warn('[UserManagement] Could not trigger sync:', err);
       }
+    } else if (subscription === 'expired') {
+      // Expired users: clear trial and premium dates
+      updateData.trialStartDate = null;
+      updateData.premiumExpiryDate = null;
     }
 
     await updateDoc(userRef, updateData);
