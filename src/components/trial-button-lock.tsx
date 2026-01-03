@@ -1,46 +1,100 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { isTrialExpired } from '@/lib/trial-utils';
 import { User as AppUser } from '@/lib/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
 
 interface TrialButtonLockProps {
   user: AppUser | null;
   disabled?: boolean;
   children: React.ReactElement;
-  title?: string;
 }
 
 /**
- * Wrapper component to disable buttons for expired trial users
- * Shows tooltip explaining trial has expired when hovered
+ * Wrapper component that shows upgrade dialog when expired trial users click buttons
+ * Allows the action to proceed for active trial or premium users
  */
 export function TrialButtonLock({
   user,
   disabled = false,
   children,
-  title,
 }: TrialButtonLockProps) {
+  const [showDialog, setShowDialog] = useState(false);
+  const router = useRouter();
+  
   // Check if trial has expired
   const isTrialUsed = user?.subscription === 'trial' && isTrialExpired(user);
   
-  const isDisabled = disabled || isTrialUsed;
-  const tooltipText = isTrialUsed
-    ? 'Your free trial has expired. Upgrade to Premium to continue.'
-    : title;
+  const handleClick = (e: React.MouseEvent) => {
+    if (isTrialUsed) {
+      e.preventDefault();
+      e.stopPropagation();
+      setShowDialog(true);
+    }
+  };
 
   return (
-    <div
-      className="relative inline-block"
-      title={tooltipText}
-    >
+    <>
       {React.cloneElement(children, {
-        disabled: isDisabled,
+        disabled: disabled,
+        onClick: handleClick,
       } as any)}
       
-      {isTrialUsed && (
-        <div className="absolute inset-0 rounded-md bg-black/5 cursor-not-allowed flex items-center justify-center" />
-      )}
-    </div>
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>🎉 Upgrade to Premium</DialogTitle>
+          </DialogHeader>
+          
+          <DialogDescription className="space-y-4 pt-2">
+            <p>
+              Your free trial has ended, but your journey doesn't have to! 🚀
+            </p>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+              <p className="font-semibold text-blue-900">Premium Benefits:</p>
+              <ul className="text-sm text-blue-800 space-y-1 ml-4">
+                <li>✅ Unlimited product management</li>
+                <li>✅ Export invoices & reports</li>
+                <li>✅ Full data synchronization</li>
+                <li>✅ Priority support</li>
+              </ul>
+            </div>
+            
+            <p className="text-sm text-gray-600">
+              Upgrade now and unlock all features. Your data is safe and waiting for you!
+            </p>
+          </DialogDescription>
+          
+          <DialogFooter className="flex gap-2 justify-end pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowDialog(false)}
+            >
+              Maybe Later
+            </Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => {
+                setShowDialog(false);
+                router.push('/en/settings');
+              }}
+            >
+              Upgrade Now
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
