@@ -36,7 +36,10 @@ export function TrialButtonLock({
   const isTrialUsed = user?.subscription === 'trial' && isTrialExpired(user);
   
   const handleClick = (e: React.MouseEvent) => {
-    if (isTrialUsed) {
+    // Check if user is in an expired state (either time-based or status-based)
+    const isExpired = (isTrialUsed || user?.subscription === 'expired');
+    
+    if (isExpired) {
       e.preventDefault();
       e.stopPropagation();
       setShowDialog(true);

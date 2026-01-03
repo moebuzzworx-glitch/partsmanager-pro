@@ -107,7 +107,11 @@ export function canWrite(user: User | null): boolean {
   }
 
   if (user.subscription === "trial") {
-    return true; // Trial users CAN write (all data stored locally in IndexedDB only)
+    // Trial users CAN write, but ONLY if trial hasn't expired yet
+    if (isTrialExpired(user)) {
+      return false; // Trial expired by time - block writes
+    }
+    return true; // Trial still active - allow writes to IndexedDB
   }
 
   if (user.subscription === "expired") {
@@ -168,7 +172,16 @@ export function getWriteRestrictionMessage(user: User | null): string {
   }
 
   if (user.subscription === "trial") {
-    return "Trial users cannot add or modify data. Upgrade to Premium to unlock this feature.";
+    if (isTrialExpired(user)) {
+      return "Your free trial has expired. Upgrade to Premium to unlock this feature.";
+    }
+    // Still within trial period
+    const daysRemaining = calculateTrialDaysRemaining(user);
+    return `You can use this feature during your free trial (${daysRemaining} days remaining). Upgrade to Premium for permanent access.`;
+  }
+
+  if (user.subscription === "expired") {
+    return "Your access has expired. Please upgrade to Premium to continue using this feature.";
   }
 
   return "You don't have permission to perform this action.";
