@@ -6,7 +6,7 @@
 
 import { User } from 'firebase/auth';
 import { queueCommit } from './commit-queue';
-import { saveProduct, initDB } from './indexeddb';
+import { saveProduct, initDB, deleteProductById } from './indexeddb';
 import { onUserActivity } from './pull-service';
 import { triggerImmediateSync } from './sync-worker';
 
@@ -241,11 +241,15 @@ export async function hybridPermanentlyDeleteProduct(
   try {
     console.log('[HybridImport] Permanently deleting product:', productId);
 
-    // Queue permanent delete commit (different type than soft delete)
+    // STEP 1: Delete from IndexedDB immediately (local-first)
+    await deleteProductById(productId);
+    console.log('[HybridImport] Product removed from IndexedDB:', productId);
+
+    // STEP 2: Queue permanent delete commit for Firebase
     await queueCommit('permanent-delete', 'products', productId, {}, user.uid);
     console.log('[HybridImport] Product queued for permanent deletion:', productId);
 
-    // Trigger immediate sync in background (fire-and-forget, don't block user)
+    // STEP 3: Trigger immediate sync in background (fire-and-forget, don't block user)
     triggerImmediateSync().catch(err => {
       console.error('[HybridImport] Background sync error:', err);
     });
