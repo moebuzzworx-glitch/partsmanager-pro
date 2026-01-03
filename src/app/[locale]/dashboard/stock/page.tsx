@@ -178,8 +178,9 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
           }
           
           // Then, add any IndexedDB products that don't exist in Firebase yet (new uploads in progress)
+          // IMPORTANT: Only add non-deleted products!
           for (const existing of products) {
-            if (!seenIds.has(existing.id)) {
+            if (!seenIds.has(existing.id) && existing.isDeleted !== true) {
               mergedProducts.push(existing);
             }
           }
