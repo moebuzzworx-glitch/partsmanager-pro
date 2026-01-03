@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/table";
 import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { getDeletedProducts } from "@/lib/indexeddb";
+import { getAllProductsByUserRaw, initDB } from "@/lib/indexeddb";
 import { hybridRestoreProduct, hybridPermanentlyDeleteProduct } from "@/lib/hybrid-import-v2";
 import { useToast } from "@/hooks/use-toast";
 
@@ -37,11 +37,14 @@ export default function TrashPage({
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
   const [dictionary, setDictionary] = useState<any>(null);
-  const [deletedItems, setDeletedItems] = useState<any[]>([]);
+  const [allDeletedItems, setAllDeletedItems] = useState<any[]>([]);
+  const [displayedItems, setDisplayedItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [actionProgress, setActionProgress] = useState(0);
   const [isActioning, setIsActioning] = useState(false);
+  const [displayLimit, setDisplayLimit] = useState(50);
+  const LOAD_MORE_INCREMENT = 50;
 
 
   // Load dictionary
@@ -53,34 +56,82 @@ export default function TrashPage({
     loadDictionary();
   }, [locale]);
 
-  // Fetch deleted products from IndexedDB (local cache)
+  // Update displayed items when displayLimit or allDeletedItems changes
+  useEffect(() => {
+    setDisplayedItems(allDeletedItems.slice(0, displayLimit));
+  }, [displayLimit, allDeletedItems]);
+
+  // Fetch deleted products from IndexedDB + Firebase
   useEffect(() => {
     if (!user?.uid) return;
 
     const fetchDeletedItems = async () => {
       try {
         setIsLoading(true);
-        // Get deleted products from IndexedDB
-        const deletedProducts = await getDeletedProducts(user.uid);
         
-        const items = deletedProducts.map(product => ({
+        // Initialize IndexedDB
+        await initDB();
+        
+        // STEP 1: Fetch ALL products from IndexedDB
+        const allCachedProducts = await getAllProductsByUserRaw(user.uid);
+        
+        // Filter to show only DELETED products (opposite of stock page)
+        const deletedProducts = allCachedProducts.filter((product: any) => product.isDeleted === true);
+        
+        const items = deletedProducts.map((product: any) => ({
           id: product.id,
-          name: product.name,
-          reference: product.reference,
-          sku: product.sku,
+          name: product.name || '',
+          reference: product.reference || '',
+          sku: product.sku || '',
           image: product.image,
           deletedAt: product.deletedAt,
         }));
-        setDeletedItems(items);
+        
+        setAllDeletedItems(items);
+        setDisplayedItems(items.slice(0, 50));
+        setDisplayLimit(50);
+        console.log(`✅ Loaded ${deletedProducts.length} deleted products from IndexedDB`);
+        
+        // STEP 2: Sync with Firebase in background
+        try {
+          const productsRef = collection(firestore, 'products');
+          const q = query(productsRef, where('userId', '==', user.uid));
+          const querySnapshot = await getDocs(q);
+          
+          const freshDeletedProducts: any[] = [];
+          querySnapshot.forEach((doc) => {
+            // Show products marked as deleted
+            if (doc.data().isDeleted === true) {
+              freshDeletedProducts.push({
+                id: doc.id,
+                name: doc.data().name || '',
+                reference: doc.data().reference || '',
+                sku: doc.data().sku || '',
+                image: doc.data().image,
+                deletedAt: doc.data().deletedAt,
+              });
+            }
+          });
+          
+          // Update with Firebase data
+          if (freshDeletedProducts.length > 0) {
+            setAllDeletedItems(freshDeletedProducts);
+            setDisplayedItems(freshDeletedProducts.slice(0, 50));
+            setDisplayLimit(50);
+          }
+          console.log(`✅ Updated from Firebase with ${freshDeletedProducts.length} deleted products`);
+        } catch (firebaseErr) {
+          console.warn('Failed to fetch from Firebase (using cached data):', firebaseErr);
+        }
       } catch (error) {
         console.error('Error fetching deleted items:', error);
       } finally {
-        setIsLoading(true);
+        setIsLoading(false);
       }
     };
 
     fetchDeletedItems();
-  }, [user?.uid]);
+  }, [user?.uid, firestore]);
 
   const handleRestore = async (productId: string) => {
     if (!user) return;
@@ -89,13 +140,15 @@ export default function TrashPage({
     setActionProgress(0);
     try {
       // Restore product using new hybrid system (local + queued for Firebase)
-      const product = deletedItems.find(p => p.id === productId);
+      const product = allDeletedItems.find(p => p.id === productId);
       if (product) {
         await hybridRestoreProduct(user, productId, product);
       }
       
       // Update UI immediately - remove from deleted items
-      setDeletedItems(deletedItems.filter(item => item.id !== productId));
+      const updated = allDeletedItems.filter(item => item.id !== productId);
+      setAllDeletedItems(updated);
+      setDisplayedItems(updated.slice(0, displayLimit));
       
       // Show progress completion
       setActionProgress(100);
@@ -131,7 +184,9 @@ export default function TrashPage({
       await hybridPermanentlyDeleteProduct(user, productId);
       
       // Update UI immediately - remove from deleted items
-      setDeletedItems(deletedItems.filter(item => item.id !== productId));
+      const updated = allDeletedItems.filter(item => item.id !== productId);
+      setAllDeletedItems(updated);
+      setDisplayedItems(updated.slice(0, displayLimit));
       
       // Show progress completion
       setActionProgress(100);
@@ -164,10 +219,10 @@ export default function TrashPage({
   };
 
   const handleSelectAll = () => {
-    if (selectedItems.size === deletedItems.length) {
+    if (selectedItems.size === displayedItems.length) {
       setSelectedItems(new Set());
     } else {
-      setSelectedItems(new Set(deletedItems.map(item => item.id)));
+      setSelectedItems(new Set(displayedItems.map(item => item.id)));
     }
   };
 
@@ -185,7 +240,7 @@ export default function TrashPage({
 
       // Process each item and update progress
       for (const productId of items) {
-        const product = deletedItems.find(p => p.id === productId);
+        const product = allDeletedItems.find(p => p.id === productId);
         if (product) {
           await hybridRestoreProduct(user, productId, product);
         }
@@ -194,7 +249,9 @@ export default function TrashPage({
       }
 
       // Update UI immediately
-      setDeletedItems(deletedItems.filter(item => !selectedItems.has(item.id)));
+      const updated = allDeletedItems.filter(item => !selectedItems.has(item.id));
+      setAllDeletedItems(updated);
+      setDisplayedItems(updated.slice(0, displayLimit));
       setSelectedItems(new Set());
       
       toast({
@@ -239,7 +296,9 @@ export default function TrashPage({
       }
 
       // Update UI immediately
-      setDeletedItems(deletedItems.filter(item => !selectedItems.has(item.id)));
+      const updated = allDeletedItems.filter(item => !selectedItems.has(item.id));
+      setAllDeletedItems(updated);
+      setDisplayedItems(updated.slice(0, displayLimit));
       setSelectedItems(new Set());
       
       toast({
@@ -310,7 +369,7 @@ export default function TrashPage({
               <TableRow>
                 <TableHead>
                   <Checkbox 
-                    checked={selectedItems.size === deletedItems.length && deletedItems.length > 0}
+                    checked={selectedItems.size === displayedItems.length && displayedItems.length > 0}
                     onCheckedChange={handleSelectAll}
                   />
                 </TableHead>
@@ -320,7 +379,7 @@ export default function TrashPage({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {deletedItems.map((product) => (
+              {displayedItems.map((product) => (
                 <TableRow key={product.id}>
                     <TableCell>
                       <Checkbox 
@@ -350,7 +409,7 @@ export default function TrashPage({
                   </TableCell>
                 </TableRow>
               ))}
-                {deletedItems.length === 0 && (
+                {displayedItems.length === 0 && (
                     <TableRow>
                         <TableCell colSpan={5} className="h-24 text-center">
                             {dictionary.trash?.noData || 'No deleted items.'}
@@ -359,6 +418,23 @@ export default function TrashPage({
                 )}
             </TableBody>
           </Table>
+          {displayLimit < allDeletedItems.length && (
+            <div className="flex justify-center mt-4 pt-4 border-t">
+              <Button 
+                variant="outline" 
+                onClick={() => setDisplayLimit(displayLimit + LOAD_MORE_INCREMENT)}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  'Load More'
+                )}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
