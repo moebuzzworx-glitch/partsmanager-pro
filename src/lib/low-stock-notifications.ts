@@ -11,10 +11,10 @@
  * - Tracks notification creation timestamps
  */
 
-import { collection, query, where, getDocs, Timestamp, addDoc, getDoc, doc, Firestore } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, addDoc, getDoc, doc, Firestore, updateDoc } from 'firebase/firestore';
 
 // Low stock threshold - products below this quantity trigger alerts
-const LOW_STOCK_THRESHOLD = 20;
+const LOW_STOCK_THRESHOLD = 10;
 
 // Hours to wait before creating another low stock alert for the same product
 const NOTIFICATION_COOLDOWN_HOURS = 24;
@@ -43,7 +43,7 @@ export async function detectLowStockProducts(
     const productsRef = collection(firestore, 'products');
     const lowStockQuery = query(
       productsRef,
-      where('quantity', '<', threshold)
+      where('stock', '<', threshold)
     );
 
     const snapshot = await getDocs(lowStockQuery);
@@ -54,7 +54,7 @@ export async function detectLowStockProducts(
       lowStockProducts.push({
         productId: doc.id,
         productName: data.name || 'Unknown Product',
-        currentStock: data.quantity || 0,
+        currentStock: data.stock || 0,
         threshold: threshold,
       });
     });
@@ -140,10 +140,78 @@ export async function createLowStockNotification(
 }
 
 /**
- * Batch processes low stock products and creates notifications for all users
- * Returns statistics on notifications created
+ * Creates or updates a single grouped notification for a user with all their low stock products
  * @param firestore - Firestore database instance
- * @param threshold - Stock level threshold (default: 20)
+ * @param userId - User ID to notify
+ * @param lowStockProducts - Array of low stock products
+ * @returns Notification ID if created/updated, null on error
+ */
+async function createGroupedLowStockNotification(
+  firestore: Firestore,
+  userId: string,
+  lowStockProducts: LowStockProduct[]
+): Promise<string | null> {
+  try {
+    if (lowStockProducts.length === 0) {
+      return null;
+    }
+
+    const notificationsRef = collection(firestore, 'notifications');
+
+    // Check for existing unread low stock notification for this user
+    const existingQuery = query(
+      notificationsRef,
+      where('userId', '==', userId),
+      where('type', '==', 'low-stock-alert'),
+      where('read', '==', false)
+    );
+
+    const existingSnapshot = await getDocs(existingQuery);
+    
+    const notificationData = {
+      userId,
+      title: 'Low Stock Alert',
+      message: `You have ${lowStockProducts.length} product(s) with low stock levels.`,
+      type: 'low-stock-alert',
+      products: lowStockProducts.map(p => ({
+        productId: p.productId,
+        productName: p.productName,
+        currentStock: p.currentStock,
+        threshold: p.threshold,
+      })),
+      productCount: lowStockProducts.length,
+      read: false,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      actionLink: '/dashboard/products',
+      actionLabel: 'View Products',
+    };
+
+    if (existingSnapshot.size > 0) {
+      // Update existing notification
+      const existingDoc = existingSnapshot.docs[0];
+      const docRef = doc(firestore, 'notifications', existingDoc.id);
+      await updateDoc(docRef, notificationData);
+      
+      console.log(`Updated low stock notification for user ${userId}: ${existingDoc.id}`);
+      return existingDoc.id;
+    } else {
+      // Create new notification
+      const notificationDoc = await addDoc(notificationsRef, notificationData);
+      console.log(`Created grouped low stock notification for user ${userId}: ${notificationDoc.id}`);
+      return notificationDoc.id;
+    }
+  } catch (error) {
+    console.error('Error creating grouped low stock notification:', error);
+    return null;
+  }
+}
+
+/**
+ * Batch processes low stock products and creates a single grouped notification per user
+ * Returns statistics on notifications created/updated
+ * @param firestore - Firestore database instance
+ * @param threshold - Stock level threshold (default: 10)
  * @returns Statistics object with counts
  */
 export async function sendLowStockNotifications(
@@ -181,24 +249,18 @@ export async function sendLowStockNotifications(
     let usersNotified = 0;
     let errors = 0;
 
-    // Create notifications for each product for each user
-    for (const product of lowStockProducts) {
-      const notifiedUsersForProduct = new Set<string>();
-
-      for (const userId of userIds) {
-        try {
-          const notificationId = await createLowStockNotification(firestore, userId, product);
-          if (notificationId) {
-            notificationsCreated++;
-            notifiedUsersForProduct.add(userId);
-          }
-        } catch (error) {
-          console.error(`Error notifying user ${userId} about product ${product.productId}:`, error);
-          errors++;
+    // Create grouped notification for each user with all low stock products
+    for (const userId of userIds) {
+      try {
+        const notificationId = await createGroupedLowStockNotification(firestore, userId, lowStockProducts);
+        if (notificationId) {
+          notificationsCreated++;
+          usersNotified++;
         }
+      } catch (error) {
+        console.error(`Error creating grouped notification for user ${userId}:`, error);
+        errors++;
       }
-
-      usersNotified += notifiedUsersForProduct.size;
     }
 
     const stats = {
