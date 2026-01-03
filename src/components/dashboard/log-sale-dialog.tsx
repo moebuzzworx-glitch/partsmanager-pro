@@ -45,7 +45,7 @@ interface Customer {
 
 export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Dictionary; onSaleAdded?: () => void }) {
   const d = dictionary.logSaleDialog;
-  const { firestore } = useFirebase();
+  const { firestore, user } = useFirebase();
   const [open, setOpen] = useState(false);
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [customerInput, setCustomerInput] = useState<string>('');

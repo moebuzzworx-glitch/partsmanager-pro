@@ -45,7 +45,7 @@ interface Supplier {
 
 export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary: Dictionary; onPurchaseAdded?: () => void }) {
   const d = dictionary.logPurchaseDialog;
-  const { firestore } = useFirebase();
+  const { firestore, user } = useFirebase();
   const [open, setOpen] = useState(false);
   const [supplierDropdownOpen, setSupplierDropdownOpen] = useState(false);
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
