@@ -7,6 +7,7 @@ import type {
   ToastActionElement,
   ToastProps,
 } from "@/components/ui/toast"
+import { playNotificationSound, initNotificationSound } from "@/lib/notification-sound"
 
 const TOAST_LIMIT = 1
 const TOAST_REMOVE_DELAY = 1000000
@@ -144,6 +145,12 @@ type Toast = Omit<ToasterToast, "id">
 
 function toast({ ...props }: Toast) {
   const id = genId()
+
+  // Play notification sound for toast
+  initNotificationSound();
+  playNotificationSound('default').catch(() => {
+    // Silently fail if autoplay is blocked
+  });
 
   const update = (props: ToasterToast) =>
     dispatch({

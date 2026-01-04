@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useFirebase } from '@/firebase/provider';
 import {
   fetchUserNotifications,
@@ -9,12 +9,14 @@ import {
   getUnreadCount,
   Notification,
 } from '@/lib/notifications';
+import { playNotificationSound, initNotificationSound } from '@/lib/notification-sound';
 
 export function useNotifications() {
   const { firestore, user } = useFirebase();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const previousUnreadCountRef = useRef(0);
 
   // Fetch notifications
   const loadNotifications = useCallback(async () => {
@@ -30,6 +32,13 @@ export function useNotifications() {
       ]);
 
       setNotifications(notifs);
+      
+      // Play sound if new unread notifications arrived
+      if (count > previousUnreadCountRef.current) {
+        playNotificationSound('default');
+      }
+      previousUnreadCountRef.current = count;
+      
       setUnreadCount(count);
     } catch (error) {
       console.error('Error loading notifications:', error);
@@ -40,6 +49,9 @@ export function useNotifications() {
 
   // Load on mount and set up polling
   useEffect(() => {
+    // Initialize notification sound config on first load
+    initNotificationSound();
+    
     loadNotifications();
 
     // Poll for new notifications every 30 seconds

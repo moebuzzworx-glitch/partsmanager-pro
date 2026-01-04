@@ -9,6 +9,7 @@ import { startSyncWorker, stopSyncWorker, setFirebaseContext as setSyncContext }
 import { startPullService, stopPullService, onUserActivity, setFirebaseContextPull } from '@/lib/pull-service';
 import { calculateTrialDaysRemaining, isTrialExpired } from '@/lib/trial-utils';
 import { createTrialCountdownNotification } from '@/lib/subscription-notifications';
+import { initNotificationSound } from '@/lib/notification-sound';
 
 const { firebaseApp, firestore, auth } = initializeFirebase();
 
@@ -36,6 +37,9 @@ export function RootLayoutClient({ children }: { children: React.ReactNode }) {
 
     // Note: Right-click and DevTools blocking removed - this only provides false security
     // Real security comes from server-side validation, authentication, and API protection
+
+    // Initialize notification sound system
+    initNotificationSound();
 
     return () => {};
   }, []);
