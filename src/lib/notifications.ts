@@ -56,10 +56,18 @@ export async function fetchUserNotifications(
 
     const notifications: Notification[] = [];
     notificationsSnap.forEach(doc => {
-      notifications.push({
-        id: doc.id,
-        ...doc.data(),
-      } as Notification);
+      const data = doc.data();
+      if (data) {
+        // Ensure products array is always an array if present to avoid iteration errors
+        const processedData = {
+          ...data,
+          ...(data.products ? { products: Array.isArray(data.products) ? data.products : [] } : {}),
+        };
+        notifications.push({
+          id: doc.id,
+          ...processedData,
+        } as Notification);
+      }
     });
 
     // Sort by createdAt in memory (descending)
@@ -96,10 +104,18 @@ export async function fetchAllUserNotifications(
 
     const notifications: Notification[] = [];
     notificationsSnap.forEach(doc => {
-      notifications.push({
-        id: doc.id,
-        ...doc.data(),
-      } as Notification);
+      const data = doc.data();
+      if (data) {
+        // Ensure products array is always an array if present to avoid iteration errors
+        const processedData = {
+          ...data,
+          ...(data.products ? { products: Array.isArray(data.products) ? data.products : [] } : {}),
+        };
+        notifications.push({
+          id: doc.id,
+          ...processedData,
+        } as Notification);
+      }
     });
 
     return notifications;

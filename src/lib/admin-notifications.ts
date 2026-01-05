@@ -414,10 +414,15 @@ export async function getAdminSystemNotifications(
     );
 
     const snapshot = await getDocs(adminNotificationsQuery);
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      if (!data) return null;
+      
+      return {
+        id: doc.id,
+        ...data,
+      };
+    }).filter((item): item is any => item !== null);
   } catch (error) {
     console.error('Error getting admin system notifications:', error);
     return [];

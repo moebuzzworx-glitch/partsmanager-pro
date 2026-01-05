@@ -338,10 +338,17 @@ export async function getLowStockAlerts(
     );
 
     const snapshot = await getDocs(alertsQuery);
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      if (!data) return null;
+      
+      // Ensure products array is always an array if present
+      return {
+        id: doc.id,
+        ...data,
+        ...(data.products ? { products: Array.isArray(data.products) ? data.products : [] } : {}),
+      };
+    }).filter((item): item is any => item !== null);
   } catch (error) {
     console.error('Error getting low stock alerts:', error);
     return [];
