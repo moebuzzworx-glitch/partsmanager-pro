@@ -6,16 +6,32 @@
 interface NotificationSoundConfig {
   enabled: boolean;
   volume: number; // 0-1
-  soundUrl: string;
+  soundUrl?: string; // Optional - will be set dynamically
 }
 
 let soundConfig: NotificationSoundConfig = {
   enabled: true,
   volume: 0.5,
-  soundUrl: typeof window !== 'undefined' 
-    ? `${window.location.origin}/notification-sound.mp3`
-    : '/notification-sound.mp3', // Default notification sound (absolute URL)
 };
+
+/**
+ * Get the absolute sound URL
+ * Resolves dynamically to use window.location.origin when available
+ */
+function getAbsoluteSoundUrl(): string {
+  // If custom URL is set, use it
+  if (soundConfig.soundUrl) {
+    return soundConfig.soundUrl;
+  }
+  
+  // Generate absolute URL from window origin if available
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/notification-sound.mp3`;
+  }
+  
+  // Fallback for SSR
+  return '/notification-sound.mp3';
+}
 
 /**
  * Initialize notification sound configuration from localStorage
@@ -49,7 +65,7 @@ export async function playNotificationSound(type: 'default' | 'success' | 'warni
   try {
     // Map notification types to sound URLs if needed
     // For now, we'll use the default sound for all types
-    const soundUrl = soundConfig.soundUrl;
+    const soundUrl = getAbsoluteSoundUrl();
 
     // Create audio element
     const audio = new Audio();
@@ -103,8 +119,11 @@ export function setNotificationSoundVolume(volume: number): void {
 /**
  * Get current notification sound configuration
  */
-export function getNotificationSoundConfig(): Readonly<NotificationSoundConfig> {
-  return { ...soundConfig };
+export function getNotificationSoundConfig(): Readonly<NotificationSoundConfig & { resolvedUrl: string }> {
+  return { 
+    ...soundConfig,
+    resolvedUrl: getAbsoluteSoundUrl()
+  };
 }
 
 /**
