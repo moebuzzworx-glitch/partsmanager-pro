@@ -12,7 +12,9 @@ interface NotificationSoundConfig {
 let soundConfig: NotificationSoundConfig = {
   enabled: true,
   volume: 0.5,
-  soundUrl: '/notification-sound.mp3', // Default notification sound
+  soundUrl: typeof window !== 'undefined' 
+    ? `${window.location.origin}/notification-sound.mp3`
+    : '/notification-sound.mp3', // Default notification sound (absolute URL)
 };
 
 /**

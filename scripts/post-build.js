@@ -27,21 +27,30 @@ function copyRecursive(src, dest) {
     } else {
       // Copy files
       fs.copyFileSync(srcPath, destPath);
+      console.log(`  Copied: ${item}`);
     }
   }
 }
 
 try {
   const publicDir = path.join(__dirname, '..', 'public');
-  const destDir = path.join(__dirname, '..', '.next', 'public');
-
-  if (fs.existsSync(publicDir)) {
-    console.log(`[Post-Build] Copying public files from ${publicDir} to ${destDir}`);
-    copyRecursive(publicDir, destDir);
-    console.log('[Post-Build] Public files copied successfully');
-  } else {
+  
+  if (!fs.existsSync(publicDir)) {
     console.warn(`[Post-Build] Public directory not found at ${publicDir}`);
+    process.exit(0);
   }
+
+  // Primary: Copy to .next/public (Netlify publish folder)
+  const nextPublicDir = path.join(__dirname, '..', '.next', 'public');
+  console.log(`[Post-Build] Copying public files from ${publicDir} to ${nextPublicDir}`);
+  
+  if (!fs.existsSync(nextPublicDir)) {
+    fs.mkdirSync(nextPublicDir, { recursive: true });
+  }
+  
+  copyRecursive(publicDir, nextPublicDir);
+  console.log('[Post-Build] Files copied to .next/public successfully');
+  
 } catch (error) {
   console.error('[Post-Build] Error copying files:', error);
   process.exit(1);
