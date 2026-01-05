@@ -49,16 +49,23 @@ export async function playNotificationSound(type: 'default' | 'success' | 'warni
     // For now, we'll use the default sound for all types
     const soundUrl = soundConfig.soundUrl;
 
-    const audio = new Audio(soundUrl);
+    // Create audio element
+    const audio = new Audio();
+    audio.src = soundUrl;
     audio.volume = soundConfig.volume;
+    
+    // Set up error handler before attempting to play
+    audio.onerror = (error) => {
+      console.debug('Notification sound failed to load:', error);
+    };
     
     // Play the sound
     const playPromise = audio.play();
     
-    // Handle potential autoplay restrictions
+    // Handle potential autoplay restrictions (non-blocking)
     if (playPromise !== undefined) {
-      await playPromise.catch((error) => {
-        // Autoplay might be blocked by browser
+      playPromise.catch((error) => {
+        // Autoplay might be blocked by browser - this is expected
         console.debug('Notification sound blocked (autoplay policy):', error);
       });
     }
