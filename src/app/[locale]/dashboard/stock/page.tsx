@@ -372,7 +372,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <AddProductDialog dictionary={dictionary} onProductAdded={fetchProducts} />
+              <AddProductDialog dictionary={dictionary} onProductAdded={fetchProducts} products={products} />
             </div>
           </div>
         </CardHeader>

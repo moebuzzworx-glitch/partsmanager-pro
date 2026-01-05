@@ -2,7 +2,7 @@
 # Documentation: https://docs.netlify.com/configure-builds/file-based-configuration/
 
 [build]
-command = "npm run build && cp -r public .next/public"
+command = "npm run build && node scripts/post-build.js"
 publish = ".next"
 functions = "netlify/functions"
 

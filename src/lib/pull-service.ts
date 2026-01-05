@@ -175,11 +175,13 @@ async function pullFirebaseChanges(firestore: Firestore, userId: string): Promis
 
     pullState.lastPullTime = now;
 
-    // Trigger low stock notification check for this user
-    // Runs non-blocking as part of the sync cycle
-    sendLowStockNotificationForUser(firestore, userId, 10).catch(error => {
-      console.warn('[Pull] Low stock notification check skipped:', error);
-    });
+    // Only trigger low stock notification check if we found product updates
+    // This avoids unnecessary notifications on every sync cycle
+    if (updates.length > 0) {
+      sendLowStockNotificationForUser(firestore, userId, 10).catch(error => {
+        console.warn('[Pull] Low stock notification check skipped:', error);
+      });
+    }
   } catch (err) {
     console.error('[Pull] Error fetching changes:', err);
     // Continue trying on next interval

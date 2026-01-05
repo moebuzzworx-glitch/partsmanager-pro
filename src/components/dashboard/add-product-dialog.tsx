@@ -29,6 +29,8 @@ import { useToast } from '@/hooks/use-toast';
 import { hybridImportProducts } from '@/lib/hybrid-import-v2';
 import { getUserSettings } from '@/lib/settings-utils';
 import { TrialButtonLock } from '@/components/trial-button-lock';
+import { addProductOrUpdateStock } from '@/firebase/atomic-updates';
+import type { Product } from '@/lib/types';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
@@ -91,7 +93,7 @@ const normalizeHeaderText = (text: string): string => {
     .trim();
 };
 
-export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: Dictionary; onProductAdded?: () => void }) {
+export function AddProductDialog({ dictionary, onProductAdded, products = [] }: { dictionary: Dictionary; onProductAdded?: () => void; products?: Product[] }) {
   const d = dictionary.addProductDialog;
   const { user, firestore } = useFirebase();
   const { toast } = useToast();
@@ -177,18 +179,19 @@ export function AddProductDialog({ dictionary, onProductAdded }: { dictionary: D
         return;
       }
 
-      const productsRef = collection(firestore, 'products');
-      await addDoc(productsRef, {
+      // Use addProductOrUpdateStock to handle both create and merge cases
+      const newProductData = {
         name: formData.designation,
         reference: formData.reference,
         brand: formData.brand,
         stock: parseInt(formData.quantity),
         purchasePrice: parseFloat(formData.purchasePrice),
-        price: parseFloat(formData.purchasePrice) * (1 + profitMargin / 100), // Use dynamic profit margin from settings
-        userId: user.uid, // ← Add userId for per-user isolation
-        createdAt: new Date(),
+        price: parseFloat(formData.purchasePrice) * (1 + profitMargin / 100),
+        userId: user.uid,
         isDeleted: false,
-      });
+      } as Omit<Product, 'id'>;
+
+      await addProductOrUpdateStock(firestore, newProductData, products);
 
       toast({
         title: 'Success',
