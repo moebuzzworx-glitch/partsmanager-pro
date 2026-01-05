@@ -44,11 +44,13 @@ export async function addProductOrUpdateStock(
 
           const currentStock = productDoc.data().stock || 0;
           const newStock = currentStock + newProductData.stock;
+          const currentVersion = productDoc.data().version || 1;
 
           transaction.update(productRef, {
             stock: newStock,
             purchasePrice: newProductData.purchasePrice,
             price: newProductData.price, // Update selling price too
+            version: currentVersion + 1,
             updatedAt: serverTimestamp()
           });
         });
@@ -71,7 +73,12 @@ export async function addProductOrUpdateStock(
 
   try {
     await runTransaction(firestore, async (transaction) => {
-      transaction.set(newDocRef, { ...newProductData, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      transaction.set(newDocRef, { 
+        ...newProductData, 
+        version: 1,
+        createdAt: serverTimestamp(), 
+        updatedAt: serverTimestamp() 
+      });
     });
   } catch (error: any) {
     console.error('Transaction failed: ', error);
