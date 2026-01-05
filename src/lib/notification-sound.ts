@@ -31,7 +31,7 @@ function getAbsoluteSoundUrl(): string {
     return url;
   }
   
-  // Fallback for SSR - use absolute URL with domain
+  // Fallback for SSR - use relative path that won't be affected by locale middleware
   // This should not be used in the browser
   console.warn('[NotificationSound] Using fallback relative URL (should not happen in browser)');
   return '/notification-sound.mp3';
