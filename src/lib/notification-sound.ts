@@ -35,6 +35,7 @@ function getAbsoluteSoundUrl(): string {
 
 /**
  * Initialize notification sound configuration from localStorage
+ * Clears out any old stored soundUrl to force dynamic resolution
  */
 export function initNotificationSound(): void {
   if (typeof window === 'undefined') return;
@@ -43,7 +44,14 @@ export function initNotificationSound(): void {
     const saved = localStorage.getItem('notificationSoundConfig');
     if (saved) {
       const parsed = JSON.parse(saved);
-      soundConfig = { ...soundConfig, ...parsed };
+      // Don't restore soundUrl - it should always be dynamically resolved
+      // This prevents old hardcoded paths from being used
+      if (parsed.enabled !== undefined) {
+        soundConfig.enabled = parsed.enabled;
+      }
+      if (parsed.volume !== undefined) {
+        soundConfig.volume = parsed.volume;
+      }
     }
   } catch (error) {
     console.warn('Failed to load notification sound config:', error);
@@ -128,12 +136,17 @@ export function getNotificationSoundConfig(): Readonly<NotificationSoundConfig &
 
 /**
  * Save configuration to localStorage
+ * Only saves enabled and volume - soundUrl is always dynamically resolved
  */
 function saveConfig(): void {
   if (typeof window === 'undefined') return;
   
   try {
-    localStorage.setItem('notificationSoundConfig', JSON.stringify(soundConfig));
+    const configToSave = {
+      enabled: soundConfig.enabled,
+      volume: soundConfig.volume,
+    };
+    localStorage.setItem('notificationSoundConfig', JSON.stringify(configToSave));
   } catch (error) {
     console.warn('Failed to save notification sound config:', error);
   }
