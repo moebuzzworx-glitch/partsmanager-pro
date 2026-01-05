@@ -25,11 +25,15 @@ function getAbsoluteSoundUrl(): string {
   }
   
   // Generate absolute URL from window origin if available
-  if (typeof window !== 'undefined') {
-    return `${window.location.origin}/notification-sound.mp3`;
+  if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    const url = `${window.location.origin}/notification-sound.mp3`;
+    console.debug('[NotificationSound] Resolved absolute URL:', url);
+    return url;
   }
   
-  // Fallback for SSR
+  // Fallback for SSR - use absolute URL with domain
+  // This should not be used in the browser
+  console.warn('[NotificationSound] Using fallback relative URL (should not happen in browser)');
   return '/notification-sound.mp3';
 }
 
@@ -74,6 +78,7 @@ export async function playNotificationSound(type: 'default' | 'success' | 'warni
     // Map notification types to sound URLs if needed
     // For now, we'll use the default sound for all types
     const soundUrl = getAbsoluteSoundUrl();
+    console.debug('[NotificationSound] Playing sound from:', soundUrl);
 
     // Create audio element
     const audio = new Audio();
