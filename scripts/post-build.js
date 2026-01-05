@@ -2,6 +2,7 @@
 /**
  * Post-build script to copy public assets to .next directory
  * This ensures public files are available when Netlify publishes from .next folder
+ * Files from public/ are copied directly to .next/ so they're served at root
  */
 
 const fs = require('fs');
@@ -40,16 +41,18 @@ try {
     process.exit(0);
   }
 
-  // Primary: Copy to .next/public (Netlify publish folder)
-  const nextPublicDir = path.join(__dirname, '..', '.next', 'public');
-  console.log(`[Post-Build] Copying public files from ${publicDir} to ${nextPublicDir}`);
+  // Copy public files directly to .next root (not .next/public)
+  // This ensures public/notification-sound.mp3 becomes .next/notification-sound.mp3
+  // which is served at /notification-sound.mp3 when Netlify publishes from .next
+  const nextDir = path.join(__dirname, '..', '.next');
+  console.log(`[Post-Build] Copying public files from ${publicDir} to ${nextDir}`);
   
-  if (!fs.existsSync(nextPublicDir)) {
-    fs.mkdirSync(nextPublicDir, { recursive: true });
+  if (!fs.existsSync(nextDir)) {
+    fs.mkdirSync(nextDir, { recursive: true });
   }
   
-  copyRecursive(publicDir, nextPublicDir);
-  console.log('[Post-Build] Files copied to .next/public successfully');
+  copyRecursive(publicDir, nextDir);
+  console.log('[Post-Build] Public files copied to .next root successfully');
   
 } catch (error) {
   console.error('[Post-Build] Error copying files:', error);
