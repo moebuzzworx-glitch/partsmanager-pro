@@ -235,7 +235,10 @@ export function AdminLayoutClient({
                         return <CheckCircle className="h-4 w-4 text-green-600" />;
                       case 'error':
                       case 'alert':
+                      case 'low-stock-alert':
                         return <AlertCircle className="h-4 w-4 text-red-600" />;
+                      case 'warning':
+                        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
                       default:
                         return <Info className="h-4 w-4 text-blue-600" />;
                     }

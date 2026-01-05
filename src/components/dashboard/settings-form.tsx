@@ -5,15 +5,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CompanyInfoModal } from '@/app/[locale]/settings/company-info-modal';
 import { BusinessRulesModal } from '@/app/[locale]/settings/business-rules-modal';
 import { BillingPanel } from './billing-panel';
+import { NotificationSoundSettings } from '@/components/notification-sound-settings';
 
 
 export function SettingsForm({ dictionary }: { dictionary?: any }) {
     return (
         <div dir="inherit">
             <Tabs defaultValue="company">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="company">{dictionary?.settings?.companyTab || 'Company'}</TabsTrigger>
                     <TabsTrigger value="business">{dictionary?.settings?.businessTab || 'Business'}</TabsTrigger>
+                    <TabsTrigger value="notifications">{dictionary?.settings?.notificationsTab || 'Notifications'}</TabsTrigger>
                     <TabsTrigger value="subscription">{dictionary?.settings?.subscriptionTab || 'Subscription'}</TabsTrigger>
                 </TabsList>
 
@@ -50,6 +52,28 @@ export function SettingsForm({ dictionary }: { dictionary?: any }) {
                                 {dictionary?.settings?.businessSubtext || 'Configure default profit margins and VAT settings for your business.'}
                             </p>
                             <BusinessRulesModal dictionary={dictionary} />
+                        </div>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
+            <TabsContent value="notifications" dir="inherit">
+                <Card className="hover:shadow-md transition-shadow" dir="inherit">
+                    <CardHeader>
+                        <CardTitle>{dictionary?.settings?.notificationsTitle || 'Notification Settings'}</CardTitle>
+                        <CardDescription>
+                            {dictionary?.settings?.notificationsDescription || 'Control how you receive notifications.'}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent dir="inherit">
+                        <div className="space-y-6">
+                            <div>
+                                <h3 className="text-sm font-medium mb-4">{dictionary?.settings?.soundSettings || 'Sound Settings'}</h3>
+                                <NotificationSoundSettings dictionary={dictionary} />
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                                {dictionary?.settings?.notificationsSubtext || 'Notification sounds will play for all notification types including low stock alerts, system messages, and updates.'}
+                            </p>
                         </div>
                     </CardContent>
                 </Card>
