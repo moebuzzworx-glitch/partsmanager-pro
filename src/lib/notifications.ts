@@ -18,7 +18,7 @@ export interface Notification {
   userId: string;
   title: string;
   message: string;
-  type: 'info' | 'success' | 'warning' | 'error' | 'alert';
+  type: 'info' | 'success' | 'warning' | 'error' | 'alert' | 'low-stock-alert';
   read: boolean;
   createdAt: any;
   action?: {
