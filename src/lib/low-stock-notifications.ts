@@ -373,11 +373,13 @@ export async function sendLowStockNotificationForUser(
   error: string | null;
 }> {
   try {
+    console.log(`[LowStock] Checking for low stock products for user ${userId} with threshold ${threshold}`);
+    
     // Get only this user's low stock products
     const lowStockProducts = await detectLowStockProductsForUser(firestore, userId, threshold);
     
     if (lowStockProducts.length === 0) {
-      console.log(`No low stock products for user ${userId}`);
+      console.log(`[LowStock] No low stock products found for user ${userId}`);
       return {
         lowStockProducts: 0,
         notificationCreated: false,
@@ -385,10 +387,16 @@ export async function sendLowStockNotificationForUser(
       };
     }
 
-    console.log(`Found ${lowStockProducts.length} low stock products for user ${userId}`);
+    console.log(`[LowStock] Found ${lowStockProducts.length} low stock products for user ${userId}`);
 
     // Create or update grouped notification for this user
     const notificationId = await createGroupedLowStockNotification(firestore, userId, lowStockProducts);
+
+    if (notificationId) {
+      console.log(`[LowStock] Successfully created notification ${notificationId} for user ${userId}`);
+    } else {
+      console.warn(`[LowStock] Failed to create notification for user ${userId}`);
+    }
 
     return {
       lowStockProducts: lowStockProducts.length,

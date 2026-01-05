@@ -133,7 +133,9 @@ async function pullFirebaseChanges(firestore: Firestore, userId: string): Promis
     snapshot.forEach((doc) => {
       const data = doc.data();
       // Filter by updatedAt in code (avoid composite index requirement)
-      if (!data.updatedAt || data.updatedAt > (lastPull || 0)) {
+      // Convert Firestore Timestamp to milliseconds for comparison
+      const updatedAtMs = data.updatedAt?.toMillis?.() || data.updatedAt?.seconds * 1000 || 0;
+      if (!data.updatedAt || updatedAtMs > (lastPull || 0)) {
         updates.push({
           id: doc.id,
           ...data,
@@ -178,9 +180,12 @@ async function pullFirebaseChanges(firestore: Firestore, userId: string): Promis
     // Only trigger low stock notification check if we found product updates
     // This avoids unnecessary notifications on every sync cycle
     if (updates.length > 0) {
+      console.log('[Pull] Triggering low stock notification check for', updates.length, 'product updates');
       sendLowStockNotificationForUser(firestore, userId, 10).catch(error => {
-        console.warn('[Pull] Low stock notification check skipped:', error);
+        console.warn('[Pull] Low stock notification check failed:', error);
       });
+    } else {
+      console.log('[Pull] No product updates found, skipping low stock check');
     }
   } catch (err) {
     console.error('[Pull] Error fetching changes:', err);
