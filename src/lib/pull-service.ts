@@ -135,7 +135,7 @@ async function pullFirebaseChanges(firestore: Firestore, userId: string): Promis
       // Filter by updatedAt in code (avoid composite index requirement)
       // Convert Firestore Timestamp to milliseconds for comparison
       const updatedAtMs = data.updatedAt?.toMillis?.() || data.updatedAt?.seconds * 1000 || 0;
-      if (!data.updatedAt || updatedAtMs > (lastPull || 0)) {
+      if ((!data.updatedAt || updatedAtMs > (lastPull || 0)) && data.isDeleted !== true) {
         updates.push({
           id: doc.id,
           ...data,
