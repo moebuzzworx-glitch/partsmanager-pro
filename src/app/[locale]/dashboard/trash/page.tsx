@@ -108,20 +108,22 @@ export default function TrashPage({
           const querySnapshot = await getDocs(q);
           
           const freshDeletedProducts: any[] = [];
-          querySnapshot.forEach((doc) => {
-            // Show products marked as deleted from Firebase
+          
+          // Process deleted products from Firebase
+          for (const doc of querySnapshot.docs) {
+            const firebaseData = doc.data();
             freshDeletedProducts.push({
               id: doc.id,
-              name: doc.data().name || '',
-              reference: doc.data().reference || '',
-              sku: doc.data().sku || '',
-              stock: doc.data().stock || 0,
-              purchasePrice: doc.data().purchasePrice || 0,
-              price: doc.data().price || 0,
-              image: doc.data().image,
-              deletedAt: doc.data().deletedAt,
+              name: firebaseData.name || '',
+              reference: firebaseData.reference || '',
+              sku: firebaseData.sku || '',
+              stock: firebaseData.stock || 0,
+              purchasePrice: firebaseData.purchasePrice || 0,
+              price: firebaseData.price || 0,
+              image: firebaseData.image,
+              deletedAt: firebaseData.deletedAt,
             });
-          });
+          }
           
           // Update with Firebase data
           if (freshDeletedProducts.length > 0) {

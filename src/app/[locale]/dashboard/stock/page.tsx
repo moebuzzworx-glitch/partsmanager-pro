@@ -43,7 +43,7 @@ import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
 import { hybridDeleteProduct } from "@/lib/hybrid-import-v2";
 import { useToast } from "@/hooks/use-toast";
-import { getProductsByUserExcludingPending, getStorageSize, initDB, saveProduct } from "@/lib/indexeddb";
+import { getProductsByUserExcludingPending, getStorageSize, initDB } from "@/lib/indexeddb";
 import { useOffline } from "@/hooks/use-offline";
 
 interface Product {
@@ -121,23 +121,10 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
         const querySnapshot = await getDocs(q);
         
         const freshProducts: Product[] = [];
-        const docsToProcess = querySnapshot.docs;
         
-        // Process all documents
-        for (const doc of docsToProcess) {
+        // Process all documents for display (filtering only)
+        for (const doc of querySnapshot.docs) {
           const firebaseData = doc.data();
-          
-          // Save ALL Firebase products to IndexedDB (including deleted) to preserve state
-          // This ensures deleted products stay deleted even on refresh
-          try {
-            await saveProduct({
-              ...firebaseData,
-              id: doc.id,
-              isDeleted: firebaseData.isDeleted ?? false, // Ensure isDeleted is preserved
-            }, user.uid);
-          } catch (saveErr) {
-            console.warn('[Stock] Failed to save product to IndexedDB:', doc.id, saveErr);
-          }
           
           // Filter out deleted products for display
           if (firebaseData.isDeleted !== true) {
@@ -155,7 +142,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
           }
         }
         
-        console.log(`[Stock] Saved all products from Firebase (${freshProducts.length} active shown)`);
+        console.log(`[Stock] Fetched ${freshProducts.length} active products from Firebase`);
         
         // Only update display if we got fresh data from Firebase AND it has different products
         // Merge strategy: Keep IndexedDB products, add/update with Firebase products (by ID)
