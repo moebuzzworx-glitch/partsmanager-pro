@@ -130,8 +130,25 @@ async function pullFirebaseChanges(firestore: Firestore, userId: string): Promis
     const snapshot = await getDocs(q);
     const updates: any[] = [];
 
+    // Get pending delete IDs to avoid overwriting local deletes
+    let pendingDeleteIds: string[] = [];
+    try {
+      const { getUnpushedCommits } = await import('./commit-queue');
+      const commits = await getUnpushedCommits(userId);
+      pendingDeleteIds = commits
+        .filter((c) => (c.type === 'delete' || c.type === 'permanent-delete') && c.collectionName === 'products')
+        .map((c) => c.docId);
+    } catch (err) {
+      console.warn('[Pull] Failed to check pending deletes:', err);
+    }
+
     snapshot.forEach((doc) => {
       const data = doc.data();
+      // Skip products that have pending deletes (don't overwrite local delete state)
+      if (pendingDeleteIds.includes(doc.id)) {
+        console.log('[Pull] Skipping product with pending delete:', doc.id);
+        return;
+      }
       // Filter by updatedAt in code (avoid composite index requirement)
       // Convert Firestore Timestamp to milliseconds for comparison
       const updatedAtMs = data.updatedAt?.toMillis?.() || data.updatedAt?.seconds * 1000 || 0;
