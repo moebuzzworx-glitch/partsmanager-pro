@@ -300,6 +300,37 @@ export async function getProductsByUser(userId: string): Promise<any[]> {
 }
 
 /**
+ * Get IDs of products with pending delete operations (not yet synced)
+ * These products should not be loaded to avoid conflicts on refresh
+ */
+export async function getPendingDeleteProductIds(userId: string): Promise<string[]> {
+  try {
+    const { getUnpushedCommits } = await import('./commit-queue');
+    const commits = await getUnpushedCommits(userId);
+    
+    // Filter commits that are delete or permanent-delete operations for products
+    return commits
+      .filter((c) => (c.type === 'delete' || c.type === 'permanent-delete') && c.collectionName === 'products')
+      .map((c) => c.docId);
+  } catch (err) {
+    console.warn('[IndexedDB] Failed to get pending deletes:', err);
+    return []; // If there's an error, return empty list (don't block loading)
+  }
+}
+
+/**
+ * Get products for a user excluding both deleted and pending-delete products
+ * Use this when loading products for display to prevent conflicts
+ */
+export async function getProductsByUserExcludingPending(userId: string): Promise<any[]> {
+  const products = await getProductsByUser(userId);
+  const pendingDeleteIds = await getPendingDeleteProductIds(userId);
+  
+  // Filter out products that have pending delete operations
+  return products.filter((product) => !pendingDeleteIds.includes(product.id));
+}
+
+/**
  * Remove all deleted products from IndexedDB for a user
  * (cleanup deleted items from cache so they don't keep appearing)
  */

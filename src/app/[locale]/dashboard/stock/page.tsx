@@ -43,7 +43,7 @@ import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
 import { hybridDeleteProduct } from "@/lib/hybrid-import-v2";
 import { useToast } from "@/hooks/use-toast";
-import { getProductsByUser, getStorageSize, initDB, saveProduct } from "@/lib/indexeddb";
+import { getProductsByUserExcludingPending, getStorageSize, initDB, saveProduct } from "@/lib/indexeddb";
 import { useOffline } from "@/hooks/use-offline";
 
 interface Product {
@@ -84,8 +84,9 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
       // STEP 1: Try to load from IndexedDB first (instant)
       let fetchedProducts: Product[] = [];
       try {
-        // Fetch only active products (deleted products stay in IndexedDB for restore)
-        const cachedProducts = await getProductsByUser(user.uid);
+        // Fetch active products, excluding those with pending deletes
+        // This prevents reloading products that are in the process of being deleted
+        const cachedProducts = await getProductsByUserExcludingPending(user.uid);
         if (cachedProducts && cachedProducts.length > 0) {
           // Map products to display format
           fetchedProducts = cachedProducts
