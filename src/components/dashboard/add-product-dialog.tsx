@@ -22,7 +22,7 @@ import { PlusCircle, Upload, Loader2, CheckCircle, AlertCircle } from 'lucide-re
 import { ProgressModal } from '@/components/ui/progress-modal';
 import { getDictionary } from '@/lib/dictionaries';
 import { useFirebase } from '@/firebase/provider';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection } from 'firebase/firestore';
 import { User as AppUser } from '@/lib/types';
 import { canWrite, getExportRestrictionMessage } from '@/lib/trial-utils';
 import { useToast } from '@/hooks/use-toast';
