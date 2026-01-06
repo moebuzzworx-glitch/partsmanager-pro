@@ -121,8 +121,24 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
         const querySnapshot = await getDocs(q);
         
         const freshProducts: Product[] = [];
-        querySnapshot.forEach((doc) => {
+        const docsToProcess = querySnapshot.docs;
+        
+        // Process all documents
+        for (const doc of docsToProcess) {
           const firebaseData = doc.data();
+          
+          // Save ALL Firebase products to IndexedDB (including deleted) to preserve state
+          // This ensures deleted products stay deleted even on refresh
+          try {
+            await saveProduct({
+              ...firebaseData,
+              id: doc.id,
+              isDeleted: firebaseData.isDeleted ?? false, // Ensure isDeleted is preserved
+            }, user.uid);
+          } catch (saveErr) {
+            console.warn('[Stock] Failed to save product to IndexedDB:', doc.id, saveErr);
+          }
+          
           // Filter out deleted products for display
           if (firebaseData.isDeleted !== true) {
             freshProducts.push({
@@ -137,19 +153,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
               price: firebaseData.price || 0,
             });
           }
-          
-          // IMPORTANT: Save ALL Firebase products to IndexedDB (including deleted) to preserve state
-          // This ensures deleted products stay deleted even on refresh
-          try {
-            await saveProduct({
-              ...firebaseData,
-              id: doc.id,
-              isDeleted: firebaseData.isDeleted ?? false, // Ensure isDeleted is preserved
-            }, user.uid);
-          } catch (saveErr) {
-            console.warn('[Stock] Failed to save product to IndexedDB:', doc.id, saveErr);
-          }
-        });
+        }
         
         console.log(`[Stock] Saved all products from Firebase (${freshProducts.length} active shown)`);
         
