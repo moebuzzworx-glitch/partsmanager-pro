@@ -43,7 +43,7 @@ import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
 import { hybridDeleteProduct } from "@/lib/hybrid-import-v2";
 import { useToast } from "@/hooks/use-toast";
-import { getAllProductsByUserRaw, getStorageSize, initDB, saveProduct, removeDeletedProductsFromCache } from "@/lib/indexeddb";
+import { getProductsByUser, getStorageSize, initDB, saveProduct } from "@/lib/indexeddb";
 import { useOffline } from "@/hooks/use-offline";
 
 interface Product {
@@ -81,25 +81,14 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
       // Initialize IndexedDB
       await initDB();
       
-      // STEP 0: First, clean up any deleted products from IndexedDB cache (before loading)
-      try {
-        const removed = await removeDeletedProductsFromCache(user.uid);
-        if (removed > 0) {
-          console.log(`[Stock] Removed ${removed} deleted products from IndexedDB cache before loading`);
-        }
-      } catch (cleanupErr) {
-        console.warn('[Stock] Failed to clean up deleted products:', cleanupErr);
-      }
-      
       // STEP 1: Try to load from IndexedDB first (instant)
       let fetchedProducts: Product[] = [];
       try {
-        // Fetch ALL products (including deleted) - just like Firebase
-        const allCachedProducts = await getAllProductsByUserRaw(user.uid);
-        if (allCachedProducts && allCachedProducts.length > 0) {
-          // Apply the SAME filtering logic as Firebase does
-          fetchedProducts = allCachedProducts
-            .filter((doc: any) => doc.isDeleted !== true)  // Filter OUT deleted products
+        // Fetch only active products (deleted products stay in IndexedDB for restore)
+        const cachedProducts = await getProductsByUser(user.uid);
+        if (cachedProducts && cachedProducts.length > 0) {
+          // Map products to display format
+          fetchedProducts = cachedProducts
             .map((doc: any) => ({
               id: doc.id,
               name: doc.name || '',
@@ -111,7 +100,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
               purchasePrice: doc.purchasePrice || 0,
               price: doc.price || 0,
             }));
-          console.log(`✅ Loaded ${allCachedProducts.length} products from IndexedDB (${fetchedProducts.length} after filtering deleted)`);
+          console.log(`✅ Loaded ${fetchedProducts.length} active products from IndexedDB (deleted products preserved for restore)`);
         }
       } catch (localErr) {
         console.warn('Failed to load from IndexedDB:', localErr);
