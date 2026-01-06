@@ -122,36 +122,38 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
         
         const freshProducts: Product[] = [];
         querySnapshot.forEach((doc) => {
-          // Filter out deleted products
-          if (doc.data().isDeleted !== true) {
+          const firebaseData = doc.data();
+          // Filter out deleted products for display
+          if (firebaseData.isDeleted !== true) {
             freshProducts.push({
               id: doc.id,
-              name: doc.data().name || '',
-              sku: doc.data().reference || '',
-              reference: doc.data().reference || '',
-              brand: doc.data().brand || '',
-              stock: doc.data().stock || 0,
-              quantity: doc.data().stock || 0,
-              purchasePrice: doc.data().purchasePrice || 0,
-              price: doc.data().price || 0,
+              name: firebaseData.name || '',
+              sku: firebaseData.reference || '',
+              reference: firebaseData.reference || '',
+              brand: firebaseData.brand || '',
+              stock: firebaseData.stock || 0,
+              quantity: firebaseData.stock || 0,
+              purchasePrice: firebaseData.purchasePrice || 0,
+              price: firebaseData.price || 0,
             });
+          }
+          
+          // IMPORTANT: Save ALL Firebase products to IndexedDB (including deleted) to preserve state
+          // This ensures deleted products stay deleted even on refresh
+          try {
+            await saveProduct({
+              ...firebaseData,
+              id: doc.id,
+              isDeleted: firebaseData.isDeleted ?? false, // Ensure isDeleted is preserved
+            }, user.uid);
+          } catch (saveErr) {
+            console.warn('[Stock] Failed to save product to IndexedDB:', doc.id, saveErr);
           }
         });
         
-        // IMPORTANT: Save Firebase products back to IndexedDB so they can be deleted/modified
-        if (freshProducts.length > 0) {
-          console.log('[Stock] Saving', freshProducts.length, 'products from Firebase to IndexedDB');
-          for (const product of freshProducts) {
-            try {
-              await saveProduct(product, user.uid);
-            } catch (saveErr) {
-              console.warn('[Stock] Failed to save product to IndexedDB:', product.id, saveErr);
-            }
-          }
-          console.log('[Stock] Finished syncing products to IndexedDB');
-        }
+        console.log(`[Stock] Saved all products from Firebase (${freshProducts.length} active shown)`);
         
-        // Only update if we got fresh data from Firebase AND it has different products
+        // Only update display if we got fresh data from Firebase AND it has different products
         // Merge strategy: Keep IndexedDB products, add/update with Firebase products (by ID)
         if (freshProducts.length > 0) {
           // Create a map of existing products by ID
