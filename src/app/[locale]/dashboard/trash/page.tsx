@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/table";
 import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { getAllProductsByUserRaw, initDB } from "@/lib/indexeddb";
+import { getDeletedProductsByUser, initDB, getPendingDeleteProductIds } from "@/lib/indexeddb";
 import { hybridRestoreProduct, hybridPermanentlyDeleteProduct } from "@/lib/hybrid-import-v2";
 import { useToast } from "@/hooks/use-toast";
 
@@ -72,17 +72,26 @@ export default function TrashPage({
         // Initialize IndexedDB
         await initDB();
         
-        // STEP 1: Fetch ALL products from IndexedDB
-        const allCachedProducts = await getAllProductsByUserRaw(user.uid);
+        // Get pending delete IDs to exclude products still being deleted
+        const pendingDeleteIds = await getPendingDeleteProductIds(user.uid);
         
-        // Filter to show only DELETED products (opposite of stock page)
-        const deletedProducts = allCachedProducts.filter((product: any) => product.isDeleted === true);
+        // STEP 1: Fetch deleted products from IndexedDB
+        // Only show products already marked as deleted (not pending deletes)
+        const deletedProducts = await getDeletedProductsByUser(user.uid);
         
-        const items = deletedProducts.map((product: any) => ({
+        // Filter out products with pending delete operations
+        const stableDeletedProducts = deletedProducts.filter(
+          (product: any) => !pendingDeleteIds.includes(product.id)
+        );
+        
+        const items = stableDeletedProducts.map((product: any) => ({
           id: product.id,
           name: product.name || '',
           reference: product.reference || '',
           sku: product.sku || '',
+          stock: product.stock || 0,
+          purchasePrice: product.purchasePrice || 0,
+          price: product.price || 0,
           image: product.image,
           deletedAt: product.deletedAt,
         }));
@@ -90,27 +99,28 @@ export default function TrashPage({
         setAllDeletedItems(items);
         setDisplayedItems(items.slice(0, 50));
         setDisplayLimit(50);
-        console.log(`✅ Loaded ${deletedProducts.length} deleted products from IndexedDB`);
+        console.log(`✅ Loaded ${stableDeletedProducts.length} deleted products from IndexedDB (${pendingDeleteIds.length} pending deletes excluded)`);
         
         // STEP 2: Sync with Firebase in background
         try {
           const productsRef = collection(firestore, 'products');
-          const q = query(productsRef, where('userId', '==', user.uid));
+          const q = query(productsRef, where('userId', '==', user.uid), where('isDeleted', '==', true));
           const querySnapshot = await getDocs(q);
           
           const freshDeletedProducts: any[] = [];
           querySnapshot.forEach((doc) => {
-            // Show products marked as deleted
-            if (doc.data().isDeleted === true) {
-              freshDeletedProducts.push({
-                id: doc.id,
-                name: doc.data().name || '',
-                reference: doc.data().reference || '',
-                sku: doc.data().sku || '',
-                image: doc.data().image,
-                deletedAt: doc.data().deletedAt,
-              });
-            }
+            // Show products marked as deleted from Firebase
+            freshDeletedProducts.push({
+              id: doc.id,
+              name: doc.data().name || '',
+              reference: doc.data().reference || '',
+              sku: doc.data().sku || '',
+              stock: doc.data().stock || 0,
+              purchasePrice: doc.data().purchasePrice || 0,
+              price: doc.data().price || 0,
+              image: doc.data().image,
+              deletedAt: doc.data().deletedAt,
+            });
           });
           
           // Update with Firebase data

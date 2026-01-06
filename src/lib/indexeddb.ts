@@ -331,6 +331,37 @@ export async function getProductsByUserExcludingPending(userId: string): Promise
 }
 
 /**
+ * Get deleted products for a user (marked with isDeleted: true)
+ * For trash page display, includes stock and price for restore purposes
+ */
+export async function getDeletedProductsByUser(userId: string): Promise<any[]> {
+  const db = await getDB();
+  const tx = db.transaction(STORES.PRODUCTS, 'readonly');
+  const store = tx.objectStore(STORES.PRODUCTS);
+  const index = store.index('userId');
+
+  return new Promise((resolve, reject) => {
+    const items: any[] = [];
+    const request = index.openCursor();
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = (event: any) => {
+      const cursor = event.target.result;
+      if (cursor) {
+        const product = cursor.value;
+        // Only return deleted products for this user
+        if (product.userId === userId && product.isDeleted === true) {
+          items.push(product);
+        }
+        cursor.continue();
+      } else {
+        resolve(items);
+      }
+    };
+  });
+}
+
+/**
  * Remove all deleted products from IndexedDB for a user
  * (cleanup deleted items from cache so they don't keep appearing)
  */
