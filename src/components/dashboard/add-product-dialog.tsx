@@ -313,7 +313,6 @@ export function AddProductDialog({ dictionary, onProductAdded, products = [] }: 
       let errorCount = 0;
       let updateCount = 0;
       const errors: string[] = [];
-      const productsRef = collection(firestore, 'products');
 
       // STEP 1: Parse all rows first (fast, synchronous)
       const parsedRows = products.map((row, i) => {
