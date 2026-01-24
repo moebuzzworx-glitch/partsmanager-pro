@@ -21,7 +21,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirebase } from '@/firebase/provider';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { User as AppUser } from '@/lib/types';
 import { canExport, getExportRestrictionMessage } from '@/lib/trial-utils';
 import { getUserSettings, getNextDocumentNumber, updateLastDocumentNumber, AppSettings } from '@/lib/settings-utils';
@@ -80,6 +80,8 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
     const [clientSearchOpen, setClientSearchOpen] = React.useState(false);
     const [productSearchOpen, setProductSearchOpen] = React.useState<Record<number, boolean>>({});
     const [dictionary, setDictionary] = React.useState<any>(null);
+    const [invoices, setInvoices] = React.useState<any[]>([]);
+    const [selectedInvoiceId, setSelectedInvoiceId] = React.useState<string>('');
 
     // Load dictionary
     React.useEffect(() => {
@@ -107,7 +109,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
         clientRib: '',
         lineItems: [{ designation: '', quantity: 1, unitPrice: 0, reference: '', unit: 'pcs' }],
         paymentMethod: 'Espèce',
-        applyVatToAll: false,
+        applyVatToAll: documentType === 'PURCHASE_ORDER',
       },
     });
 
@@ -140,18 +142,47 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
           const next = getNextDocumentNumber(settings, documentType);
           setNextDocNumber(next);
           setValue('invoiceNumber', next);
-          const [cust, prod] = await Promise.all([
+          const [cust, prod, invs] = await Promise.all([
             getCustomersForAutoComplete(firestore, user.uid),
-            getProductsForAutoComplete(firestore, user.uid)
+            getProductsForAutoComplete(firestore, user.uid),
+            documentType === 'DELIVERY_NOTE' ? (async () => {
+              const invoicesRef = collection(firestore, 'invoices');
+              const q = query(invoicesRef, where('userId', '==', user.uid), where('documentType', '==', 'INVOICE'));
+              const snap = await getDocs(q);
+              return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            })() : Promise.resolve([])
           ]);
           setCustomers(cust);
           setProducts(prod);
+          setInvoices(invs);
         } catch (e) {
           console.error(e);
         }
       };
       fetchData();
     }, [user, firestore, documentType, setValue]);
+
+    const handleInvoiceSelect = (invoiceId: string) => {
+      const inv = invoices.find(i => i.id === invoiceId);
+      if (!inv) return;
+      setSelectedInvoiceId(invoiceId);
+      setValue('clientName', inv.clientName || '');
+      setValue('clientAddress', inv.clientAddress || '');
+      setValue('clientNis', inv.clientNis || '');
+      setValue('clientNif', inv.clientNif || '');
+      setValue('clientRc', inv.clientRc || '');
+      setValue('clientArt', inv.clientArt || '');
+      setValue('clientRib', inv.clientRib || '');
+      setValue('lineItems', (inv.lineItems || []).map((item: any) => ({
+        reference: item.reference || '',
+        designation: item.designation || '',
+        unit: item.unit || 'pcs',
+        quantity: item.quantity || 1,
+        unitPrice: item.unitPrice || 0
+      })));
+      setValue('applyVatToAll', !!inv.applyVatToAll);
+      toast({ title: 'Success', description: 'Invoice data loaded.' });
+    };
 
     const handleClientSelect = (client: ClientAutoComplete) => {
       setValue('clientName', client.name);
@@ -167,7 +198,12 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
     const handleProductSelect = (product: ProductAutoComplete, index: number) => {
       setValue(`lineItems.${index}.reference`, product.reference || '');
       setValue(`lineItems.${index}.designation`, product.name);
-      setValue(`lineItems.${index}.unitPrice`, product.price || 0);
+
+      const priceToUse = documentType === 'PURCHASE_ORDER'
+        ? (product.purchasePrice || 0)
+        : (product.price || 0);
+
+      setValue(`lineItems.${index}.unitPrice`, priceToUse);
       setProductSearchOpen(prev => ({ ...prev, [index]: false }));
     };
 
@@ -207,22 +243,39 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="font-semibold">{dictionary?.createInvoiceForm?.invoiceDetails || 'Document Details'}</h3>
-              {!hideTypeSelector && (
-                <div className="flex items-center gap-2">
-                  <Label>Type:</Label>
-                  <Select value={documentType} onValueChange={(v: any) => setDocumentType(v)}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="INVOICE">Facture</SelectItem>
-                      <SelectItem value="PURCHASE_ORDER">Bon de Commande</SelectItem>
-                      <SelectItem value="DELIVERY_NOTE">Bon de Livraison</SelectItem>
-                      <SelectItem value="SALES_RECEIPT">Bon de Vente</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              <div className="flex items-center gap-4">
+                {documentType === 'DELIVERY_NOTE' && invoices.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs">Lier à Facture:</Label>
+                    <Select value={selectedInvoiceId} onValueChange={handleInvoiceSelect}>
+                      <SelectTrigger className="w-[150px] h-8 text-xs">
+                        <SelectValue placeholder="Choisir..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {invoices.map(inv => (
+                          <SelectItem key={inv.id} value={inv.id}>{inv.invoiceNumber}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {!hideTypeSelector && (
+                  <div className="flex items-center gap-2">
+                    <Label>Type:</Label>
+                    <Select value={documentType} onValueChange={(v: any) => setDocumentType(v)}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="INVOICE">Facture</SelectItem>
+                        <SelectItem value="PURCHASE_ORDER">Bon de Commande</SelectItem>
+                        <SelectItem value="DELIVERY_NOTE">Bon de Livraison</SelectItem>
+                        <SelectItem value="SALES_RECEIPT">Bon de Vente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">

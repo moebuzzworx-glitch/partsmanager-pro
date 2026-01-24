@@ -17,6 +17,7 @@ export interface ProductAutoComplete {
   reference?: string;
   brand?: string;
   price?: number;
+  purchasePrice?: number;
   stock?: number;
 }
 
@@ -31,7 +32,7 @@ export async function getCustomersForAutoComplete(
     const customersRef = collection(firestore, 'customers');
     const q = query(customersRef, where('userId', '==', userId));
     const querySnapshot = await getDocs(q);
-    
+
     const customers: ClientAutoComplete[] = [];
     querySnapshot.forEach((doc) => {
       customers.push({
@@ -64,7 +65,7 @@ export async function getProductsForAutoComplete(
     const productsRef = collection(firestore, 'products');
     const q = query(productsRef, where('userId', '==', userId), where('isDeleted', '==', false));
     const querySnapshot = await getDocs(q);
-    
+
     const products: ProductAutoComplete[] = [];
     querySnapshot.forEach((doc) => {
       products.push({
@@ -73,6 +74,7 @@ export async function getProductsForAutoComplete(
         reference: doc.data().reference,
         brand: doc.data().brand,
         price: doc.data().price,
+        purchasePrice: doc.data().purchasePrice,
         stock: doc.data().stock,
       });
     });

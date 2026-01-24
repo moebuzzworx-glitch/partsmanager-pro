@@ -154,7 +154,7 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
 
   const totalAmount = Math.max(0, subTotal - discountAmount);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (autoPrint: boolean = false) => {
     if (!firestore || !customerInput.trim() || saleItems.length === 0) return;
 
     try {
@@ -173,52 +173,36 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
         customerId = newCustomerDoc.id;
       }
 
-      // Calculate discount ratio for proportional distribution
-      // ratio = final / original (e.g., 90/100 = 0.9)
+      // Record items and generate document data... (reusing existing logic)
       const discountRatio = subTotal > 0 ? (subTotal - discountAmount) / subTotal : 1;
-
-      // Save each sale item to the sales collection
       const salesRef = collection(firestore, 'sales');
       for (const item of saleItems) {
-        // 1. Update stock locally (instant UI update & low stock check)
-        // Calculate new stock
         const currentStock = item.stock || 0;
         const newStock = Math.max(0, currentStock - item.saleQuantity);
+        try { await hybridUpdateProduct(user, item.id, { stock: newStock }); } catch (err) { }
 
-        // Update local database (offline-first) - this triggers onUserActivity -> checkLowStock
-        try {
-          await hybridUpdateProduct(user, item.id, {
-            stock: newStock,
-          });
-        } catch (err) {
-          console.error('Error updating stock locally:', err);
-          // Continue with sale even if local stock update fails (consistency fix via sync later)
-        }
-
-        // Calculate item amounts
         const itemOriginalTotal = item.price * item.saleQuantity;
         const itemDiscountedTotal = itemOriginalTotal * discountRatio;
         const itemDiscountAmount = itemOriginalTotal - itemDiscountedTotal;
 
-        // 2. Add to sales collection
         await addDoc(salesRef, {
+          userId: user?.uid, // Added userId for better querying
           customerId: customerId,
           customer: customerName,
           productId: item.id,
           product: item.name,
           quantity: item.saleQuantity,
-          amount: itemDiscountedTotal, // Net amount (revenue)
-          originalAmount: itemOriginalTotal, // Gross amount
-          discountAmount: itemDiscountAmount, // Discount given
+          amount: itemDiscountedTotal,
+          originalAmount: itemOriginalTotal,
+          discountAmount: itemDiscountAmount,
           unitPrice: item.price,
           reference: item.reference,
           date: serverTimestamp(),
         });
       }
 
-      // Prepare receipt data
       const receiptData = {
-        invoiceNumber: `REC-${Date.now().toString().slice(-6)}`, // Temporary receipt number
+        invoiceNumber: `REC-${Date.now().toString().slice(-6)}`,
         invoiceDate: new Date().toISOString(),
         clientName: customerName,
         clientAddress: selectedCustomer?.address || '',
@@ -235,7 +219,7 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
           unit: 'pcs'
         })),
         paymentMethod: 'Espèce',
-        applyVatToAll: false, // Default for simple receipt
+        applyVatToAll: false,
         isProforma: false
       };
 
@@ -251,6 +235,10 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
         generateDocumentPdf(receiptData as any, 'SALES_RECEIPT', companyInfo as any);
       };
 
+      if (autoPrint) {
+        handlePrintReceipt();
+      }
+
       toast({
         title: 'Success',
         description: 'Sale recorded successfully.',
@@ -261,7 +249,6 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
         ),
       });
 
-      // Reset form
       setOpen(false);
       setSaleItems([]);
       setCustomerInput('');
@@ -496,9 +483,21 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button onClick={handleSubmit} disabled={!customerInput.trim() || saleItems.length === 0} className="w-full">
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => handleSubmit(false)}
+              disabled={!customerInput.trim() || saleItems.length === 0}
+              className="flex-1"
+            >
               {d.submit}
+            </Button>
+            <Button
+              onClick={() => handleSubmit(true)}
+              disabled={!customerInput.trim() || saleItems.length === 0}
+              className="flex-1"
+            >
+              Enregistrer & Générer Reçu
             </Button>
           </DialogFooter>
         </DialogContent>

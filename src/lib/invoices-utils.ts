@@ -229,8 +229,8 @@ export async function deductStockFromInvoice(
   invoice: StoredInvoice
 ): Promise<boolean> {
   try {
-    // Only deduct stock for non-proforma invoices
-    if (invoice.isProforma) {
+    // Only deduct stock for non-proforma invoices and non-purchase-orders
+    if (invoice.isProforma || invoice.documentType === 'PURCHASE_ORDER') {
       return true;
     }
 

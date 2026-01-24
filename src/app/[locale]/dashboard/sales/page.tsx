@@ -33,15 +33,21 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogSaleDialog } from "@/components/dashboard/log-sale-dialog";
 import { useFirebase } from "@/firebase/provider";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
+import { generateDocumentPdf } from "@/components/dashboard/document-generator";
+import { getUserSettings } from "@/lib/settings-utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface Sale {
   id: string;
   product: string;
   customer: string;
+  customerId?: string;
   date: string;
   quantity: number;
   amount: number;
+  unitPrice?: number;
+  reference?: string;
 }
 
 export default function SalesPage({
@@ -51,6 +57,7 @@ export default function SalesPage({
 }) {
   const { locale } = use(params);
   const { firestore, user } = useFirebase();
+  const { toast } = useToast();
   const [sales, setSales] = useState<Sale[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dictionary, setDictionary] = useState<any>(null);
@@ -72,7 +79,7 @@ export default function SalesPage({
       const salesRef = collection(firestore, 'sales');
       const q = query(salesRef, where('userId', '==', user.uid));
       const querySnapshot = await getDocs(q);
-      
+
       const fetchedSales: Sale[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
@@ -80,9 +87,12 @@ export default function SalesPage({
           id: doc.id,
           product: data.product || '',
           customer: data.customer || '',
+          customerId: data.customerId || '',
           date: data.date ? new Date(data.date.toDate?.() || data.date).toISOString() : new Date().toISOString(),
           quantity: data.quantity || 0,
           amount: data.amount || 0,
+          unitPrice: data.unitPrice,
+          reference: data.reference,
         });
       });
 
@@ -91,6 +101,55 @@ export default function SalesPage({
       console.error('Error fetching sales:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGenerateReceipt = async (sale: any) => {
+    if (!firestore || !user) return;
+    try {
+      toast({ title: "Génération...", description: "Préparation du document..." });
+      const [settings, customerDoc] = await Promise.all([
+        getUserSettings(firestore, user.uid),
+        sale.customerId ? getDoc(doc(firestore, 'customers', sale.customerId)) : Promise.resolve(null)
+      ]);
+
+      const customerData = customerDoc?.exists() ? customerDoc.data() : {};
+
+      const receiptData = {
+        invoiceNumber: `REC-${sale.id.slice(-6).toUpperCase()}`,
+        invoiceDate: sale.date,
+        clientName: sale.customer,
+        clientAddress: customerData?.address || '',
+        clientNis: customerData?.nis || '',
+        clientNif: customerData?.nif || '',
+        clientRc: customerData?.rc || '',
+        clientArt: customerData?.art || '',
+        clientRib: customerData?.rib || '',
+        lineItems: [{
+          reference: sale.reference || '',
+          designation: sale.product,
+          quantity: sale.quantity,
+          unitPrice: sale.unitPrice || (sale.amount / sale.quantity),
+          unit: 'pcs'
+        }],
+        paymentMethod: 'Espèce',
+        applyVatToAll: false,
+        isProforma: false
+      };
+
+      const companyInfo = {
+        companyName: settings.companyName,
+        address: settings.address,
+        phone: settings.phone,
+        logoUrl: (settings as any).logoUrl,
+        rc: settings.rc, nif: settings.nif, art: settings.art, nis: settings.nis, rib: settings.rib
+      };
+
+      await generateDocumentPdf(receiptData as any, 'SALES_RECEIPT', companyInfo as any);
+      toast({ title: "Succès", description: "Le reçu a été généré." });
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Erreur", description: "Échec de la génération.", variant: "destructive" });
     }
   };
 
@@ -128,8 +187,8 @@ export default function SalesPage({
           <div className="flex justify-between items-center">
             <CardTitle>{dictionary.sales?.title || 'Sales'}</CardTitle>
             <div className="flex items-center gap-4">
-              <Input 
-                placeholder={dictionary.sales?.searchPlaceholder || 'Search sales...'} 
+              <Input
+                placeholder={dictionary.sales?.searchPlaceholder || 'Search sales...'}
                 className="w-full max-w-sm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -182,6 +241,9 @@ export default function SalesPage({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>{dictionary?.table?.actions || 'Actions'}</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleGenerateReceipt(sale)}>
+                              Générer Bon de Vente
+                            </DropdownMenuItem>
                             <DropdownMenuItem>{dictionary?.table?.edit || 'Edit'}</DropdownMenuItem>
                             <DropdownMenuItem>{dictionary?.table?.delete || 'Delete'}</DropdownMenuItem>
                           </DropdownMenuContent>
