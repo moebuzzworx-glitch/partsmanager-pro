@@ -130,23 +130,28 @@ async function pullFirebaseChanges(firestore: Firestore, userId: string): Promis
     const snapshot = await getDocs(q);
     const updates: any[] = [];
 
-    // Get pending delete IDs to avoid overwriting local deletes
-    let pendingDeleteIds: string[] = [];
+    // Get ALL pending commit IDs to avoid overwriting local changes
+    // This includes creates, updates, deletes, restores - any pending local operation
+    let pendingCommitIds: string[] = [];
     try {
       const { getUnpushedCommits } = await import('./commit-queue');
       const commits = await getUnpushedCommits(userId);
-      pendingDeleteIds = commits
-        .filter((c) => (c.type === 'delete' || c.type === 'permanent-delete') && c.collectionName === 'products')
+      // Filter to only product commits, but include ALL types (not just deletes)
+      pendingCommitIds = commits
+        .filter((c) => c.collectionName === 'products')
         .map((c) => c.docId);
+      if (pendingCommitIds.length > 0) {
+        console.log('[Pull] Skipping', pendingCommitIds.length, 'products with pending local changes');
+      }
     } catch (err) {
-      console.warn('[Pull] Failed to check pending deletes:', err);
+      console.warn('[Pull] Failed to check pending commits:', err);
     }
 
     snapshot.forEach((doc) => {
       const data = doc.data();
-      // Skip products that have pending deletes (don't overwrite local delete state)
-      if (pendingDeleteIds.includes(doc.id)) {
-        console.log('[Pull] Skipping product with pending delete:', doc.id);
+      // Skip products that have ANY pending local changes (don't overwrite local state)
+      if (pendingCommitIds.includes(doc.id)) {
+        console.log('[Pull] Skipping product with pending local changes:', doc.id);
         return;
       }
       // Filter by updatedAt in code (avoid composite index requirement)

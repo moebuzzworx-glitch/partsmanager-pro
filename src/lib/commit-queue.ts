@@ -123,7 +123,7 @@ export async function getUnpushedCommits(userId: string): Promise<CommitObject[]
     request.onsuccess = () => {
       try {
         const commits = request.result as CommitObject[];
-        
+
         // Filter: synced === false, userId matches, and sort by timestamp (FIFO)
         const userCommits = commits
           .filter((c) => c.synced === false && c.userId === userId)
@@ -203,6 +203,43 @@ export async function incrementRetries(commitId: string): Promise<void> {
     };
 
     getRequest.onerror = () => reject(getRequest.error);
+  });
+}
+
+/**
+ * Cleanup old synced commits from IndexedDB to prevent storage bloat
+ * Removes commits that were synced more than the specified time ago
+ * @param olderThanMs - Remove commits synced longer than this (default: 24 hours)
+ * @returns Number of commits removed
+ */
+export async function cleanupSyncedCommits(olderThanMs: number = 24 * 60 * 60 * 1000): Promise<number> {
+  const db = await getCommitDB();
+  const tx = db.transaction(COMMIT_STORE, 'readwrite');
+  const store = tx.objectStore(COMMIT_STORE);
+  const cutoff = Date.now() - olderThanMs;
+
+  return new Promise((resolve, reject) => {
+    let removed = 0;
+    const request = store.openCursor();
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = (event: any) => {
+      const cursor = event.target.result;
+      if (cursor) {
+        const commit = cursor.value as CommitObject;
+        // Remove synced commits older than cutoff
+        if (commit.synced && commit.syncedAt && commit.syncedAt < cutoff) {
+          cursor.delete();
+          removed++;
+        }
+        cursor.continue();
+      } else {
+        if (removed > 0) {
+          console.log('[CommitQueue] Cleaned up', removed, 'old synced commits');
+        }
+        resolve(removed);
+      }
+    };
   });
 }
 

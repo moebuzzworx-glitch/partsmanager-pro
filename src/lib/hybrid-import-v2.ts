@@ -6,7 +6,7 @@
 
 import { User } from 'firebase/auth';
 import { queueCommit } from './commit-queue';
-import { saveProduct, initDB, deleteProduct } from './indexeddb';
+import { saveProduct, initDB, deleteProduct, updateProduct, getProductByReference, getProduct } from './indexeddb';
 import { onUserActivity } from './pull-service';
 import { triggerImmediateSync } from './sync-worker';
 
@@ -38,24 +38,54 @@ export async function hybridImportProducts(
 
   try {
     console.log('[HybridImport] Starting import for', products.length, 'products');
-    
+
     // Initialize IndexedDB
     await initDB();
 
     // STEP 1: Save to IndexedDB instantly (user sees products immediately)
-    console.log('[HybridImport] STEP 1: Saving to IndexedDB...');
-    const productsWithIds = products.map((product, index) => ({
-      id: product.id || `product-${Date.now()}-${index}`,
-      ...product,
-      version: 1, // New products start at version 1
-      createdAt: product.createdAt || new Date().toISOString(),
-      updatedAt: Date.now(),
-    }));
+    // Check for existing products by reference to prevent duplicates
+    console.log('[HybridImport] STEP 1: Saving to IndexedDB (checking for duplicates)...');
+
+    const productsWithIds: any[] = [];
+    const updateOperations: any[] = []; // Track which products are updates vs creates
+
+    for (let index = 0; index < products.length; index++) {
+      const product = products[index];
+
+      // Check if product with same reference already exists
+      let existingProduct = null;
+      if (product.reference) {
+        existingProduct = await getProductByReference(product.reference, user.uid);
+      }
+
+      if (existingProduct) {
+        // UPDATE existing product (prevent duplicates)
+        console.log('[HybridImport] Found existing product with reference:', product.reference, '- will UPDATE');
+        productsWithIds.push({
+          ...existingProduct, // Keep existing data
+          ...product, // Apply new data on top
+          id: existingProduct.id, // Keep original ID
+          version: (existingProduct.version || 0) + 1,
+          updatedAt: Date.now(),
+        });
+        updateOperations.push({ isUpdate: true, existingId: existingProduct.id });
+      } else {
+        // CREATE new product
+        productsWithIds.push({
+          id: product.id || `product-${Date.now()}-${index}`,
+          ...product,
+          version: 1,
+          createdAt: product.createdAt || new Date().toISOString(),
+          updatedAt: Date.now(),
+        });
+        updateOperations.push({ isUpdate: false });
+      }
+    }
 
     const batchSize = 50;
     for (let i = 0; i < productsWithIds.length; i += batchSize) {
       const batch = productsWithIds.slice(i, i + batchSize);
-      
+
       for (const product of batch) {
         try {
           await saveProduct(product, user.uid);
@@ -75,11 +105,17 @@ export async function hybridImportProducts(
 
     // STEP 2: Queue for Firebase sync in background (fire and forget)
     console.log('[HybridImport] STEP 2: Queuing for Firebase sync...');
-    
-    for (const product of productsWithIds) {
+
+    for (let i = 0; i < productsWithIds.length; i++) {
+      const product = productsWithIds[i];
+      const operation = updateOperations[i];
+
       try {
-        await queueCommit('create', 'products', product.id, product, user.uid);
+        // Use 'update' for existing products, 'create' for new ones
+        const commitType = operation.isUpdate ? 'update' : 'create';
+        await queueCommit(commitType, 'products', product.id, product, user.uid);
         result.queued++;
+        console.log(`[HybridImport] Queued ${commitType} for:`, product.id);
       } catch (err) {
         console.error('[HybridImport] Failed to queue product:', product.id, err);
         result.errors.push(`Failed to queue ${product.id} for sync: ${err}`);
@@ -158,15 +194,14 @@ export async function hybridDeleteProduct(
   try {
     console.log('[HybridImport] Soft-deleting product:', productId);
 
-    // Mark as deleted in IndexedDB immediately (hidden from user)
-    const deletedProduct = {
-      id: productId,
+    // Mark as deleted in IndexedDB immediately using MERGE (preserves existing data)
+    // This is critical - we use updateProduct instead of saveProduct to preserve
+    // all product fields (name, price, stock, etc.) while only setting isDeleted=true
+    await updateProduct(productId, {
       isDeleted: true,
-      updatedAt: Date.now(),
-    };
-
-    await saveProduct(deletedProduct, user.uid);
-    console.log('[HybridImport] Product marked as deleted in IndexedDB:', productId);
+      deletedAt: Date.now(),
+    }, user.uid);
+    console.log('[HybridImport] Product marked as deleted in IndexedDB (data preserved):', productId);
 
     // Queue delete commit for Firebase
     await queueCommit('delete', 'products', productId, { isDeleted: true }, user.uid);

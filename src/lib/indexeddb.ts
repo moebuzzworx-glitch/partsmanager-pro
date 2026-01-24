@@ -424,6 +424,126 @@ export async function deleteProduct(productId: string): Promise<void> {
 }
 
 /**
+ * Update a product with partial data (MERGE instead of REPLACE)
+ * This preserves existing fields while only updating specified ones.
+ * Critical for soft-delete operations where we only want to update isDeleted flag.
+ */
+export async function updateProduct(productId: string, updates: any, userId: string): Promise<void> {
+  console.log('[IndexedDB] updateProduct called for:', productId, 'updates:', Object.keys(updates));
+  const db = await getDB();
+  const tx = db.transaction(STORES.PRODUCTS, 'readwrite');
+  const store = tx.objectStore(STORES.PRODUCTS);
+
+  return new Promise((resolve, reject) => {
+    // First, get existing product
+    const getRequest = store.get(productId);
+    
+    getRequest.onerror = () => {
+      console.error('[IndexedDB] Error getting product for update:', getRequest.error);
+      reject(getRequest.error);
+    };
+    
+    getRequest.onsuccess = () => {
+      const existing = getRequest.result;
+      
+      let merged: any;
+      if (existing) {
+        // MERGE: Keep existing data, apply updates on top
+        merged = {
+          ...existing,
+          ...updates,
+          id: productId, // Ensure ID is preserved
+          userId,
+          version: (existing.version || 0) + 1,
+          updatedAt: Date.now(),
+        };
+        console.log('[IndexedDB] Merging update with existing product, new version:', merged.version);
+      } else {
+        // Product doesn't exist, create new with updates
+        merged = {
+          ...updates,
+          id: productId,
+          userId,
+          version: 1,
+          createdAt: new Date().toISOString(),
+          updatedAt: Date.now(),
+          isDeleted: updates.isDeleted ?? false,
+        };
+        console.log('[IndexedDB] Creating new product from updates');
+      }
+      
+      const putRequest = store.put(merged);
+      
+      putRequest.onerror = () => {
+        console.error('[IndexedDB] Error saving merged product:', putRequest.error);
+        reject(putRequest.error);
+      };
+      
+      putRequest.onsuccess = () => {
+        tx.oncomplete = () => {
+          console.log('[IndexedDB] Product updated successfully:', productId);
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+      };
+    };
+  });
+}
+
+/**
+ * Get a product by reference (SKU) for deduplication during imports
+ * Returns the first matching product for the given user with the specified reference
+ */
+export async function getProductByReference(reference: string, userId: string): Promise<any | null> {
+  if (!reference) return null;
+  
+  const db = await getDB();
+  const tx = db.transaction(STORES.PRODUCTS, 'readonly');
+  const store = tx.objectStore(STORES.PRODUCTS);
+  const index = store.index('userId');
+
+  return new Promise((resolve, reject) => {
+    const request = index.openCursor(IDBKeyRange.only(userId));
+    
+    request.onerror = () => reject(request.error);
+    request.onsuccess = (event: any) => {
+      const cursor = event.target.result;
+      if (cursor) {
+        const product = cursor.value;
+        // Match by reference (SKU) - case-insensitive comparison
+        if (product.reference && product.reference.toLowerCase() === reference.toLowerCase()) {
+          resolve(product);
+          return;
+        }
+        cursor.continue();
+      } else {
+        // No match found
+        resolve(null);
+      }
+    };
+  });
+}
+
+/**
+ * Get all product IDs that have pending (unsynced) commits
+ * Used to prevent pull service from overwriting local changes
+ */
+export async function getPendingCommitProductIds(userId: string): Promise<string[]> {
+  try {
+    const { getUnpushedCommits } = await import('./commit-queue');
+    const commits = await getUnpushedCommits(userId);
+    
+    // Return ALL product IDs with any pending commits (not just deletes)
+    return commits
+      .filter((c) => c.collectionName === 'products')
+      .map((c) => c.docId);
+  } catch (err) {
+    console.warn('[IndexedDB] Failed to get pending commits:', err);
+    return [];
+  }
+}
+
+/**
  * Save customer to IndexedDB
  */
 export async function saveCustomer(customer: any, userId: string): Promise<void> {

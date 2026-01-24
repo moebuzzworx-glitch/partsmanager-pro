@@ -5,8 +5,7 @@
 
 import {
   Firestore,
-  collection,
-  addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   doc,
@@ -132,7 +131,7 @@ async function processPendingCommits(firestore: Firestore, userId: string): Prom
   try {
     const userRef = doc(firestore, 'users', userId);
     const userSnap = await getDoc(userRef);
-    
+
     if (userSnap.exists()) {
       const userData = userSnap.data();
       if (userData.subscription === 'trial') {
@@ -242,11 +241,12 @@ async function processPendingCommits(firestore: Firestore, userId: string): Prom
 async function syncCommit(firestore: Firestore, commit: CommitObject): Promise<void> {
   const { type, collectionName, docId, data, userId } = commit;
 
-  const collRef = collection(firestore, collectionName);
-
   switch (type) {
     case 'create':
-      await addDoc(collRef, {
+      // Use setDoc with the existing docId to prevent duplicate documents
+      // addDoc would create a new document with a random ID, causing duplicates
+      const createRef = doc(firestore, collectionName, docId);
+      await setDoc(createRef, {
         ...data,
         userId,
         version: 1,
