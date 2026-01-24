@@ -31,17 +31,13 @@ import { collection, getDocs, query, where, addDoc, serverTimestamp } from 'fire
 import { TrialButtonLock } from '@/components/trial-button-lock';
 import { hybridUpdateProduct } from '@/lib/hybrid-import-v2';
 
+import { getCustomersForAutoComplete, getProductsForAutoComplete, type ClientAutoComplete, type ProductAutoComplete } from '@/lib/invoice-autocomplete-utils';
+
 type Dictionary = Awaited<ReturnType<typeof getDictionary>>;
 
-interface SaleItem extends Product {
+interface SaleItem extends ProductAutoComplete {
   saleQuantity: number;
-}
-
-interface Customer {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
+  price: number;
 }
 
 export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Dictionary; onSaleAdded?: () => void }) {
@@ -50,54 +46,28 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
   const [open, setOpen] = useState(false);
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [customerInput, setCustomerInput] = useState<string>('');
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>();
+  const [selectedCustomer, setSelectedCustomer] = useState<ClientAutoComplete | undefined>();
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [productInput, setProductInput] = useState<string>('');
   const [showProductDropdown, setShowProductDropdown] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [inputQuantity, setInputQuantity] = useState<number>(1);
+  const [products, setProducts] = useState<ProductAutoComplete[]>([]);
+  const [customers, setCustomers] = useState<ClientAutoComplete[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Fetch products and customers from Firestore when dialog opens
   useEffect(() => {
-    if (!open || !firestore) return;
+    if (!open || !firestore || !user) return;
 
     const fetchData = async () => {
       try {
         setIsLoading(true);
-
-        // Fetch products (only non-deleted)
-        const productsRef = collection(firestore, 'products');
-        const productsSnapshot = await getDocs(query(productsRef, where('isDeleted', '==', false)));
-        const fetchedProducts: Product[] = [];
-        productsSnapshot.forEach(doc => {
-          const data = doc.data();
-          fetchedProducts.push({
-            id: doc.id,
-            name: data.name || '',
-            reference: data.reference || '',
-            brand: data.brand || '',
-            sku: data.sku || '',
-            stock: data.stock || 0,
-            purchasePrice: data.purchasePrice || 0,
-            price: data.price || 0,
-          });
-        });
-        setProducts(fetchedProducts);
-
-        // Fetch customers
-        const customersRef = collection(firestore, 'customers');
-        const customersSnapshot = await getDocs(query(customersRef));
-        const fetchedCustomers: Customer[] = [];
-        customersSnapshot.forEach(doc => {
-          fetchedCustomers.push({
-            id: doc.id,
-            name: doc.data().name || '',
-            email: doc.data().email || '',
-            phone: doc.data().phone || '',
-          });
-        });
-        setCustomers(fetchedCustomers);
+        const [productsData, customersData] = await Promise.all([
+          getProductsForAutoComplete(firestore, user.uid),
+          getCustomersForAutoComplete(firestore, user.uid)
+        ]);
+        setProducts(productsData);
+        setCustomers(customersData);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -106,7 +76,7 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
     };
 
     fetchData();
-  }, [open, firestore]);
+  }, [open, firestore, user]);
 
   // Filter customers based on input
   const filteredCustomers = useMemo(() => {
@@ -121,19 +91,24 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
     const lowerInput = productInput.toLowerCase();
     return products.filter(p =>
       p.name.toLowerCase().includes(lowerInput) ||
-      p.reference.toLowerCase().includes(lowerInput)
+      (p.reference && p.reference.toLowerCase().includes(lowerInput))
     );
   }, [products, productInput]);
 
-  const handleAddProduct = (product: Product) => {
+  const handleAddProduct = (product: ProductAutoComplete) => {
     if (!saleItems.find(item => item.id === product.id)) {
-      setSaleItems(prev => [...prev, { ...product, saleQuantity: 1 }]);
+      setSaleItems(prev => [...prev, {
+        ...product,
+        price: product.price || 0,
+        saleQuantity: inputQuantity > 0 ? inputQuantity : 1
+      }]);
       setProductInput('');
+      setInputQuantity(1); // Reset quantity
       setShowProductDropdown(false);
     }
   };
 
-  const handleCustomerSelect = (customer: Customer) => {
+  const handleCustomerSelect = (customer: ClientAutoComplete) => {
     setSelectedCustomer(customer);
     setCustomerInput(customer.name);
     setShowCustomerDropdown(false);
@@ -176,7 +151,8 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
       for (const item of saleItems) {
         // 1. Update stock locally (instant UI update & low stock check)
         // Calculate new stock
-        const newStock = Math.max(0, item.stock - item.saleQuantity);
+        const currentStock = item.stock || 0;
+        const newStock = Math.max(0, currentStock - item.saleQuantity);
 
         // Update local database (offline-first) - this triggers onUserActivity -> checkLowStock
         try {
@@ -248,7 +224,7 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
                   className="w-full"
                 />
                 {/* Customer Dropdown - Theme Styled */}
-                {showCustomerDropdown && customerInput.trim() && filteredCustomers.length > 0 && (
+                {showCustomerDropdown && filteredCustomers.length > 0 && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-primary/20 rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
                     {filteredCustomers.map((customer) => (
                       <div
@@ -257,12 +233,12 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
                         className="px-4 py-3 hover:bg-primary/10 cursor-pointer text-sm transition-colors border-b border-primary/10 last:border-b-0 flex justify-between items-center"
                       >
                         <span className="font-medium text-foreground">{customer.name}</span>
-                        {customer.phone && <span className="text-xs text-muted-foreground">{customer.phone}</span>}
+                        {customer.address && <span className="text-xs text-muted-foreground">{customer.address}</span>}
                       </div>
                     ))}
                   </div>
                 )}
-                {showCustomerDropdown && customerInput.trim() && filteredCustomers.length === 0 && (
+                {showCustomerDropdown && filteredCustomers.length === 0 && customerInput.trim() && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-primary/20 rounded-md shadow-lg px-4 py-3 text-sm text-muted-foreground z-50">
                     {d.noCustomerFound}
                   </div>
@@ -273,50 +249,65 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
               )}
             </div>
 
-            {/* Product Field with Autocomplete */}
+            {/* Product Field with Autocomplete and Quantity */}
             <div className="grid gap-3">
               <Label htmlFor="product" className="text-base font-semibold">{d.product}</Label>
-              <div className="relative">
-                <div className="flex gap-2">
-                  <div className="flex-1 relative">
-                    <Input
-                      id="product"
-                      type="text"
-                      placeholder={d.productPlaceholder}
-                      value={productInput}
-                      onChange={(e) => {
-                        setProductInput(e.target.value);
-                        setShowProductDropdown(true);
-                      }}
-                      onFocus={() => setShowProductDropdown(true)}
-                      className="w-full"
-                    />
-                    {/* Product Dropdown - Theme Styled */}
-                    {showProductDropdown && filteredProducts.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-primary/20 rounded-md shadow-lg z-50 max-h-56 overflow-y-auto">
-                        {filteredProducts.map((product) => (
-                          <div
-                            key={product.id}
-                            onClick={() => handleAddProduct(product)}
-                            className="px-4 py-3 hover:bg-primary/10 cursor-pointer text-sm transition-colors border-b border-primary/10 last:border-b-0"
-                          >
-                            <div className="flex justify-between items-start gap-2">
-                              <div className="flex-1">
-                                <p className="font-medium text-foreground">{product.name}</p>
-                                <p className="text-xs text-muted-foreground">Ref: {product.reference} • Stock: {product.stock}</p>
-                              </div>
-                              <p className="font-semibold text-primary whitespace-nowrap">{product.price.toFixed(2)} {dictionary.dashboard?.currency || 'DZD'}</p>
+              <div className="flex gap-2">
+                <div className="flex-[3] relative">
+                  <Input
+                    id="product"
+                    type="text"
+                    placeholder={d.productPlaceholder}
+                    value={productInput}
+                    onChange={(e) => {
+                      setProductInput(e.target.value);
+                      setShowProductDropdown(true);
+                    }}
+                    onFocus={() => setShowProductDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowProductDropdown(false), 200)}
+                    className="w-full"
+                    autoComplete="off"
+                  />
+                  {/* Product Dropdown - Theme Styled */}
+                  {showProductDropdown && filteredProducts.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-primary/20 rounded-md shadow-lg z-50 max-h-56 overflow-y-auto">
+                      {filteredProducts.map((product) => (
+                        <div
+                          key={product.id}
+                          onMouseDown={() => handleAddProduct(product)}
+                          className="px-4 py-3 hover:bg-primary/10 cursor-pointer text-sm transition-colors border-b border-primary/10 last:border-b-0"
+                        >
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1">
+                              <p className="font-medium text-foreground">{product.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {product.reference && `Ref: ${product.reference}`}
+                                {product.stock !== undefined && ` • Stock: ${product.stock}`}
+                              </p>
                             </div>
+                            <p className="font-semibold text-primary whitespace-nowrap">
+                              {(product.price || 0).toFixed(2)} {dictionary.dashboard?.currency || 'DZD'}
+                            </p>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                    {showProductDropdown && productInput.trim() && filteredProducts.length === 0 && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-primary/20 rounded-md shadow-lg px-4 py-3 text-sm text-muted-foreground z-50">
-                        {d.noProductFound}
-                      </div>
-                    )}
-                  </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {showProductDropdown && productInput.trim() && filteredProducts.length === 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-primary/20 rounded-md shadow-lg px-4 py-3 text-sm text-muted-foreground z-50">
+                      {d.noProductFound}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <Input
+                    type="number"
+                    placeholder={d.quantity}
+                    value={inputQuantity}
+                    onChange={(e) => setInputQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full"
+                    min="1"
+                  />
                 </div>
               </div>
             </div>
