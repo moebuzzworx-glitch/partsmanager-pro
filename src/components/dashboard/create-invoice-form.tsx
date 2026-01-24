@@ -24,7 +24,7 @@ import { useFirebase } from '@/firebase/provider';
 import { doc, getDoc } from 'firebase/firestore';
 import { User as AppUser } from '@/lib/types';
 import { canExport, getExportRestrictionMessage } from '@/lib/trial-utils';
-import { getUserSettings, getNextInvoiceNumber, updateLastInvoiceNumber, AppSettings } from '@/lib/settings-utils';
+import { getUserSettings, getNextDocumentNumber, updateLastDocumentNumber, AppSettings } from '@/lib/settings-utils';
 import { saveInvoiceData, calculateInvoiceTotals, deductStockFromInvoice } from '@/lib/invoices-utils';
 import { useToast } from '@/hooks/use-toast';
 import type { Locale } from '@/lib/config';
@@ -72,13 +72,13 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
     const { user, firestore } = useFirebase();
     const [userDoc, setUserDoc] = React.useState<AppUser | null>(null);
     const [isLoading, setIsLoading] = React.useState(false);
-    const [nextInvoiceNumber, setNextInvoiceNumber] = React.useState('FAC-2025-0001');
+    const [documentType, setDocumentType] = React.useState<'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT'>(defaultType || 'INVOICE');
+    const [nextDocNumber, setNextDocNumber] = React.useState('');
     const [settingsState, setSettingsState] = React.useState<AppSettings | null>(null);
     const [customers, setCustomers] = React.useState<ClientAutoComplete[]>([]);
     const [products, setProducts] = React.useState<ProductAutoComplete[]>([]);
     const [clientSearchOpen, setClientSearchOpen] = React.useState(false);
     const [productSearchOpen, setProductSearchOpen] = React.useState<Record<number, boolean>>({});
-    const [documentType, setDocumentType] = React.useState<'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT'>(defaultType || 'INVOICE');
     const [dictionary, setDictionary] = React.useState<any>(null);
 
     // Load dictionary
@@ -90,44 +90,13 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
       loadDictionary();
     }, [locale]);
 
-    // Fetch user document and settings
-    React.useEffect(() => {
-      if (!user || !firestore) return;
 
-      const fetchUserDocAndSettings = async () => {
-        try {
-          const userDocRef = doc(firestore, 'users', user.uid);
-          const userDocSnap = await getDoc(userDocRef);
-          if (userDocSnap.exists()) {
-            setUserDoc(userDocSnap.data() as AppUser);
-          }
-
-          // Fetch settings and get next invoice number
-          const settings = await getUserSettings(firestore, user.uid);
-          setSettingsState(settings);
-          const nextNumber = getNextInvoiceNumber(settings);
-          setNextInvoiceNumber(nextNumber);
-          // ensure form field reflects computed next invoice number
-          setTimeout(() => setValue('invoiceNumber', nextNumber), 0);
-
-          // Fetch customers and products for autocomplete
-          const customersData = await getCustomersForAutoComplete(firestore, user.uid);
-          const productsData = await getProductsForAutoComplete(firestore, user.uid);
-          setCustomers(customersData);
-          setProducts(productsData);
-        } catch (error) {
-          console.error('Error fetching user document and settings:', error);
-        }
-      };
-
-      fetchUserDocAndSettings();
-    }, [user, firestore]);
 
     const form = useForm<InvoiceFormData>({
       resolver: zodResolver(formSchema),
       defaultValues: {
         isProforma: false,
-        invoiceNumber: nextInvoiceNumber,
+        invoiceNumber: '',
         invoiceDate: new Date().toISOString().split('T')[0],
         clientName: '',
         clientAddress: '',
@@ -150,7 +119,40 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
     const { watch, setValue } = form;
     const applyVatToAll = watch('applyVatToAll');
 
-    // Handle client selection from autocomplete
+    // React to document type changes to update numbering
+    React.useEffect(() => {
+      if (settingsState) {
+        const next = getNextDocumentNumber(settingsState, documentType);
+        setNextDocNumber(next);
+        setTimeout(() => setValue('invoiceNumber', next), 0);
+      }
+    }, [documentType, settingsState, setValue]);
+
+    // Initial Fetch user document and settings
+    React.useEffect(() => {
+      if (!user || !firestore) return;
+      const fetchData = async () => {
+        try {
+          const userDocSnap = await getDoc(doc(firestore, 'users', user.uid));
+          if (userDocSnap.exists()) setUserDoc(userDocSnap.data() as AppUser);
+          const settings = await getUserSettings(firestore, user.uid);
+          setSettingsState(settings);
+          const next = getNextDocumentNumber(settings, documentType);
+          setNextDocNumber(next);
+          setValue('invoiceNumber', next);
+          const [cust, prod] = await Promise.all([
+            getCustomersForAutoComplete(firestore, user.uid),
+            getProductsForAutoComplete(firestore, user.uid)
+          ]);
+          setCustomers(cust);
+          setProducts(prod);
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      fetchData();
+    }, [user, firestore, documentType, setValue]);
+
     const handleClientSelect = (client: ClientAutoComplete) => {
       setValue('clientName', client.name);
       setValue('clientAddress', client.address || '');
@@ -162,7 +164,6 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
       setClientSearchOpen(false);
     };
 
-    // Handle product selection from autocomplete
     const handleProductSelect = (product: ProductAutoComplete, index: number) => {
       setValue(`lineItems.${index}.reference`, product.reference || '');
       setValue(`lineItems.${index}.designation`, product.name);
@@ -171,126 +172,30 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
     };
 
     const onSubmit = async (values: InvoiceFormData) => {
-      // Check export permissions
-      if (!canExport(userDoc)) {
-        const message = getExportRestrictionMessage(userDoc) || 'You do not have permission to export invoices.';
-        toast({
-          title: 'Permission Denied',
-          description: message,
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      if (!firestore || !user) {
-        toast({
-          title: 'Error',
-          description: 'Firestore not initialized.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
+      if (!firestore || !user) return;
       setIsLoading(true);
       try {
-        // VAT is global (applyVatToAll) — handled in PDF generator via flag
-
-        // Get company info from Firestore settings
         const settings = await getUserSettings(firestore, user.uid);
-
-        // Generate PDF with form data; pass company info from settings if available
-        const companyInfo = settingsState
-          ? {
-            companyName: settingsState.companyName,
-            address: settingsState.address,
-            phone: settingsState.phone,
-            rc: settingsState.rc,
-            nif: settingsState.nif,
-            art: settingsState.art,
-            nis: settingsState.nis,
-            rib: settingsState.rib,
-            logoUrl: (settingsState as any).logoUrl || undefined,
-          }
-          : undefined;
-
-        // Determine default VAT percentage from settings (if present)
-        const defaultVat = (settings as any)?.defaultVat ?? (settingsState as any)?.defaultVat ?? 0;
-
-        // pass whether VAT should be applied to all lines
-        await generateDocumentPdf(values, documentType, companyInfo, defaultVat, !!values.applyVatToAll);
-
-        // Calculate totals
-        const { subtotal, vatAmount, total } = calculateInvoiceTotals(
-          values.lineItems,
-          values.applyVatToAll,
-          defaultVat || 19
-        );
-
-        // Save invoice data to Firestore (for future regeneration)
-        const invoiceId = await saveInvoiceData(
-          firestore,
-          user.uid,
-          values,
-          companyInfo,
-          defaultVat,
-          total,
-          subtotal,
-          vatAmount,
-          documentType
-        );
-
-        // Deduct stock from products for non-proforma invoices
+        const companyInfo = {
+          companyName: settings.companyName,
+          address: settings.address,
+          phone: settings.phone,
+          rc: settings.rc, nif: settings.nif, art: settings.art, nis: settings.nis, rib: settings.rib,
+          logoUrl: (settings as any).logoUrl
+        };
+        const defaultVat = (settings as any).defaultVat ?? 0;
+        await generateDocumentPdf(values, documentType, companyInfo as any, defaultVat, values.applyVatToAll);
+        const { subtotal, vatAmount, total } = calculateInvoiceTotals(values.lineItems, values.applyVatToAll, defaultVat || 19);
+        const invoiceId = await saveInvoiceData(firestore, user.uid, values, companyInfo as any, defaultVat, total, subtotal, vatAmount, documentType);
         if (!values.isProforma) {
-          const invoiceData = {
-            id: invoiceId,
-            userId: user.uid,
-            invoiceNumber: values.invoiceNumber,
-            invoiceDate: values.invoiceDate,
-            isProforma: values.isProforma,
-            clientName: values.clientName,
-            clientAddress: values.clientAddress,
-            clientNis: values.clientNis,
-            clientNif: values.clientNif,
-            clientRc: values.clientRc,
-            clientArt: values.clientArt,
-            clientRib: values.clientRib,
-            lineItems: values.lineItems,
-            paymentMethod: values.paymentMethod,
-            applyVatToAll: values.applyVatToAll,
-            companyInfo,
-            defaultVat,
-            total,
-            subtotal,
-            vatAmount,
-            paid: false,
-          };
-          await deductStockFromInvoice(firestore, invoiceData);
+          await deductStockFromInvoice(firestore, { ...values, id: invoiceId, userId: user.uid, documentType, total, subtotal, vatAmount, companyInfo, defaultVat } as any);
         }
-
-        // Update last invoice number in Firestore settings
-        await updateLastInvoiceNumber(firestore, user.uid, settings);
-
-        // refresh settings & next invoice number for the next invoice
-        const refreshed = await getUserSettings(firestore, user.uid);
-        setSettingsState(refreshed);
-        const newNext = getNextInvoiceNumber(refreshed);
-        setNextInvoiceNumber(newNext);
-        setValue('invoiceNumber', newNext);
-
-        toast({
-          title: 'Success',
-          description: 'Invoice generated and downloaded successfully.',
-        });
-
-        form.reset();
+        await updateLastDocumentNumber(firestore, user.uid, settings, documentType);
+        toast({ title: 'Success', description: `${documentType} generated.` });
         onSuccess();
-      } catch (error) {
-        console.error('Error generating invoice:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to generate invoice. Please try again.',
-          variant: 'destructive',
-        });
+      } catch (e) {
+        console.error(e);
+        toast({ title: 'Error', variant: 'destructive' });
       } finally {
         setIsLoading(false);
       }
@@ -326,9 +231,9 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
                 name="invoiceNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{dictionary?.createInvoiceForm?.invoiceNumber || 'Invoice Number'}</FormLabel>
+                    <FormLabel>Numéro du Document</FormLabel>
                     <FormControl>
-                      <Input {...field} readOnly className="bg-muted" />
+                      <Input {...field} readOnly className="bg-muted font-mono" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -340,7 +245,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
                 name="invoiceDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{dictionary?.createInvoiceForm?.invoiceDate || 'Invoice Date'}</FormLabel>
+                    <FormLabel>Date du Document</FormLabel>
                     <FormControl>
                       <Input {...field} type="date" />
                     </FormControl>
@@ -352,26 +257,26 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
 
             <Separator />
 
-            <h3 className="font-semibold">
-              {documentType === 'PURCHASE_ORDER' ? 'Renseignements Fournisseur' : (dictionary?.createInvoiceForm?.clientInformation || 'Client Information')}
+            <h3 className="font-semibold text-lg border-b pb-1">
+              {documentType === 'PURCHASE_ORDER' ? 'Renseignements Fournisseur' : (dictionary?.createInvoiceForm?.clientInformation || 'Renseignements Client')}
             </h3>
             <FormField
               control={form.control}
               name="clientName"
               render={({ field }) => {
-                const clientSearchValue = field.value;
+                const clientSearchValue = field.value || '';
                 const filteredClients = customers.filter(c =>
                   c.name.toLowerCase().includes(clientSearchValue.toLowerCase())
                 );
                 return (
                   <FormItem className="relative">
                     <FormLabel>
-                      {documentType === 'PURCHASE_ORDER' ? 'Nom du Fournisseur' : (dictionary?.createInvoiceForm?.clientName || 'Client Name')}
+                      {documentType === 'PURCHASE_ORDER' ? 'Nom du Fournisseur' : (dictionary?.createInvoiceForm?.clientName || 'Nom du Client')}
                     </FormLabel>
                     <FormControl>
                       <Input
                         {...field}
-                        placeholder={dictionary?.createInvoiceForm?.clientNamePlaceholder || 'Client name or company'}
+                        placeholder={documentType === 'PURCHASE_ORDER' ? 'Nom du fournisseur ou entreprise' : (dictionary?.createInvoiceForm?.clientNamePlaceholder || 'Nom du client ou entreprise')}
                         onFocus={() => setClientSearchOpen(true)}
                         onBlur={() => setTimeout(() => setClientSearchOpen(false), 200)}
                         autoComplete="off"
@@ -598,9 +503,11 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
                     name={`lineItems.${index}.quantity`}
                     render={({ field }) => (
                       <FormItem className="col-span-2">
-                        <FormLabel>{dictionary?.createInvoiceForm?.quantity || 'Qty'}</FormLabel>
+                        <FormLabel>
+                          {documentType === 'DELIVERY_NOTE' ? 'Qté Livrée' : (dictionary?.createInvoiceForm?.quantity || 'Qté')}
+                        </FormLabel>
                         <FormControl>
-                          <Input {...field} type="number" placeholder={dictionary?.createInvoiceForm?.quantityPlaceholder || '1'} />
+                          <Input {...field} type="number" placeholder="1" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -612,9 +519,13 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
                     name={`lineItems.${index}.unitPrice`}
                     render={({ field }) => (
                       <FormItem className="col-span-3">
-                        <FormLabel>{dictionary?.createInvoiceForm?.price || 'Price'}</FormLabel>
+                        <FormLabel>
+                          {documentType === 'PURCHASE_ORDER' ? 'Prix d\'achat' :
+                            documentType === 'DELIVERY_NOTE' ? 'Prix (Facultatif)' :
+                              (dictionary?.createInvoiceForm?.price || 'Prix de vente')}
+                        </FormLabel>
                         <FormControl>
-                          <Input {...field} type="number" placeholder={dictionary?.createInvoiceForm?.pricePlaceholder || '0'} />
+                          <Input {...field} type="number" placeholder="0" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -678,22 +589,24 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
               />
 
               <div className="flex flex-col gap-4 p-4 border border-dashed border-primary/30 rounded-md bg-primary/5">
-                <FormField
-                  control={form.control}
-                  name="isProforma"
-                  render={({ field }) => (
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="proforma-payment"
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                      <Label htmlFor="proforma-payment" className="text-sm font-normal cursor-pointer">
-                        {dictionary?.createInvoiceForm?.isProforma || 'This is a Proforma Invoice'}
-                      </Label>
-                    </div>
-                  )}
-                />
+                {documentType === 'INVOICE' && (
+                  <FormField
+                    control={form.control}
+                    name="isProforma"
+                    render={({ field }) => (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="proforma-payment"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                        <Label htmlFor="proforma-payment" className="text-sm font-normal cursor-pointer">
+                          {dictionary?.createInvoiceForm?.isProforma || 'This is a Proforma Invoice'}
+                        </Label>
+                      </div>
+                    )}
+                  />
+                )}
                 <FormField
                   control={form.control}
                   name="applyVatToAll"

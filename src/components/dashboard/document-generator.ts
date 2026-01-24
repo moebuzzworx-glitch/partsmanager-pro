@@ -307,9 +307,10 @@ export async function generateDocumentPdf(
     // Delivery Note hides prices
     const isDelivery = type === 'DELIVERY_NOTE';
 
+    const priceLabel = type === 'INVOICE' ? 'PUV' : 'P.U';
     const headers = isDelivery
         ? [['N°', 'Référence', 'Désignation', 'U', 'Qté']]
-        : [['N°', 'Référence', 'Désignation', 'U', 'Qté', 'PUV', 'TVA(%)', 'Montant HT']];
+        : [['N°', 'Référence', 'Désignation', 'U', 'Qté', priceLabel, 'TVA(%)', 'Montant HT']];
 
     // Map Data
     const tableData = data.lineItems.map((item, index) => {

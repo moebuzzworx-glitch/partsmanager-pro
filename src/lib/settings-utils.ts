@@ -15,6 +15,18 @@ export interface AppSettings {
     year: number;
     number: number;
   };
+  lastPurchaseOrderNumber?: {
+    year: number;
+    number: number;
+  };
+  lastDeliveryNoteNumber?: {
+    year: number;
+    number: number;
+  };
+  lastSalesReceiptNumber?: {
+    year: number;
+    number: number;
+  };
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -29,6 +41,18 @@ const DEFAULT_SETTINGS: AppSettings = {
   logoUrl: '',
   profitMargin: 25,
   lastInvoiceNumber: {
+    year: new Date().getFullYear(),
+    number: 0,
+  },
+  lastPurchaseOrderNumber: {
+    year: new Date().getFullYear(),
+    number: 0,
+  },
+  lastDeliveryNoteNumber: {
+    year: new Date().getFullYear(),
+    number: 0,
+  },
+  lastSalesReceiptNumber: {
     year: new Date().getFullYear(),
     number: 0,
   },
@@ -112,3 +136,83 @@ export async function updateLastInvoiceNumber(
     },
   });
 }
+
+/**
+ * Get the next document number based on type
+ */
+export function getNextDocumentNumber(settings: AppSettings, type: 'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT'): string {
+  const currentYear = new Date().getFullYear();
+  let nextNumber = 1;
+  let prefix = 'FAC';
+  let lastInfo = settings.lastInvoiceNumber;
+
+  switch (type) {
+    case 'PURCHASE_ORDER':
+      prefix = 'BC';
+      lastInfo = settings.lastPurchaseOrderNumber || { year: currentYear, number: 0 };
+      break;
+    case 'DELIVERY_NOTE':
+      prefix = 'BL';
+      lastInfo = settings.lastDeliveryNoteNumber || { year: currentYear, number: 0 };
+      break;
+    case 'SALES_RECEIPT':
+      prefix = 'BV';
+      lastInfo = settings.lastSalesReceiptNumber || { year: currentYear, number: 0 };
+      break;
+    default:
+      prefix = 'FAC';
+      lastInfo = settings.lastInvoiceNumber;
+  }
+
+  if (lastInfo.year === currentYear) {
+    nextNumber = lastInfo.number + 1;
+  }
+
+  const paddedNumber = nextNumber.toString().padStart(4, '0');
+  return `${prefix}-${currentYear}-${paddedNumber}`;
+}
+
+/**
+ * Update document number in settings
+ */
+export async function updateLastDocumentNumber(
+  firestore: Firestore,
+  userId: string,
+  settings: AppSettings,
+  type: 'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT'
+): Promise<void> {
+  const currentYear = new Date().getFullYear();
+  let lastInfo = settings.lastInvoiceNumber;
+  let field = 'lastInvoiceNumber';
+
+  switch (type) {
+    case 'PURCHASE_ORDER':
+      lastInfo = settings.lastPurchaseOrderNumber || { year: currentYear, number: 0 };
+      field = 'lastPurchaseOrderNumber';
+      break;
+    case 'DELIVERY_NOTE':
+      lastInfo = settings.lastDeliveryNoteNumber || { year: currentYear, number: 0 };
+      field = 'lastDeliveryNoteNumber';
+      break;
+    case 'SALES_RECEIPT':
+      lastInfo = settings.lastSalesReceiptNumber || { year: currentYear, number: 0 };
+      field = 'lastSalesReceiptNumber';
+      break;
+    default:
+      lastInfo = settings.lastInvoiceNumber;
+      field = 'lastInvoiceNumber';
+  }
+
+  let newNumber = 1;
+  if (lastInfo.year === currentYear) {
+    newNumber = lastInfo.number + 1;
+  }
+
+  await saveUserSettings(firestore, userId, {
+    [field]: {
+      year: currentYear,
+      number: newNumber,
+    },
+  });
+}
+
