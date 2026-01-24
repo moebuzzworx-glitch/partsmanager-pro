@@ -26,6 +26,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useFirebase } from '@/firebase/provider';
 import { collection, getDocs, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import { TrialButtonLock } from '@/components/trial-button-lock';
@@ -51,6 +58,8 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
   const [productInput, setProductInput] = useState<string>('');
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [inputQuantity, setInputQuantity] = useState<number>(1);
+  const [discountType, setDiscountType] = useState<'percentage' | 'amount'>('percentage');
+  const [discountValue, setDiscountValue] = useState<number>(0);
   const [products, setProducts] = useState<ProductAutoComplete[]>([]);
   const [customers, setCustomers] = useState<ClientAutoComplete[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -123,9 +132,19 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
     setSaleItems(prev => prev.filter(item => item.id !== productId));
   };
 
-  const totalAmount = useMemo(() => {
+  const subTotal = useMemo(() => {
     return saleItems.reduce((total, item) => total + (item.price * item.saleQuantity), 0);
   }, [saleItems]);
+
+  const discountAmount = useMemo(() => {
+    if (discountValue <= 0) return 0;
+    if (discountType === 'percentage') {
+      return (subTotal * discountValue) / 100;
+    }
+    return discountValue;
+  }, [subTotal, discountType, discountValue]);
+
+  const totalAmount = Math.max(0, subTotal - discountAmount);
 
   const handleSubmit = async () => {
     if (!firestore || !customerInput.trim() || saleItems.length === 0) return;
@@ -146,6 +165,10 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
         customerId = newCustomerDoc.id;
       }
 
+      // Calculate discount ratio for proportional distribution
+      // ratio = final / original (e.g., 90/100 = 0.9)
+      const discountRatio = subTotal > 0 ? (subTotal - discountAmount) / subTotal : 1;
+
       // Save each sale item to the sales collection
       const salesRef = collection(firestore, 'sales');
       for (const item of saleItems) {
@@ -164,6 +187,11 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
           // Continue with sale even if local stock update fails (consistency fix via sync later)
         }
 
+        // Calculate item amounts
+        const itemOriginalTotal = item.price * item.saleQuantity;
+        const itemDiscountedTotal = itemOriginalTotal * discountRatio;
+        const itemDiscountAmount = itemOriginalTotal - itemDiscountedTotal;
+
         // 2. Add to sales collection
         await addDoc(salesRef, {
           customerId: customerId,
@@ -171,7 +199,9 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
           productId: item.id,
           product: item.name,
           quantity: item.saleQuantity,
-          amount: item.price * item.saleQuantity,
+          amount: itemDiscountedTotal, // Net amount (revenue)
+          originalAmount: itemOriginalTotal, // Gross amount
+          discountAmount: itemDiscountAmount, // Discount given
           unitPrice: item.price,
           reference: item.reference,
           date: serverTimestamp(),
@@ -183,6 +213,7 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
       setSaleItems([]);
       setCustomerInput('');
       setSelectedCustomer(undefined);
+      setDiscountValue(0);
       onSaleAdded?.();
     } catch (error) {
       console.error('Error saving sale:', error);
@@ -359,11 +390,56 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
               </Card>
             )}
 
-            {/* Total Amount */}
+            {/* Total and Discount Section */}
             {saleItems.length > 0 && (
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 flex justify-between items-center">
-                <span className="text-lg font-semibold text-foreground">{d.total}:</span>
-                <span className="text-2xl font-bold text-primary">{totalAmount.toFixed(2)} {dictionary.dashboard?.currency || 'DZD'}</span>
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+
+                  {/* Discount Controls */}
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Label className="whitespace-nowrap font-medium">{(dictionary as any).createInvoiceForm?.discount || 'Discount'}:</Label>
+                    <div className="flex items-center gap-2 flex-1 sm:flex-initial">
+                      <Select
+                        value={discountType}
+                        onValueChange={(val: 'percentage' | 'amount') => setDiscountType(val)}
+                      >
+                        <SelectTrigger className="w-[110px] h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percentage">{(dictionary as any).createInvoiceForm?.percentage || 'Percent (%)'}</SelectItem>
+                          <SelectItem value="amount">{(dictionary as any).createInvoiceForm?.amount || 'Fixed'}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        min="0"
+                        className="w-[100px] h-9"
+                        placeholder="0"
+                        value={discountValue || ''}
+                        onChange={(e) => setDiscountValue(parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Totals Summary */}
+                  <div className="flex flex-col items-end gap-1 w-full sm:w-auto text-right">
+                    <div className="text-sm text-muted-foreground">
+                      <span>{(dictionary as any).createInvoiceForm?.subtotal || 'Subtotal'}: </span>
+                      <span className="font-medium">{subTotal.toFixed(2)}</span>
+                    </div>
+                    {discountAmount > 0 && (
+                      <div className="text-sm text-green-600 dark:text-green-400">
+                        <span>{(dictionary as any).createInvoiceForm?.discount || 'Discount'}: </span>
+                        <span className="font-medium">-{discountAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="text-xl font-bold text-primary border-t border-primary/20 pt-1 mt-1 w-full sm:w-auto">
+                      <span>{d.total}: </span>
+                      <span>{totalAmount.toFixed(2)} {dictionary.dashboard?.currency || 'DZD'}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
