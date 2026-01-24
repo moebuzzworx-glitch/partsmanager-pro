@@ -5,7 +5,7 @@
 
 import { Firestore, collection, getDocs, query, where } from 'firebase/firestore';
 import { saveProduct } from './indexeddb';
-import { sendLowStockNotificationForUser } from './low-stock-notifications';
+import { checkLowStockFromLocalDB, sendLowStockNotificationForUser } from './low-stock-notifications';
 
 interface PullState {
   isRunning: boolean;
@@ -69,6 +69,18 @@ export function startPullService(): () => void {
 
   schedulePull();
 
+  // Run initial check on startup
+  const checkInitial = async () => {
+    // Wait for context to be set (small delay)
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    const { firestore, userId } = firebaseContext;
+    if (firestore && userId) {
+      console.log('[Pull] Running initial low stock check on startup');
+      checkLowStockFromLocalDB(firestore, userId, 10).catch(console.error);
+    }
+  };
+  checkInitial();
+
   // Cleanup function
   return () => stopPullService();
 }
@@ -92,6 +104,16 @@ export function onUserActivity(actionType?: 'add' | 'edit' | 'delete'): void {
     console.log(`[Pull] Data modification detected (${actionType}), resetting poll interval to`, pullState.minInterval);
     pullState.intervalMs = pullState.minInterval;
     pullState.noChangeCount = 0;
+
+    // Trigger instant low stock check on local activity
+    // This makes alerts responsive immediately after a sale
+    const { firestore, userId } = firebaseContext;
+    if (firestore && userId) {
+      console.log('[Pull] Triggering instant local low stock check due to activity');
+      checkLowStockFromLocalDB(firestore, userId, 10).catch(err => {
+        console.error('[Pull] Failed to check low stock locally:', err);
+      });
+    }
   } else if (actionType) {
     console.log(`[Pull] Activity detected (${actionType}), but not resetting interval (only add/edit/delete trigger reset)`);
   }
@@ -200,10 +222,10 @@ async function pullFirebaseChanges(firestore: Firestore, userId: string): Promis
     pullState.lastPullTime = now;
 
     // Always trigger low stock notification check to ensure we catch thresholds
-    // even if no remote updates occurred (e.g. after local changes sync up)
-    console.log('[Pull] Triggering low stock notification check');
+    // Use LOCAL check for speed and offline support
+    console.log('[Pull] Triggering low stock notification check (Local DB)');
     // Run appropriately - don't await to avoid blocking cleanup
-    sendLowStockNotificationForUser(firestore, userId, 10).catch(error => {
+    checkLowStockFromLocalDB(firestore, userId, 10).catch(error => {
       console.warn('[Pull] Low stock notification check failed:', error);
     });
   } catch (err) {

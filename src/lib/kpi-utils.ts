@@ -1,5 +1,6 @@
 import { Firestore, collection, getDocs, query, where } from 'firebase/firestore';
 import type { StoredInvoice } from './invoices-utils';
+import { getProductsByUser } from './indexeddb';
 
 export interface KPIMetrics {
   totalRevenue: number;
@@ -26,7 +27,7 @@ async function calculateTotalRevenue(firestore: Firestore, userId: string): Prom
     // Revenue from paid invoices (non-proforma only, user's invoices only)
     const invoicesRef = collection(firestore, 'invoices');
     const invoicesSnap = await getDocs(query(invoicesRef, where('userId', '==', userId)));
-    
+
     invoicesSnap.forEach((doc) => {
       const invoice = doc.data() as StoredInvoice;
       // Only count non-proforma, paid invoices
@@ -38,7 +39,7 @@ async function calculateTotalRevenue(firestore: Firestore, userId: string): Prom
     // Revenue from sales transactions (user's sales only)
     const salesRef = collection(firestore, 'sales');
     const salesSnap = await getDocs(query(salesRef, where('userId', '==', userId)));
-    
+
     salesSnap.forEach((doc) => {
       const sale = doc.data();
       const amount = sale.amount || 0;
@@ -66,7 +67,7 @@ async function calculateTotalExpenses(firestore: Firestore, userId: string): Pro
     // Expenses from purchase orders (user's purchases only)
     const purchasesRef = collection(firestore, 'purchases');
     const purchasesSnap = await getDocs(query(purchasesRef, where('userId', '==', userId)));
-    
+
     purchasesSnap.forEach((doc) => {
       const purchase = doc.data();
       const totalAmount = purchase.totalAmount || 0;
@@ -77,7 +78,7 @@ async function calculateTotalExpenses(firestore: Firestore, userId: string): Pro
     // Each product addition is a cost
     const productsRef = collection(firestore, 'products');
     const productsSnap = await getDocs(query(productsRef, where('userId', '==', userId)));
-    
+
     productsSnap.forEach((doc) => {
       const product = doc.data();
       // Cost = quantity * purchase price (if available)
@@ -108,7 +109,7 @@ async function getSalesToday(firestore: Firestore, userId: string): Promise<numb
   try {
     const salesRef = collection(firestore, 'sales');
     const salesSnap = await getDocs(query(salesRef, where('userId', '==', userId)));
-    
+
     salesSnap.forEach((doc) => {
       const data = doc.data();
       const saleDate = data.date
@@ -133,16 +134,9 @@ async function getSalesToday(firestore: Firestore, userId: string): Promise<numb
  */
 async function getTotalProducts(firestore: Firestore, userId: string): Promise<number> {
   try {
-    const productsRef = collection(firestore, 'products');
-    const productsSnap = await getDocs(query(productsRef, where('userId', '==', userId)));
-    // Only count non-deleted products
-    let count = 0;
-    productsSnap.forEach(doc => {
-      if (doc.data().isDeleted !== true) {
-        count++;
-      }
-    });
-    return count;
+    // USE LOCAL DB for instant updates
+    const products = await getProductsByUser(userId);
+    return products.length; // getProductsByUser filters out deleted items already
   } catch (error) {
     console.error('Error getting total products:', error);
     return 0;
@@ -154,18 +148,18 @@ async function getTotalProducts(firestore: Firestore, userId: string): Promise<n
  */
 async function getLowStockItems(firestore: Firestore, userId: string): Promise<number> {
   try {
-    const productsRef = collection(firestore, 'products');
-    const productsSnap = await getDocs(query(productsRef, where('userId', '==', userId)));
+    // USE LOCAL DB for instant updates
+    const products = await getProductsByUser(userId);
     let count = 0;
-    
-    productsSnap.forEach(doc => {
-      const product = doc.data();
-      // Count if stock is low and product is not deleted
-      if (product.isDeleted !== true && (product.stock || 0) < 10) {
+
+    for (const product of products) {
+      const stock = typeof product.stock === 'number' ? product.stock : parseInt(product.stock || '0');
+      // Threshold is 10 (hardcoded here to match default)
+      if (stock < 10) {
         count++;
       }
-    });
-    
+    }
+
     return count;
   } catch (error) {
     console.error('Error getting low stock items:', error);
@@ -181,7 +175,7 @@ async function getPaidInvoicesCount(firestore: Firestore, userId: string): Promi
     const invoicesRef = collection(firestore, 'invoices');
     const invoicesSnap = await getDocs(query(invoicesRef, where('userId', '==', userId)));
     let count = 0;
-    
+
     invoicesSnap.forEach(doc => {
       const invoice = doc.data();
       // Count non-proforma paid invoices
@@ -189,7 +183,7 @@ async function getPaidInvoicesCount(firestore: Firestore, userId: string): Promi
         count++;
       }
     });
-    
+
     return count;
   } catch (error) {
     console.error('Error getting paid invoices count:', error);
@@ -205,7 +199,7 @@ async function getUnpaidInvoicesCount(firestore: Firestore, userId: string): Pro
     const invoicesRef = collection(firestore, 'invoices');
     const invoicesSnap = await getDocs(query(invoicesRef, where('userId', '==', userId)));
     let count = 0;
-    
+
     invoicesSnap.forEach(doc => {
       const invoice = doc.data();
       // Count non-proforma unpaid invoices
@@ -213,7 +207,7 @@ async function getUnpaidInvoicesCount(firestore: Firestore, userId: string): Pro
         count++;
       }
     });
-    
+
     return count;
   } catch (error) {
     console.error('Error getting unpaid invoices count:', error);

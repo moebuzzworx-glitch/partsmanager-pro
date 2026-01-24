@@ -12,6 +12,7 @@
  */
 
 import { collection, query, where, getDocs, Timestamp, addDoc, getDoc, doc, Firestore, updateDoc } from 'firebase/firestore';
+import { getProductsByUser } from '@/lib/indexeddb';
 
 // Low stock threshold - products below this quantity trigger alerts
 const LOW_STOCK_THRESHOLD = 10;
@@ -207,7 +208,7 @@ async function createGroupedLowStockNotification(
     );
 
     const existingSnapshot = await getDocs(existingQuery);
-    
+
     const notificationData = {
       userId,
       title: 'Low Stock Alert',
@@ -232,7 +233,7 @@ async function createGroupedLowStockNotification(
       const existingDoc = existingSnapshot.docs[0];
       const docRef = doc(firestore, 'notifications', existingDoc.id);
       await updateDoc(docRef, notificationData);
-      
+
       console.log(`Updated low stock notification for user ${userId}: ${existingDoc.id}`);
       return existingDoc.id;
     } else {
@@ -341,7 +342,7 @@ export async function getLowStockAlerts(
     return snapshot.docs.map((doc) => {
       const data = doc.data();
       if (!data) return null;
-      
+
       // Ensure products array is always an array if present
       return {
         id: doc.id,
@@ -374,10 +375,10 @@ export async function sendLowStockNotificationForUser(
 }> {
   try {
     console.log(`[LowStock] Checking for low stock products for user ${userId} with threshold ${threshold}`);
-    
+
     // Get only this user's low stock products
     const lowStockProducts = await detectLowStockProductsForUser(firestore, userId, threshold);
-    
+
     if (lowStockProducts.length === 0) {
       console.log(`[LowStock] No low stock products found for user ${userId}`);
       return {
@@ -411,5 +412,55 @@ export async function sendLowStockNotificationForUser(
       notificationCreated: false,
       error: errorMessage,
     };
+  }
+}
+
+
+/**
+ * Checks for low stock products using LOCAL IndexedDB data
+ * This is instant and works offline
+ */
+export async function checkLowStockFromLocalDB(
+  firestore: Firestore,
+  userId: string,
+  threshold: number = LOW_STOCK_THRESHOLD
+): Promise<void> {
+  try {
+    console.log(`[LowStock] Checking local DB for user ${userId}`);
+
+    // 1. Get products from local DB (instant)
+    const products = await getProductsByUser(userId);
+
+    // 2. Filter for low stock
+    const lowStockProducts: LowStockProduct[] = products
+      .filter((p: any) => {
+        // Ensure stock is treated as number
+        const stock = typeof p.stock === 'number' ? p.stock : parseInt(p.stock || '0');
+        // Check threshold and ensure not deleted
+        return stock < threshold && p.isDeleted !== true;
+      })
+      .map((p: any) => ({
+        productId: p.id,
+        productName: p.name || 'Unknown',
+        currentStock: typeof p.stock === 'number' ? p.stock : parseInt(p.stock || '0'),
+        threshold: threshold,
+      }));
+
+    if (lowStockProducts.length === 0) {
+      console.log('[LowStock] No low stock products found in local DB');
+      return;
+    }
+
+    console.log(`[LowStock] Found ${lowStockProducts.length} low stock products locally`);
+
+    // 3. Create/Update notification in Firestore
+    // Note: We still write to Firestore for notifications. 
+    // If offline, this will be handled by Firebase SDK offline persistence if enabled,
+    // or fail silently (which is acceptable as user sees stock on screen).
+    // Ideally, notifications should also be local-first, but for now we trust Firebase caching.
+    await createGroupedLowStockNotification(firestore, userId, lowStockProducts);
+
+  } catch (err) {
+    console.error('[LowStock] Error checking local DB:', err);
   }
 }
