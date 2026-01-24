@@ -37,6 +37,9 @@ import { getUserInvoices, deleteInvoice, updateInvoicePaidStatus, type StoredInv
 import { generateDocumentPdf } from "@/components/dashboard/document-generator";
 import { getUserSettings } from "@/lib/settings-utils";
 import { CreateInvoiceDialog } from "@/components/dashboard/create-invoice-dialog";
+import { CreatePurchaseOrderDialog } from "@/components/dashboard/create-purchase-order-dialog";
+import { CreateDeliveryNoteDialog } from "@/components/dashboard/create-delivery-note-dialog";
+import { CreateSalesReceiptDialog } from "@/components/dashboard/create-sales-receipt-dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   DropdownMenu,
@@ -253,6 +256,7 @@ export default function InvoicesPage({
             <TabsTrigger value="INVOICE">Factures</TabsTrigger>
             <TabsTrigger value="PURCHASE_ORDER">Bons de Commande</TabsTrigger>
             <TabsTrigger value="DELIVERY_NOTE">Bons de Livraison</TabsTrigger>
+            <TabsTrigger value="SALES_RECEIPT">Bons de Vente</TabsTrigger>
           </TabsList>
         </div>
 
@@ -264,13 +268,36 @@ export default function InvoicesPage({
                   {activeTab === 'INVOICE' && (dictionary.invoices?.title || 'Invoices')}
                   {activeTab === 'PURCHASE_ORDER' && 'Bons de Commande'}
                   {activeTab === 'DELIVERY_NOTE' && 'Bons de Livraison'}
+                  {activeTab === 'SALES_RECEIPT' && 'Bons de Vente'}
                 </CardTitle>
-                <CreateInvoiceDialog
-                  locale={locale}
-                  dictionary={dictionary}
-                  onInvoiceCreated={fetchInvoicesList}
-                  defaultType={activeTab as any}
-                />
+                {activeTab === 'INVOICE' && (
+                  <CreateInvoiceDialog
+                    locale={locale}
+                    dictionary={dictionary}
+                    onInvoiceCreated={fetchInvoicesList}
+                  />
+                )}
+                {activeTab === 'PURCHASE_ORDER' && (
+                  <CreatePurchaseOrderDialog
+                    locale={locale}
+                    dictionary={dictionary}
+                    onCreated={fetchInvoicesList}
+                  />
+                )}
+                {activeTab === 'DELIVERY_NOTE' && (
+                  <CreateDeliveryNoteDialog
+                    locale={locale}
+                    dictionary={dictionary}
+                    onCreated={fetchInvoicesList}
+                  />
+                )}
+                {activeTab === 'SALES_RECEIPT' && (
+                  <CreateSalesReceiptDialog
+                    locale={locale}
+                    dictionary={dictionary}
+                    onCreated={fetchInvoicesList}
+                  />
+                )}
               </div>
               <div className="flex gap-4 items-center">
                 <Input

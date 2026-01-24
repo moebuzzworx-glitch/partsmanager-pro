@@ -61,12 +61,13 @@ export type InvoiceFormData = z.infer<typeof formSchema>;
 interface CreateInvoiceFormProps {
   locale: Locale;
   onSuccess: () => void;
-  defaultType?: 'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE';
+  defaultType?: 'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT';
+  hideTypeSelector?: boolean;
 }
 
 // Invoice number functions are imported from settings-utils
 export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoiceFormProps>(
-  ({ locale, onSuccess, defaultType = 'INVOICE' }, ref) => {
+  ({ locale, onSuccess, defaultType = 'INVOICE', hideTypeSelector = false }, ref) => {
     const { toast } = useToast();
     const { user, firestore } = useFirebase();
     const [userDoc, setUserDoc] = React.useState<AppUser | null>(null);
@@ -77,7 +78,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
     const [products, setProducts] = React.useState<ProductAutoComplete[]>([]);
     const [clientSearchOpen, setClientSearchOpen] = React.useState(false);
     const [productSearchOpen, setProductSearchOpen] = React.useState<Record<number, boolean>>({});
-    const [documentType, setDocumentType] = React.useState<'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE'>(defaultType || 'INVOICE');
+    const [documentType, setDocumentType] = React.useState<'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT'>(defaultType || 'INVOICE');
     const [dictionary, setDictionary] = React.useState<any>(null);
 
     // Load dictionary
@@ -301,19 +302,22 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="font-semibold">{dictionary?.createInvoiceForm?.invoiceDetails || 'Document Details'}</h3>
-              <div className="flex items-center gap-2">
-                <Label>Type:</Label>
-                <Select value={documentType} onValueChange={(v: any) => setDocumentType(v)}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="INVOICE">Facture</SelectItem>
-                    <SelectItem value="PURCHASE_ORDER">Bon de Commande</SelectItem>
-                    <SelectItem value="DELIVERY_NOTE">Bon de Livraison</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {!hideTypeSelector && (
+                <div className="flex items-center gap-2">
+                  <Label>Type:</Label>
+                  <Select value={documentType} onValueChange={(v: any) => setDocumentType(v)}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="INVOICE">Facture</SelectItem>
+                      <SelectItem value="PURCHASE_ORDER">Bon de Commande</SelectItem>
+                      <SelectItem value="DELIVERY_NOTE">Bon de Livraison</SelectItem>
+                      <SelectItem value="SALES_RECEIPT">Bon de Vente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">

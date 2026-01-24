@@ -26,7 +26,7 @@ interface CreateInvoiceDialogProps {
   locale: Locale;
   dictionary: Dictionary;
   onInvoiceCreated?: () => void;
-  defaultType?: 'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE';
+  defaultType?: 'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT';
 }
 
 export function CreateInvoiceDialog({ locale, dictionary, onInvoiceCreated, defaultType }: CreateInvoiceDialogProps) {
@@ -88,7 +88,8 @@ export function CreateInvoiceDialog({ locale, dictionary, onInvoiceCreated, defa
             ref={formRef}
             locale={locale}
             onSuccess={handleSuccess}
-            defaultType={defaultType}
+            defaultType={defaultType || 'INVOICE'}
+            hideTypeSelector={true}
           />
           <DialogFooter className="mt-6 flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
