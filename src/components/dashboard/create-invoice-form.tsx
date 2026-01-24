@@ -29,7 +29,7 @@ import { saveInvoiceData, calculateInvoiceTotals, deductStockFromInvoice } from 
 import { useToast } from '@/hooks/use-toast';
 import type { Locale } from '@/lib/config';
 import { getDictionary } from '@/lib/dictionaries';
-import { generateInvoicePdf } from './invoice-generator';
+import { generateDocumentPdf } from './document-generator';
 import { getCustomersForAutoComplete, getProductsForAutoComplete, type ClientAutoComplete, type ProductAutoComplete } from '@/lib/invoice-autocomplete-utils';
 
 const lineItemSchema = z.object({
@@ -76,8 +76,9 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
     const [products, setProducts] = React.useState<ProductAutoComplete[]>([]);
     const [clientSearchOpen, setClientSearchOpen] = React.useState(false);
     const [productSearchOpen, setProductSearchOpen] = React.useState<Record<number, boolean>>({});
+    const [documentType, setDocumentType] = React.useState<'INVOICE' | 'PURCHASE_ORDER'>('INVOICE');
     const [dictionary, setDictionary] = React.useState<any>(null);
-    
+
     // Load dictionary
     React.useEffect(() => {
       const loadDictionary = async () => {
@@ -86,7 +87,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
       };
       loadDictionary();
     }, [locale]);
-    
+
     // Fetch user document and settings
     React.useEffect(() => {
       if (!user || !firestore) return;
@@ -119,7 +120,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
 
       fetchUserDocAndSettings();
     }, [user, firestore]);
-    
+
     const form = useForm<InvoiceFormData>({
       resolver: zodResolver(formSchema),
       defaultValues: {
@@ -194,27 +195,27 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
 
         // Get company info from Firestore settings
         const settings = await getUserSettings(firestore, user.uid);
-        
+
         // Generate PDF with form data; pass company info from settings if available
         const companyInfo = settingsState
           ? {
-              companyName: settingsState.companyName,
-              address: settingsState.address,
-              phone: settingsState.phone,
-              rc: settingsState.rc,
-              nif: settingsState.nif,
-              art: settingsState.art,
-              nis: settingsState.nis,
-              rib: settingsState.rib,
-              logoUrl: (settingsState as any).logoUrl || undefined,
-            }
+            companyName: settingsState.companyName,
+            address: settingsState.address,
+            phone: settingsState.phone,
+            rc: settingsState.rc,
+            nif: settingsState.nif,
+            art: settingsState.art,
+            nis: settingsState.nis,
+            rib: settingsState.rib,
+            logoUrl: (settingsState as any).logoUrl || undefined,
+          }
           : undefined;
 
         // Determine default VAT percentage from settings (if present)
         const defaultVat = (settings as any)?.defaultVat ?? (settingsState as any)?.defaultVat ?? 0;
 
         // pass whether VAT should be applied to all lines
-        await generateInvoicePdf(values, companyInfo, defaultVat, !!values.applyVatToAll);
+        await generateDocumentPdf(values, documentType, companyInfo, defaultVat, !!values.applyVatToAll);
 
         // Calculate totals
         const { subtotal, vatAmount, total } = calculateInvoiceTotals(
@@ -297,7 +298,19 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
         <Form {...form}>
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="font-semibold">{dictionary?.createInvoiceForm?.invoiceDetails || 'Invoice Details'}</h3>
+              <h3 className="font-semibold">{dictionary?.createInvoiceForm?.invoiceDetails || 'Document Details'}</h3>
+              <div className="flex items-center gap-2">
+                <Label>Type:</Label>
+                <Select value={documentType} onValueChange={(v: any) => setDocumentType(v)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="INVOICE">Facture</SelectItem>
+                    <SelectItem value="PURCHASE_ORDER">Bon de Commande</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
@@ -332,7 +345,9 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
 
             <Separator />
 
-            <h3 className="font-semibold">{dictionary?.createInvoiceForm?.clientInformation || 'Client Information'}</h3>
+            <h3 className="font-semibold">
+              {documentType === 'PURCHASE_ORDER' ? 'Renseignements Fournisseur' : (dictionary?.createInvoiceForm?.clientInformation || 'Client Information')}
+            </h3>
             <FormField
               control={form.control}
               name="clientName"
@@ -343,11 +358,13 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
                 );
                 return (
                   <FormItem className="relative">
-                    <FormLabel>{dictionary?.createInvoiceForm?.clientName || 'Client Name'}</FormLabel>
+                    <FormLabel>
+                      {documentType === 'PURCHASE_ORDER' ? 'Nom du Fournisseur' : (dictionary?.createInvoiceForm?.clientName || 'Client Name')}
+                    </FormLabel>
                     <FormControl>
-                      <Input 
-                        {...field} 
-                        placeholder={dictionary?.createInvoiceForm?.clientNamePlaceholder || 'Client name or company'} 
+                      <Input
+                        {...field}
+                        placeholder={dictionary?.createInvoiceForm?.clientNamePlaceholder || 'Client name or company'}
                         onFocus={() => setClientSearchOpen(true)}
                         onBlur={() => setTimeout(() => setClientSearchOpen(false), 200)}
                         autoComplete="off"
@@ -482,9 +499,9 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
                         <FormItem className="col-span-3 relative">
                           <FormLabel>{dictionary?.createInvoiceForm?.reference || 'Reference'}</FormLabel>
                           <FormControl>
-                            <Input 
-                              {...field} 
-                              placeholder={dictionary?.createInvoiceForm?.referencePlaceholder || 'Reference'} 
+                            <Input
+                              {...field}
+                              placeholder={dictionary?.createInvoiceForm?.referencePlaceholder || 'Reference'}
                               onFocus={() => setProductSearchOpen(prev => ({ ...prev, [index]: true }))}
                               onBlur={() => setTimeout(() => setProductSearchOpen(prev => ({ ...prev, [index]: false })), 200)}
                               autoComplete="off"
@@ -523,9 +540,9 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
                         <FormItem className="col-span-4 relative">
                           <FormLabel>{dictionary?.createInvoiceForm?.designation || 'Designation'}</FormLabel>
                           <FormControl>
-                            <Input 
-                              {...field} 
-                              placeholder={dictionary?.createInvoiceForm?.designationPlaceholder || 'Product description'} 
+                            <Input
+                              {...field}
+                              placeholder={dictionary?.createInvoiceForm?.designationPlaceholder || 'Product description'}
                               onFocus={() => setProductSearchOpen(prev => ({ ...prev, [index]: true }))}
                               onBlur={() => setTimeout(() => setProductSearchOpen(prev => ({ ...prev, [index]: false })), 200)}
                               autoComplete="off"

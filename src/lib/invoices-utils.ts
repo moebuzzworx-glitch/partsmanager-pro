@@ -1,6 +1,6 @@
 import { Firestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, serverTimestamp } from 'firebase/firestore';
 import type { InvoiceFormData } from '@/components/dashboard/create-invoice-form';
-import type { CompanyInfo } from '@/components/dashboard/invoice-generator';
+import type { CompanyInfo } from '@/components/dashboard/document-generator';
 
 export interface StoredInvoice {
   id?: string;
@@ -49,7 +49,7 @@ export async function saveInvoiceData(
 ): Promise<string> {
   try {
     const invoicesRef = collection(firestore, 'invoices');
-    
+
     const storedInvoice: StoredInvoice = {
       userId,
       invoiceNumber: invoiceData.invoiceNumber,
@@ -94,7 +94,7 @@ export async function getInvoiceData(
   try {
     const invoiceRef = doc(firestore, 'invoices', invoiceId);
     const invoiceSnap = await firestore.getDoc?.(invoiceRef) || (await import('firebase/firestore').then(mod => mod.getDoc(invoiceRef)));
-    
+
     if (!invoiceSnap?.exists()) {
       return null;
     }
@@ -234,7 +234,7 @@ export async function deductStockFromInvoice(
     // For each line item, deduct from product stock
     for (const lineItem of invoice.lineItems) {
       const productsRef = collection(firestore, 'products');
-      
+
       // Find product by reference or designation
       let querySnapshot;
       if (lineItem.reference) {

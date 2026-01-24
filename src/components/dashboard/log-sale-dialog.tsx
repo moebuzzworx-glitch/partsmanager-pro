@@ -39,6 +39,10 @@ import { TrialButtonLock } from '@/components/trial-button-lock';
 import { hybridUpdateProduct } from '@/lib/hybrid-import-v2';
 
 import { getCustomersForAutoComplete, getProductsForAutoComplete, type ClientAutoComplete, type ProductAutoComplete } from '@/lib/invoice-autocomplete-utils';
+import { generateDocumentPdf } from '@/components/dashboard/document-generator';
+import { getUserSettings } from '@/lib/settings-utils';
+import { ToastAction } from '@/components/ui/toast';
+import { useToast } from '@/hooks/use-toast';
 
 type Dictionary = Awaited<ReturnType<typeof getDictionary>>;
 
@@ -50,6 +54,7 @@ interface SaleItem extends ProductAutoComplete {
 export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Dictionary; onSaleAdded?: () => void }) {
   const d = dictionary.logSaleDialog;
   const { firestore, user } = useFirebase();
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [customerInput, setCustomerInput] = useState<string>('');
@@ -62,6 +67,7 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
   const [discountValue, setDiscountValue] = useState<number>(0);
   const [products, setProducts] = useState<ProductAutoComplete[]>([]);
   const [customers, setCustomers] = useState<ClientAutoComplete[]>([]);
+  const [settings, setSettings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // Fetch products and customers from Firestore when dialog opens
@@ -71,12 +77,14 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const [productsData, customersData] = await Promise.all([
+        const [productsData, customersData, settingsData] = await Promise.all([
           getProductsForAutoComplete(firestore, user.uid),
-          getCustomersForAutoComplete(firestore, user.uid)
+          getCustomersForAutoComplete(firestore, user.uid),
+          getUserSettings(firestore, user.uid)
         ]);
         setProducts(productsData);
         setCustomers(customersData);
+        setSettings(settingsData);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -207,6 +215,51 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
           date: serverTimestamp(),
         });
       }
+
+      // Prepare receipt data
+      const receiptData = {
+        invoiceNumber: `REC-${Date.now().toString().slice(-6)}`, // Temporary receipt number
+        invoiceDate: new Date().toISOString(),
+        clientName: customerName,
+        clientAddress: selectedCustomer?.address || '',
+        clientNis: selectedCustomer?.nis || '',
+        clientNif: selectedCustomer?.nif || '',
+        clientRc: selectedCustomer?.rc || '',
+        clientArt: selectedCustomer?.art || '',
+        clientRib: selectedCustomer?.rib || '',
+        lineItems: saleItems.map(item => ({
+          reference: item.reference,
+          designation: item.name,
+          quantity: item.saleQuantity,
+          unitPrice: item.price,
+          unit: 'pcs'
+        })),
+        paymentMethod: 'Espèce',
+        applyVatToAll: false, // Default for simple receipt
+        isProforma: false
+      };
+
+      const companyInfo = settings ? {
+        companyName: settings.companyName,
+        address: settings.address,
+        phone: settings.phone,
+        logoUrl: settings.logoUrl,
+        rc: settings.rc, nif: settings.nif, art: settings.art, nis: settings.nis, rib: settings.rib
+      } : undefined;
+
+      const handlePrintReceipt = () => {
+        generateDocumentPdf(receiptData as any, 'SALES_RECEIPT', companyInfo as any);
+      };
+
+      toast({
+        title: 'Success',
+        description: 'Sale recorded successfully.',
+        action: (
+          <ToastAction altText="Print Receipt" onClick={handlePrintReceipt}>
+            Print Receipt
+          </ToastAction>
+        ),
+      });
 
       // Reset form
       setOpen(false);

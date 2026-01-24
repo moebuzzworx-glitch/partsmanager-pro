@@ -34,9 +34,16 @@ import {
 import { useFirebase } from "@/firebase/provider";
 import { getUserInvoices, deleteInvoice, updateInvoicePaidStatus, type StoredInvoice } from "@/lib/invoices-utils";
 import { generateInvoicePdf } from "@/components/dashboard/invoice-generator";
+import { generateDocumentPdf } from "@/components/dashboard/document-generator";
 import { getUserSettings } from "@/lib/settings-utils";
 import { CreateInvoiceDialog } from "@/components/dashboard/create-invoice-dialog";
 import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function InvoicesPage({
   params,
@@ -83,29 +90,25 @@ export default function InvoicesPage({
     fetchInvoicesList();
   }, [firestore, user]);
 
-  const handleRegenerateInvoice = async (invoice: StoredInvoice) => {
+  const handleDownloadDocument = async (invoice: StoredInvoice, type: 'INVOICE' | 'DELIVERY_NOTE') => {
     if (!firestore || !user) return;
 
     try {
       setRegeneratingId(invoice.id || '');
-      
+
       // Get fresh company settings
       const settings = await getUserSettings(firestore, user.uid);
-      
+
       // Use stored company info or fetch from settings
       const companyInfo = invoice.companyInfo || {
         companyName: settings.companyName,
         address: settings.address,
         phone: settings.phone,
-        rc: settings.rc,
-        nif: settings.nif,
-        art: settings.art,
-        nis: settings.nis,
-        rib: settings.rib,
         logoUrl: (settings as any).logoUrl,
-      };
+        rc: settings.rc, nif: settings.nif, art: settings.art, nis: settings.nis, rib: settings.rib
+      } as any;
 
-      // Regenerate PDF from stored data
+      // Reconstruct form data from stored invoice
       const formData = {
         isProforma: invoice.isProforma,
         invoiceNumber: invoice.invoiceNumber,
@@ -122,8 +125,9 @@ export default function InvoicesPage({
         applyVatToAll: invoice.applyVatToAll,
       };
 
-      await generateInvoicePdf(
+      await generateDocumentPdf(
         formData,
+        type,
         companyInfo,
         invoice.defaultVat || 0,
         invoice.applyVatToAll
@@ -131,13 +135,13 @@ export default function InvoicesPage({
 
       toast({
         title: 'Success',
-        description: dictionary.invoices?.regenerateSuccess || 'Invoice regenerated and downloaded successfully.',
+        description: dictionary.invoices?.regenerateSuccess || 'Document generated successfully.',
       });
     } catch (error) {
-      console.error('Error regenerating invoice:', error);
+      console.error('Error generating document:', error);
       toast({
         title: 'Error',
-        description: dictionary.invoices?.regenerateError || 'Failed to regenerate invoice. Please try again.',
+        description: dictionary.invoices?.regenerateError || 'Failed to generate document.',
         variant: 'destructive',
       });
     } finally {
@@ -178,9 +182,9 @@ export default function InvoicesPage({
       setUpdatingPaidId(invoice.id);
       const newPaidStatus = !invoice.paid;
       const success = await updateInvoicePaidStatus(firestore, invoice.id, newPaidStatus);
-      
+
       if (success) {
-        setInvoices(invoices.map(inv => 
+        setInvoices(invoices.map(inv =>
           inv.id === invoice.id ? { ...inv, paid: newPaidStatus } : inv
         ));
         toast({
@@ -202,7 +206,7 @@ export default function InvoicesPage({
 
   // Filter and sort invoices
   const filteredAndSortedInvoices = invoices
-    .filter(invoice => 
+    .filter(invoice =>
       invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       invoice.clientName.toLowerCase().includes(searchTerm.toLowerCase())
     )
@@ -232,33 +236,33 @@ export default function InvoicesPage({
       </div>
       <Card>
         <CardHeader>
-            <div className="flex flex-col gap-4">
-              <div className="flex justify-between items-center">
-                <CardTitle>{dictionary.invoices?.title || 'Invoices'}</CardTitle>
-                <CreateInvoiceDialog 
-                  locale={locale} 
-                  dictionary={dictionary}
-                  onInvoiceCreated={fetchInvoicesList}
-                />
-              </div>
-              <div className="flex gap-4 items-center">
-                <Input 
-                  placeholder={dictionary.invoices?.searchPlaceholder || 'Search by invoice number or client name...'} 
-                  className="flex-1"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as 'newest' | 'oldest')}>
-                  <SelectTrigger className="w-44">
-                    <SelectValue placeholder={dictionary.invoices?.sortPlaceholder || 'Sort by...'} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="newest">{dictionary.invoices?.sortNewest || 'Newest First'}</SelectItem>
-                    <SelectItem value="oldest">{dictionary.invoices?.sortOldest || 'Oldest First'}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-center">
+              <CardTitle>{dictionary.invoices?.title || 'Invoices'}</CardTitle>
+              <CreateInvoiceDialog
+                locale={locale}
+                dictionary={dictionary}
+                onInvoiceCreated={fetchInvoicesList}
+              />
             </div>
+            <div className="flex gap-4 items-center">
+              <Input
+                placeholder={dictionary.invoices?.searchPlaceholder || 'Search by invoice number or client name...'}
+                className="flex-1"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as 'newest' | 'oldest')}>
+                <SelectTrigger className="w-44">
+                  <SelectValue placeholder={dictionary.invoices?.sortPlaceholder || 'Sort by...'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">{dictionary.invoices?.sortNewest || 'Newest First'}</SelectItem>
+                  <SelectItem value="oldest">{dictionary.invoices?.sortOldest || 'Oldest First'}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -286,58 +290,69 @@ export default function InvoicesPage({
                   </TableRow>
                 ) : (
                   filteredAndSortedInvoices.map(invoice => (
-                      <TableRow key={invoice.id}>
-                          <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                          <TableCell>{invoice.clientName}</TableCell>
-                          <TableCell>{new Date(invoice.invoiceDate).toLocaleDateString()}</TableCell>
-                          <TableCell className="text-right font-semibold">
-                            {invoice.total?.toFixed(2) || '0.00'} {dictionary?.dashboard?.currency || 'DZD'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={invoice.paid ? 'default' : 'secondary'}>
-                              {invoice.paid ? dictionary.invoices?.paid || 'Paid' : dictionary.invoices?.unpaid || 'Unpaid'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right space-x-2">
-                             <Button 
-                               variant="outline" 
-                               size="sm"
-                               disabled={invoice.isProforma || updatingPaidId === invoice.id}
-                               onClick={() => handleTogglePaidStatus(invoice)}
-                               title={invoice.isProforma ? dictionary.invoices?.cannotMarkProforma || 'Proforma invoices cannot be marked as paid' : invoice.paid ? dictionary.invoices?.markAsUnpaid || 'Mark as Unpaid' : dictionary.invoices?.markAsPaid || 'Mark as Paid'}
-                               className={invoice.isProforma ? 'opacity-50 cursor-not-allowed' : ''}
-                             >
-                                  {updatingPaidId === invoice.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin"/>
-                                  ) : invoice.paid ? (
-                                    <X className="h-4 w-4 text-red-600"/>
-                                  ) : (
-                                    <Check className="h-4 w-4 text-green-600"/>
-                                  )}
-                             </Button>
-                             <Button 
-                               variant="outline" 
-                               size="sm"
-                               disabled={regeneratingId === invoice.id}
-                               onClick={() => handleRegenerateInvoice(invoice)}
-                             >
-                                  {regeneratingId === invoice.id ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
-                                  ) : (
-                                    <Download className="mr-2 h-4 w-4"/>
-                                  )}
-                                  {regeneratingId === invoice.id ? dictionary.invoices?.regenerating || 'Regenerating...' : dictionary.invoices?.download || 'Download'}
-                             </Button>
-                             <Button 
-                               variant="outline" 
-                               size="sm"
-                               className="text-destructive hover:text-destructive"
-                               onClick={() => invoice.id && handleDeleteInvoice(invoice.id)}
-                             >
-                                  <Trash2 className="h-4 w-4"/>
-                             </Button>
-                          </TableCell>
-                      </TableRow>
+                    <TableRow key={invoice.id}>
+                      <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
+                      <TableCell>{invoice.clientName}</TableCell>
+                      <TableCell>{new Date(invoice.invoiceDate).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right font-semibold">
+                        {invoice.total?.toFixed(2) || '0.00'} {dictionary?.dashboard?.currency || 'DZD'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={invoice.paid ? 'default' : 'secondary'}>
+                          {invoice.paid ? dictionary.invoices?.paid || 'Paid' : dictionary.invoices?.unpaid || 'Unpaid'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={invoice.isProforma || updatingPaidId === invoice.id}
+                          onClick={() => handleTogglePaidStatus(invoice)}
+                          title={invoice.isProforma ? dictionary.invoices?.cannotMarkProforma || 'Proforma invoices cannot be marked as paid' : invoice.paid ? dictionary.invoices?.markAsUnpaid || 'Mark as Unpaid' : dictionary.invoices?.markAsPaid || 'Mark as Paid'}
+                          className={invoice.isProforma ? 'opacity-50 cursor-not-allowed' : ''}
+                        >
+                          {updatingPaidId === invoice.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : invoice.paid ? (
+                            <X className="h-4 w-4 text-red-600" />
+                          ) : (
+                            <Check className="h-4 w-4 text-green-600" />
+                          )}
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={regeneratingId === invoice.id}
+                            >
+                              {regeneratingId === invoice.id ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Download className="mr-2 h-4 w-4" />
+                              )}
+                              {regeneratingId === invoice.id ? dictionary.invoices?.regenerating || 'Generating...' : dictionary.invoices?.download || 'Download'}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => handleDownloadDocument(invoice, 'INVOICE')}>
+                              Facture
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownloadDocument(invoice, 'DELIVERY_NOTE')}>
+                              Bon de Livraison
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => invoice.id && handleDeleteInvoice(invoice.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
                   ))
                 )}
               </TableBody>
