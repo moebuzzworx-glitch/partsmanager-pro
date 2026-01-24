@@ -7,6 +7,7 @@ export interface StoredInvoice {
   userId: string;
   invoiceNumber: string;
   invoiceDate: string;
+  documentType?: 'INVOICE' | 'DELIVERY_NOTE' | 'PURCHASE_ORDER' | 'SALES_RECEIPT';
   isProforma: boolean;
   clientName: string;
   clientAddress?: string;
@@ -45,7 +46,8 @@ export async function saveInvoiceData(
   defaultVat?: number,
   total?: number,
   subtotal?: number,
-  vatAmount?: number
+  vatAmount?: number,
+  documentType: 'INVOICE' | 'DELIVERY_NOTE' | 'PURCHASE_ORDER' | 'SALES_RECEIPT' = 'INVOICE'
 ): Promise<string> {
   try {
     const invoicesRef = collection(firestore, 'invoices');
@@ -54,6 +56,7 @@ export async function saveInvoiceData(
       userId,
       invoiceNumber: invoiceData.invoiceNumber,
       invoiceDate: invoiceData.invoiceDate,
+      documentType,
       isProforma: invoiceData.isProforma,
       clientName: invoiceData.clientName,
       clientAddress: invoiceData.clientAddress,
@@ -71,7 +74,7 @@ export async function saveInvoiceData(
       subtotal,
       vatAmount,
       paid: false,
-      userId: userId, // ← Add userId for per-user isolation
+
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };

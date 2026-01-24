@@ -61,11 +61,12 @@ export type InvoiceFormData = z.infer<typeof formSchema>;
 interface CreateInvoiceFormProps {
   locale: Locale;
   onSuccess: () => void;
+  defaultType?: 'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE';
 }
 
 // Invoice number functions are imported from settings-utils
 export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoiceFormProps>(
-  ({ locale, onSuccess }, ref) => {
+  ({ locale, onSuccess, defaultType = 'INVOICE' }, ref) => {
     const { toast } = useToast();
     const { user, firestore } = useFirebase();
     const [userDoc, setUserDoc] = React.useState<AppUser | null>(null);
@@ -76,7 +77,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
     const [products, setProducts] = React.useState<ProductAutoComplete[]>([]);
     const [clientSearchOpen, setClientSearchOpen] = React.useState(false);
     const [productSearchOpen, setProductSearchOpen] = React.useState<Record<number, boolean>>({});
-    const [documentType, setDocumentType] = React.useState<'INVOICE' | 'PURCHASE_ORDER'>('INVOICE');
+    const [documentType, setDocumentType] = React.useState<'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE'>(defaultType || 'INVOICE');
     const [dictionary, setDictionary] = React.useState<any>(null);
 
     // Load dictionary
@@ -233,7 +234,8 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
           defaultVat,
           total,
           subtotal,
-          vatAmount
+          vatAmount,
+          documentType
         );
 
         // Deduct stock from products for non-proforma invoices
@@ -308,6 +310,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
                   <SelectContent>
                     <SelectItem value="INVOICE">Facture</SelectItem>
                     <SelectItem value="PURCHASE_ORDER">Bon de Commande</SelectItem>
+                    <SelectItem value="DELIVERY_NOTE">Bon de Livraison</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -493,7 +496,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
                     render={({ field }) => {
                       const referenceValue = field.value;
                       const filteredProductsByRef = products.filter(p =>
-                        p.reference && p.reference.toLowerCase().includes(referenceValue.toLowerCase())
+                        p.reference && referenceValue && p.reference.toLowerCase().includes(referenceValue.toLowerCase())
                       );
                       return (
                         <FormItem className="col-span-3 relative">

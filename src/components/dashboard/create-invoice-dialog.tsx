@@ -26,9 +26,10 @@ interface CreateInvoiceDialogProps {
   locale: Locale;
   dictionary: Dictionary;
   onInvoiceCreated?: () => void;
+  defaultType?: 'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE';
 }
 
-export function CreateInvoiceDialog({ locale, dictionary, onInvoiceCreated }: CreateInvoiceDialogProps) {
+export function CreateInvoiceDialog({ locale, dictionary, onInvoiceCreated, defaultType }: CreateInvoiceDialogProps) {
   const [open, setOpen] = React.useState(false);
   const formRef = React.useRef<HTMLFormElement>(null);
   const { user, firestore } = useFirebase();
@@ -87,10 +88,11 @@ export function CreateInvoiceDialog({ locale, dictionary, onInvoiceCreated }: Cr
             ref={formRef}
             locale={locale}
             onSuccess={handleSuccess}
+            defaultType={defaultType}
           />
           <DialogFooter className="mt-6 flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
-              {dictionary?.table?.cancel || 'Cancel'}
+              {(dictionary?.table as any)?.cancel || 'Cancel'}
             </Button>
             <Button onClick={handleSubmit} type="button" disabled={isLoading}>
               {dictionary?.invoices?.generateInvoiceButton || 'Generate Invoice'}
