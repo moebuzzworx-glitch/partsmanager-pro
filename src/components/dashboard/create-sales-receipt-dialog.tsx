@@ -49,7 +49,7 @@ export function CreateSalesReceiptDialog({ locale, dictionary, onCreated }: Crea
                 <DialogTrigger asChild>
                     <Button>
                         <PlusCircle className="mr-2 h-4 w-4" />
-                        {dictionary?.invoices?.addButton || 'Nouveau Bon de Vente'}
+                        Nouveau Bon de Vente
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

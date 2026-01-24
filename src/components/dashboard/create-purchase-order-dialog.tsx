@@ -49,7 +49,7 @@ export function CreatePurchaseOrderDialog({ locale, dictionary, onCreated }: Cre
                 <DialogTrigger asChild>
                     <Button>
                         <PlusCircle className="mr-2 h-4 w-4" />
-                        {dictionary?.invoices?.addButton || 'Nouveau Bon de Commande'}
+                        Nouveau Bon de Commande
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

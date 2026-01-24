@@ -49,7 +49,7 @@ export function CreateDeliveryNoteDialog({ locale, dictionary, onCreated }: Crea
                 <DialogTrigger asChild>
                     <Button>
                         <PlusCircle className="mr-2 h-4 w-4" />
-                        {dictionary?.invoices?.addButton || 'Nouveau Bon de Livraison'}
+                        Nouveau Bon de Livraison
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
