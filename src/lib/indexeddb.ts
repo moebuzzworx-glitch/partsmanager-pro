@@ -43,16 +43,16 @@ async function getDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     console.log('[IndexedDB] getDB() called');
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    
+
     request.onerror = () => {
       console.error('[IndexedDB] Database open error:', request.error);
       reject(request.error);
     };
-    
+
     request.onsuccess = () => {
       console.log('[IndexedDB] Database opened successfully');
       const db = request.result;
-      
+
       // Verify all stores exist
       console.log('[IndexedDB] Checking stores exist:', Array.from(db.objectStoreNames));
       let allStoresExist = true;
@@ -63,7 +63,7 @@ async function getDB(): Promise<IDBDatabase> {
           break;
         }
       }
-      
+
       if (allStoresExist) {
         console.log('[IndexedDB] All stores exist, returning database');
         resolve(db);
@@ -72,24 +72,24 @@ async function getDB(): Promise<IDBDatabase> {
         db.close();
         // Increment version to trigger upgrade
         const retryRequest = indexedDB.open(DB_NAME, DB_VERSION + 1);
-        
+
         retryRequest.onerror = () => {
           console.error('[IndexedDB] Retry failed:', retryRequest.error);
           reject(retryRequest.error);
         };
-        
+
         retryRequest.onsuccess = () => {
           console.log('[IndexedDB] Retry succeeded');
           resolve(retryRequest.result);
         };
-        
+
         retryRequest.onupgradeneeded = (event) => {
           console.log('[IndexedDB] onupgradeneeded triggered during retry');
           initializeStores((event.target as IDBOpenDBRequest).result);
         };
       }
     };
-    
+
     // Upgrade handler
     request.onupgradeneeded = (event) => {
       console.log('[IndexedDB] onupgradeneeded triggered');
@@ -149,7 +149,7 @@ function initializeStores(db: IDBDatabase) {
     console.log('[IndexedDB] Creating metadata store');
     db.createObjectStore(STORES.METADATA, { keyPath: 'key' });
   }
-  
+
   console.log('[IndexedDB] All stores initialized');
 }
 
@@ -180,13 +180,13 @@ export async function saveProduct(product: any, userId: string): Promise<void> {
     };
     request.onsuccess = () => {
       console.log('[IndexedDB] Product saved successfully:', product.id);
-      
+
       // Wait for transaction to complete
       tx.oncomplete = () => {
         console.log('[IndexedDB] saveProduct transaction complete');
         resolve();
       };
-      
+
       tx.onerror = () => {
         console.error('[IndexedDB] saveProduct transaction error:', tx.error);
         reject(tx.error);
@@ -307,7 +307,7 @@ export async function getPendingDeleteProductIds(userId: string): Promise<string
   try {
     const { getUnpushedCommits } = await import('./commit-queue');
     const commits = await getUnpushedCommits(userId);
-    
+
     // Filter commits that are delete or permanent-delete operations for products
     return commits
       .filter((c) => (c.type === 'delete' || c.type === 'permanent-delete') && c.collectionName === 'products')
@@ -319,13 +319,38 @@ export async function getPendingDeleteProductIds(userId: string): Promise<string
 }
 
 /**
+ * Get map of pending changes for products (docId -> changeType)
+ * Used to correctly filter items in UI based on their pending state
+ */
+export async function getProductPendingChanges(userId: string): Promise<Map<string, 'delete' | 'restore' | 'permanent-delete' | 'create' | 'update'>> {
+  try {
+    const { getUnpushedCommits } = await import('./commit-queue');
+    const commits = await getUnpushedCommits(userId);
+
+    const changes = new Map<string, 'delete' | 'restore' | 'permanent-delete' | 'create' | 'update'>();
+
+    // Process commits in order - later commits override earlier ones
+    commits
+      .filter((c) => c.collectionName === 'products')
+      .forEach((c) => {
+        changes.set(c.docId, c.type);
+      });
+
+    return changes;
+  } catch (err) {
+    console.warn('[IndexedDB] Failed to get pending changes:', err);
+    return new Map();
+  }
+}
+
+/**
  * Get products for a user excluding both deleted and pending-delete products
  * Use this when loading products for display to prevent conflicts
  */
 export async function getProductsByUserExcludingPending(userId: string): Promise<any[]> {
   const products = await getProductsByUser(userId);
   const pendingDeleteIds = await getPendingDeleteProductIds(userId);
-  
+
   // Filter out products that have pending delete operations
   return products.filter((product) => !pendingDeleteIds.includes(product.id));
 }
@@ -437,15 +462,15 @@ export async function updateProduct(productId: string, updates: any, userId: str
   return new Promise((resolve, reject) => {
     // First, get existing product
     const getRequest = store.get(productId);
-    
+
     getRequest.onerror = () => {
       console.error('[IndexedDB] Error getting product for update:', getRequest.error);
       reject(getRequest.error);
     };
-    
+
     getRequest.onsuccess = () => {
       const existing = getRequest.result;
-      
+
       let merged: any;
       if (existing) {
         // MERGE: Keep existing data, apply updates on top
@@ -471,14 +496,14 @@ export async function updateProduct(productId: string, updates: any, userId: str
         };
         console.log('[IndexedDB] Creating new product from updates');
       }
-      
+
       const putRequest = store.put(merged);
-      
+
       putRequest.onerror = () => {
         console.error('[IndexedDB] Error saving merged product:', putRequest.error);
         reject(putRequest.error);
       };
-      
+
       putRequest.onsuccess = () => {
         tx.oncomplete = () => {
           console.log('[IndexedDB] Product updated successfully:', productId);
@@ -496,7 +521,7 @@ export async function updateProduct(productId: string, updates: any, userId: str
  */
 export async function getProductByReference(reference: string, userId: string): Promise<any | null> {
   if (!reference) return null;
-  
+
   const db = await getDB();
   const tx = db.transaction(STORES.PRODUCTS, 'readonly');
   const store = tx.objectStore(STORES.PRODUCTS);
@@ -504,7 +529,7 @@ export async function getProductByReference(reference: string, userId: string): 
 
   return new Promise((resolve, reject) => {
     const request = index.openCursor(IDBKeyRange.only(userId));
-    
+
     request.onerror = () => reject(request.error);
     request.onsuccess = (event: any) => {
       const cursor = event.target.result;
@@ -532,7 +557,7 @@ export async function getPendingCommitProductIds(userId: string): Promise<string
   try {
     const { getUnpushedCommits } = await import('./commit-queue');
     const commits = await getUnpushedCommits(userId);
-    
+
     // Return ALL product IDs with any pending commits (not just deletes)
     return commits
       .filter((c) => c.collectionName === 'products')
@@ -717,7 +742,7 @@ export async function addToSyncQueue(
   userId: string
 ): Promise<number> {
   console.warn('[IndexedDB] ⚠️ addToSyncQueue is deprecated, use queueCommit from commit-queue.ts');
-  
+
   try {
     const { queueCommit } = await import('./commit-queue');
     await queueCommit(action as any, collectionName, docId, data, userId);
@@ -735,11 +760,11 @@ export async function addToSyncQueue(
  */
 export async function getUnsyncedItems(userId: string): Promise<SyncMetadata[]> {
   console.warn('[IndexedDB] ⚠️ getUnsyncedItems is deprecated, use getUnpushedCommits from commit-queue.ts');
-  
+
   try {
     const { getUnpushedCommits } = await import('./commit-queue');
     const commits = await getUnpushedCommits(userId);
-    
+
     // Convert new CommitObject format to old SyncMetadata format for compatibility
     return commits.map((commit: any) => ({
       id: commit.id,
@@ -982,7 +1007,7 @@ export async function permanentlyDeleteProduct(
  */
 export async function markProductAsDeleted(productId: string, userId: string): Promise<void> {
   console.warn('[IndexedDB] ⚠️ markProductAsDeleted is deprecated, use hybridDeleteProduct from hybrid-import-v2.ts');
-  
+
   try {
     const { hybridDeleteProduct } = await import('./hybrid-import-v2');
     const user = { uid: userId } as any;
@@ -999,18 +1024,18 @@ export async function markProductAsDeleted(productId: string, userId: string): P
  */
 export async function restoreProduct(productId: string, userId: string): Promise<void> {
   console.warn('[IndexedDB] ⚠️ restoreProduct is deprecated, use hybridRestoreProduct from hybrid-import-v2.ts');
-  
+
   try {
     const { hybridRestoreProduct } = await import('./hybrid-import-v2');
     const db = await getDB();
     const tx = db.transaction(STORES.PRODUCTS, 'readonly');
     const store = tx.objectStore(STORES.PRODUCTS);
-    
+
     const product = await new Promise<any>((resolve) => {
       const req = store.get(productId);
       req.onsuccess = () => resolve(req.result);
     });
-    
+
     if (product) {
       const user = { uid: userId } as any;
       await hybridRestoreProduct(user, productId, product);

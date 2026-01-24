@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/table";
 import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { getDeletedProductsByUser, initDB, getPendingDeleteProductIds } from "@/lib/indexeddb";
+import { getDeletedProductsByUser, initDB, getProductPendingChanges } from "@/lib/indexeddb";
 import { hybridRestoreProduct, hybridPermanentlyDeleteProduct } from "@/lib/hybrid-import-v2";
 import { useToast } from "@/hooks/use-toast";
 
@@ -68,47 +68,57 @@ export default function TrashPage({
     const fetchDeletedItems = async () => {
       try {
         setIsLoading(true);
-        
+
         // Initialize IndexedDB
         await initDB();
-        
-        // Get pending delete IDs to exclude products still being deleted
-        const pendingDeleteIds = await getPendingDeleteProductIds(user.uid);
-        
+
+        // Get pending changes map to correctly filter items
+        // delete = soft delete (should BE in trash)
+        // permanent-delete = hard delete (should NOT be in trash)
+        // restore = restore (should NOT be in trash)
+        const pendingChanges = await getProductPendingChanges(user.uid);
+
         // STEP 1: Fetch deleted products from IndexedDB
-        // Only show products already marked as deleted (not pending deletes)
-        const deletedProducts = await getDeletedProductsByUser(user.uid);
-        
-        // Filter out products with pending delete operations
-        const stableDeletedProducts = deletedProducts.filter(
-          (product: any) => !pendingDeleteIds.includes(product.id)
-        );
-        
-        const items = stableDeletedProducts.map((product: any) => ({
-          id: product.id,
-          name: product.name || '',
-          reference: product.reference || '',
-          sku: product.sku || '',
-          stock: product.stock || 0,
-          purchasePrice: product.purchasePrice || 0,
-          price: product.price || 0,
-          image: product.image,
-          deletedAt: product.deletedAt,
-        }));
-        
-        setAllDeletedItems(items);
-        setDisplayedItems(items.slice(0, 50));
+        // This includes items we just soft-deleted locally
+        const localDeletedProducts = await getDeletedProductsByUser(user.uid);
+
+        // Map to UI format
+        // Filter out items that have pending DESTROY (permanent-delete) or RESTORE operations
+        // But KEEP items that have pending DELETE (soft-delete) operations
+        const validLocalItems = localDeletedProducts
+          .filter((p: any) => {
+            const pendingType = pendingChanges.get(p.id);
+            // If pending permanent delete or restore, hide it
+            if (pendingType === 'permanent-delete' || pendingType === 'restore') return false;
+            return true;
+          })
+          .map((product: any) => ({
+            id: product.id,
+            name: product.name || '',
+            reference: product.reference || '',
+            sku: product.sku || '',
+            stock: product.stock || 0,
+            quantity: product.stock || 0,
+            purchasePrice: product.purchasePrice || 0,
+            price: product.price || 0,
+            image: product.image,
+            deletedAt: product.deletedAt,
+          }));
+
+        // Display local items immediately
+        setAllDeletedItems(validLocalItems);
+        setDisplayedItems(validLocalItems.slice(0, 50));
         setDisplayLimit(50);
-        console.log(`✅ Loaded ${stableDeletedProducts.length} deleted products from IndexedDB (${pendingDeleteIds.length} pending deletes excluded)`);
-        
+        console.log(`✅ Loaded ${validLocalItems.length} deleted products from IndexedDB`);
+
         // STEP 2: Sync with Firebase in background
         try {
           const productsRef = collection(firestore, 'products');
           const q = query(productsRef, where('userId', '==', user.uid), where('isDeleted', '==', true));
           const querySnapshot = await getDocs(q);
-          
+
           const freshDeletedProducts: any[] = [];
-          
+
           // Process deleted products from Firebase
           for (const doc of querySnapshot.docs) {
             const firebaseData = doc.data();
@@ -124,14 +134,36 @@ export default function TrashPage({
               deletedAt: firebaseData.deletedAt,
             });
           }
-          
-          // Update with Firebase data
+
+          // Update with Firebase data but respect local pending changes
           if (freshDeletedProducts.length > 0) {
-            setAllDeletedItems(freshDeletedProducts);
-            setDisplayedItems(freshDeletedProducts.slice(0, 50));
+            // Create a map of existing local items for merging
+            const existingMap = new Map(validLocalItems.map(i => [i.id, i]));
+            const mergedItems = [...validLocalItems];
+
+            for (const remoteItem of freshDeletedProducts) {
+              // If already in local list, it's handled (local is source of truth for unsynced changes)
+              if (existingMap.has(remoteItem.id)) continue;
+
+              // Check pending changes for this remote item
+              const pendingType = pendingChanges.get(remoteItem.id);
+
+              // If pending permanent delete or restore, DO NOT add it back
+              // This fixes the "reappearing deleted item" bug
+              if (pendingType === 'permanent-delete' || pendingType === 'restore') {
+                console.log(`[Trash] Skipping remote item ${remoteItem.id} due to pending ${pendingType}`);
+                continue;
+              }
+
+              // Otherwise add it
+              mergedItems.push(remoteItem);
+            }
+
+            setAllDeletedItems(mergedItems);
+            setDisplayedItems(mergedItems.slice(0, 50));
             setDisplayLimit(50);
+            console.log(`✅ Merged Firebase data: ${mergedItems.length} total items`);
           }
-          console.log(`✅ Updated from Firebase with ${freshDeletedProducts.length} deleted products`);
         } catch (firebaseErr) {
           console.warn('Failed to fetch from Firebase (using cached data):', firebaseErr);
         }
@@ -147,7 +179,7 @@ export default function TrashPage({
 
   const handleRestore = async (productId: string) => {
     if (!user) return;
-    
+
     setIsActioning(true);
     setActionProgress(0);
     try {
@@ -156,15 +188,15 @@ export default function TrashPage({
       if (product) {
         await hybridRestoreProduct(user, productId, product);
       }
-      
+
       // Update UI immediately - remove from deleted items
       const updated = allDeletedItems.filter(item => item.id !== productId);
       setAllDeletedItems(updated);
       setDisplayedItems(updated.slice(0, displayLimit));
-      
+
       // Show progress completion
       setActionProgress(100);
-      
+
       toast({
         title: dictionary?.table?.success || 'Success',
         description: dictionary?.trash?.restoreSuccess || 'Product restored successfully',
@@ -184,25 +216,25 @@ export default function TrashPage({
 
   const handlePermanentDelete = async (productId: string) => {
     if (!user) return;
-    
+
     if (!confirm(dictionary?.trash?.confirmDeleteMessage || 'Are you sure you want to permanently delete this product? This action cannot be undone.')) {
       return;
     }
-    
+
     setIsActioning(true);
     setActionProgress(0);
     try {
       // Permanently delete using hybrid system (queue for Firebase, local update)
       await hybridPermanentlyDeleteProduct(user, productId);
-      
+
       // Update UI immediately - remove from deleted items
       const updated = allDeletedItems.filter(item => item.id !== productId);
       setAllDeletedItems(updated);
       setDisplayedItems(updated.slice(0, displayLimit));
-      
+
       // Show progress completion
       setActionProgress(100);
-      
+
       toast({
         title: dictionary?.table?.success || 'Success',
         description: dictionary?.trash?.deleteSuccess || 'Product permanently deleted',
@@ -265,7 +297,7 @@ export default function TrashPage({
       setAllDeletedItems(updated);
       setDisplayedItems(updated.slice(0, displayLimit));
       setSelectedItems(new Set());
-      
+
       toast({
         title: dictionary?.table?.success || 'Success',
         description: dictionary?.trash?.batchRestoreSuccess?.replace('{count}', String(selectedItems.size)) || `${selectedItems.size} item(s) restored successfully`,
@@ -312,7 +344,7 @@ export default function TrashPage({
       setAllDeletedItems(updated);
       setDisplayedItems(updated.slice(0, displayLimit));
       setSelectedItems(new Set());
-      
+
       toast({
         title: dictionary?.table?.success || 'Success',
         description: dictionary?.trash?.batchDeleteSuccess?.replace('{count}', String(selectedItems.size)) || `${selectedItems.size} item(s) permanently deleted`,
@@ -355,16 +387,16 @@ export default function TrashPage({
             <CardTitle>{dictionary.trash?.title || 'Deleted Items'}</CardTitle>
             {selectedItems.size > 0 && (
               <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={handleBatchRestore}
                 >
                   <RotateCcw className="mr-2 h-4 w-4" />
                   {dictionary?.trash?.restoreSelected || 'Restore Selected'} ({selectedItems.size})
                 </Button>
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   size="sm"
                   onClick={handleBatchPermanentDelete}
                 >
@@ -380,7 +412,7 @@ export default function TrashPage({
             <TableHeader>
               <TableRow>
                 <TableHead>
-                  <Checkbox 
+                  <Checkbox
                     checked={selectedItems.size === displayedItems.length && displayedItems.length > 0}
                     onCheckedChange={handleSelectAll}
                   />
@@ -393,25 +425,25 @@ export default function TrashPage({
             <TableBody>
               {displayedItems.map((product) => (
                 <TableRow key={product.id}>
-                    <TableCell>
-                      <Checkbox 
-                        checked={selectedItems.has(product.id)}
-                        onCheckedChange={() => handleToggleSelect(product.id)}
-                      />
-                    </TableCell>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedItems.has(product.id)}
+                      onCheckedChange={() => handleToggleSelect(product.id)}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell className="hidden md:table-cell">{product.reference}</TableCell>
                   <TableCell className="text-right space-x-2">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => handleRestore(product.id)}
                     >
                       <RotateCcw className="mr-2 h-4 w-4" />
                       {dictionary?.trash?.restore || 'Restore'}
                     </Button>
-                    <Button 
-                      variant="destructive" 
+                    <Button
+                      variant="destructive"
                       size="sm"
                       onClick={() => handlePermanentDelete(product.id)}
                     >
@@ -421,19 +453,19 @@ export default function TrashPage({
                   </TableCell>
                 </TableRow>
               ))}
-                {displayedItems.length === 0 && (
-                    <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center">
-                            {dictionary.trash?.noData || 'No deleted items.'}
-                        </TableCell>
-                    </TableRow>
-                )}
+              {displayedItems.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">
+                    {dictionary.trash?.noData || 'No deleted items.'}
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
           {displayLimit < allDeletedItems.length && (
             <div className="flex justify-center mt-4 pt-4 border-t">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setDisplayLimit(displayLimit + LOAD_MORE_INCREMENT)}
               >
                 {isLoading ? (
