@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useFirebase } from '@/firebase/provider';
-import { collection, getDocs, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { TrialButtonLock } from '@/components/trial-button-lock';
 import { hybridUpdateProduct } from '@/lib/hybrid-import-v2';
 
@@ -68,6 +68,7 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
   const [products, setProducts] = useState<ProductAutoComplete[]>([]);
   const [customers, setCustomers] = useState<ClientAutoComplete[]>([]);
   const [settings, setSettings] = useState<any>(null);
+  const [appUser, setAppUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // Fetch products and customers from Firestore when dialog opens
@@ -77,14 +78,19 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const [productsData, customersData, settingsData] = await Promise.all([
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const [productsData, customersData, settingsData, userDocSnap] = await Promise.all([
           getProductsForAutoComplete(firestore, user.uid),
           getCustomersForAutoComplete(firestore, user.uid),
-          getUserSettings(firestore, user.uid)
+          getUserSettings(firestore, user.uid),
+          getDoc(userDocRef)
         ]);
         setProducts(productsData);
         setCustomers(customersData);
         setSettings(settingsData);
+        if (userDocSnap.exists()) {
+          setAppUser(userDocSnap.data());
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -162,12 +168,15 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
       let customerName = customerInput.trim();
 
       // Create new customer if not selected from list
-      if (!selectedCustomer) {
+      if (!selectedCustomer && user) {
         const customerRef = collection(firestore, 'customers');
         const newCustomerDoc = await addDoc(customerRef, {
+          userId: user.uid,
           name: customerName,
           email: '',
           phone: '',
+          version: 1,
+          updatedAt: serverTimestamp(),
           createdAt: serverTimestamp(),
         });
         customerId = newCustomerDoc.id;
@@ -186,7 +195,7 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
         const itemDiscountAmount = itemOriginalTotal - itemDiscountedTotal;
 
         await addDoc(salesRef, {
-          userId: user?.uid, // Added userId for better querying
+          userId: user?.uid,
           customerId: customerId,
           customer: customerName,
           productId: item.id,
@@ -197,20 +206,22 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
           discountAmount: itemDiscountAmount,
           unitPrice: item.price,
           reference: item.reference,
+          version: 1,
+          updatedAt: serverTimestamp(),
           date: serverTimestamp(),
         });
       }
 
       const receiptData = {
         invoiceNumber: `REC-${Date.now().toString().slice(-6)}`,
-        invoiceDate: new Date().toISOString(),
+        invoiceDate: new Date().toISOString().split('T')[0],
         clientName: customerName,
-        clientAddress: selectedCustomer?.address || '',
-        clientNis: selectedCustomer?.nis || '',
-        clientNif: selectedCustomer?.nif || '',
-        clientRc: selectedCustomer?.rc || '',
-        clientArt: selectedCustomer?.art || '',
-        clientRib: selectedCustomer?.rib || '',
+        clientAddress: (selectedCustomer as any)?.address || '',
+        clientNis: (selectedCustomer as any)?.nis || '',
+        clientNif: (selectedCustomer as any)?.nif || '',
+        clientRc: (selectedCustomer as any)?.rc || '',
+        clientArt: (selectedCustomer as any)?.art || '',
+        clientRib: (selectedCustomer as any)?.rib || '',
         lineItems: saleItems.map(item => ({
           reference: item.reference,
           designation: item.name,
@@ -220,7 +231,9 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
         })),
         paymentMethod: 'Espèce',
         applyVatToAll: false,
-        isProforma: false
+        isProforma: false,
+        discountType: discountType,
+        discountValue: discountValue
       };
 
       const companyInfo = settings ? {
@@ -261,7 +274,7 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
   }
 
   return (
-    <TrialButtonLock user={user}>
+    <TrialButtonLock user={appUser}>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button>

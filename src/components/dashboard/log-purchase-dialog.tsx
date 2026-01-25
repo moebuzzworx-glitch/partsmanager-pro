@@ -17,16 +17,17 @@ import { Card, CardContent } from '@/components/ui/card';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { getDictionary } from '@/lib/dictionaries';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-  } from "@/components/ui/table";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useFirebase } from '@/firebase/provider';
-import { collection, getDocs, query, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, query, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { TrialButtonLock } from '@/components/trial-button-lock';
+import { AutocompleteOption } from './autocomplete';
 
 type Dictionary = Awaited<ReturnType<typeof getDictionary>>;
 
@@ -52,6 +53,7 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
   const [supplierInput, setSupplierInput] = useState<string>('');
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | undefined>();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [appUser, setAppUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentItemDescription, setCurrentItemDescription] = useState('');
   const [currentItemQuantity, setCurrentItemQuantity] = useState(1);
@@ -64,10 +66,12 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        
-        // Fetch suppliers
-        const suppliersRef = collection(firestore, 'suppliers');
-        const suppliersSnapshot = await getDocs(query(suppliersRef));
+
+        const [suppliersSnapshot, userDocSnap] = await Promise.all([
+          getDocs(query(collection(firestore, 'suppliers'))),
+          user ? getDoc(doc(firestore, 'users', user.uid)) : Promise.resolve(null)
+        ]);
+
         const fetchedSuppliers: Supplier[] = [];
         suppliersSnapshot.forEach(doc => {
           fetchedSuppliers.push({
@@ -78,6 +82,9 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
           });
         });
         setSuppliers(fetchedSuppliers);
+        if (userDocSnap?.exists()) {
+          setAppUser(userDocSnap.data());
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -86,7 +93,7 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
     };
 
     fetchData();
-  }, [open, firestore]);
+  }, [open, firestore, user]);
 
   // Filter suppliers based on input
   const filteredSuppliers = useMemo(() => {
@@ -136,7 +143,7 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
   const handleRemoveItem = (index: number) => {
     setPurchaseItems(prev => prev.filter((_, i) => i !== index));
   };
-  
+
   const totalAmount = useMemo(() => {
     return purchaseItems.reduce((total, item) => total + (item.unitPrice * item.quantity), 0);
   }, [purchaseItems]);
@@ -149,31 +156,39 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
       let supplierName = supplierInput.trim();
 
       // Create new supplier if not selected from list
-      if (!selectedSupplier) {
+      if (!selectedSupplier && user) {
         const supplierRef = collection(firestore, 'suppliers');
         const newSupplierDoc = await addDoc(supplierRef, {
+          userId: user.uid,
           name: supplierName,
           email: '',
           phone: '',
+          version: 1,
+          updatedAt: serverTimestamp(),
           createdAt: serverTimestamp(),
         });
         supplierId = newSupplierDoc.id;
       }
 
       // Save purchase to purchases collection
-      const purchasesRef = collection(firestore, 'purchases');
-      await addDoc(purchasesRef, {
-        supplierId: supplierId,
-        supplier: supplierName,
-        items: purchaseItems.map(item => ({
-          description: item.description,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          amount: item.quantity * item.unitPrice,
-        })),
-        totalAmount: totalAmount,
-        date: serverTimestamp(),
-      });
+      if (user) {
+        const purchasesRef = collection(firestore, 'purchases');
+        await addDoc(purchasesRef, {
+          userId: user.uid,
+          supplierId: supplierId,
+          supplier: supplierName,
+          items: purchaseItems.map(item => ({
+            description: item.description,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            amount: item.quantity * item.unitPrice,
+          })),
+          totalAmount: totalAmount,
+          version: 1,
+          updatedAt: serverTimestamp(),
+          date: serverTimestamp(),
+        });
+      }
 
       // Reset form
       setOpen(false);
@@ -190,7 +205,7 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
   }
 
   return (
-    <TrialButtonLock user={user}>
+    <TrialButtonLock user={appUser}>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button>
@@ -198,92 +213,92 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
             {d.logPurchase}
           </Button>
         </DialogTrigger>
-      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[800px] max-h-[85vh] overflow-y-auto p-4 sm:p-6">
-        <DialogHeader>
-          <DialogTitle>{d.title}</DialogTitle>
-          <DialogDescription>{d.description}</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[800px] max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+          <DialogHeader>
+            <DialogTitle>{d.title}</DialogTitle>
+            <DialogDescription>{d.description}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
             <div className="grid gap-2">
-                <Label htmlFor="supplier">{d.supplier}</Label>
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <Input
-                        type="text"
-                        placeholder={d.supplierPlaceholder}
-                        value={supplierInput}
-                        onChange={(e) => {
-                          setSupplierInput(e.target.value);
-                          setSupplierDropdownOpen(true);
-                          // Clear selection if user is typing
-                          if (selectedSupplier && e.target.value !== selectedSupplier.name) {
-                            setSelectedSupplier(undefined);
-                          }
-                        }}
-                        onFocus={() => setSupplierDropdownOpen(true)}
-                        onBlur={() => setTimeout(() => setSupplierDropdownOpen(false), 200)}
-                        className="w-full"
-                    />
-                    {/* Show dropdown suggestions */}
-                    {supplierDropdownOpen && supplierInput.trim() && supplierOptions.length > 0 && (
-                      <div className="border border-t-0 rounded-b bg-background mt-0 max-h-48 overflow-y-auto z-50">
-                        {supplierOptions.map((option) => (
-                          <div
-                            key={option.value}
-                            onClick={() => handleSupplierSelect(option)}
-                            className="px-4 py-3 hover:bg-primary/10 cursor-pointer text-sm transition-colors border-b border-primary/10 last:border-b-0"
-                          >
-                            {option.label}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {supplierDropdownOpen && supplierInput.trim() && supplierOptions.length === 0 && (
-                      <div className="border border-t-0 rounded-b bg-background mt-0 px-3 py-2 text-sm text-gray-500">
-                        {d.noSupplierFound}
-                      </div>
-                    )}
-                  </div>
+              <Label htmlFor="supplier">{d.supplier}</Label>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Input
+                    type="text"
+                    placeholder={d.supplierPlaceholder}
+                    value={supplierInput}
+                    onChange={(e) => {
+                      setSupplierInput(e.target.value);
+                      setSupplierDropdownOpen(true);
+                      // Clear selection if user is typing
+                      if (selectedSupplier && e.target.value !== selectedSupplier.name) {
+                        setSelectedSupplier(undefined);
+                      }
+                    }}
+                    onFocus={() => setSupplierDropdownOpen(true)}
+                    onBlur={() => setTimeout(() => setSupplierDropdownOpen(false), 200)}
+                    className="w-full"
+                  />
+                  {/* Show dropdown suggestions */}
+                  {supplierDropdownOpen && supplierInput.trim() && supplierOptions.length > 0 && (
+                    <div className="border border-t-0 rounded-b bg-background mt-0 max-h-48 overflow-y-auto z-50">
+                      {supplierOptions.map((option) => (
+                        <div
+                          key={option.value}
+                          onClick={() => handleSupplierSelect(option)}
+                          className="px-4 py-3 hover:bg-primary/10 cursor-pointer text-sm transition-colors border-b border-primary/10 last:border-b-0"
+                        >
+                          {option.label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {supplierDropdownOpen && supplierInput.trim() && supplierOptions.length === 0 && (
+                    <div className="border border-t-0 rounded-b bg-background mt-0 px-3 py-2 text-sm text-gray-500">
+                      {d.noSupplierFound}
+                    </div>
+                  )}
                 </div>
-                {supplierInput.trim() && !selectedSupplier && (
-                  <p className="text-xs text-blue-600">{supplierInput} - {d.newSupplier}</p>
-                )}
+              </div>
+              {supplierInput.trim() && !selectedSupplier && (
+                <p className="text-xs text-blue-600">{supplierInput} - {d.newSupplier}</p>
+              )}
             </div>
 
             <div className="grid gap-4 border rounded-lg p-4 bg-gray-50 dark:bg-slate-900">
               <div className="grid gap-2">
                 <Label htmlFor="item-description">{d.itemDescription}</Label>
                 <Input
-                    type="text"
-                    id="item-description"
-                    placeholder={d.itemDescriptionPlaceholder}
-                    value={currentItemDescription}
-                    onChange={(e) => setCurrentItemDescription(e.target.value)}
-                    className="w-full"
+                  type="text"
+                  id="item-description"
+                  placeholder={d.itemDescriptionPlaceholder}
+                  value={currentItemDescription}
+                  onChange={(e) => setCurrentItemDescription(e.target.value)}
+                  className="w-full"
                 />
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div className="grid gap-2">
                   <Label htmlFor="item-quantity">{d.quantity}</Label>
-                  <Input 
-                      type="number" 
-                      id="item-quantity"
-                      value={currentItemQuantity}
-                      onChange={(e) => setCurrentItemQuantity(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full"
-                      min="0"
+                  <Input
+                    type="number"
+                    id="item-quantity"
+                    value={currentItemQuantity}
+                    onChange={(e) => setCurrentItemQuantity(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    className="w-full"
+                    min="0"
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="item-price">{d.price}</Label>
-                  <Input 
-                      type="number" 
-                      id="item-price"
-                      value={currentItemPrice}
-                      onChange={(e) => setCurrentItemPrice(Math.max(0, parseFloat(e.target.value) || 0))}
-                      className="w-full"
-                      min="0"
-                      step="0.01"
+                  <Input
+                    type="number"
+                    id="item-price"
+                    value={currentItemPrice}
+                    onChange={(e) => setCurrentItemPrice(Math.max(0, parseFloat(e.target.value) || 0))}
+                    className="w-full"
+                    min="0"
+                    step="0.01"
                   />
                 </div>
                 <div className="flex flex-col justify-end">
@@ -294,68 +309,68 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
               </div>
             </div>
 
-          {purchaseItems.length > 0 && (
-            <Card>
+            {purchaseItems.length > 0 && (
+              <Card>
                 <CardContent className="p-0">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>{d.itemDescription}</TableHead>
-                                <TableHead className="w-[100px]">{d.quantity}</TableHead>
-                                <TableHead className="text-right w-[120px]">{d.price}</TableHead>
-                                <TableHead className="text-right w-[120px]">{d.total}</TableHead>
-                                <TableHead className="w-[50px]"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {purchaseItems.map((item, index) => (
-                                <TableRow key={index}>
-                                    <TableCell>{item.description}</TableCell>
-                                    <TableCell>
-                                        <Input 
-                                            type="number" 
-                                            value={item.quantity}
-                                            onChange={(e) => handleQuantityChange(index, parseInt(e.target.value, 10))}
-                                            className="w-full"
-                                            min="0"
-                                        />
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <Input 
-                                            type="number" 
-                                            value={item.unitPrice}
-                                            onChange={(e) => handlePriceChange(index, parseFloat(e.target.value))}
-                                            className="w-full text-right"
-                                            min="0"
-                                            step="0.01"
-                                        />
-                                    </TableCell>
-                                    <TableCell className="text-right">{(item.unitPrice * item.quantity).toFixed(2)} {dictionary.dashboard?.currency || 'DZD'}</TableCell>
-                                    <TableCell>
-                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}>
-                                            <Trash2 className="h-4 w-4 text-destructive"/>
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{d.itemDescription}</TableHead>
+                        <TableHead className="w-[100px]">{d.quantity}</TableHead>
+                        <TableHead className="text-right w-[120px]">{d.price}</TableHead>
+                        <TableHead className="text-right w-[120px]">{d.total}</TableHead>
+                        <TableHead className="w-[50px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {purchaseItems.map((item, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{item.description}</TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => handleQuantityChange(index, parseInt(e.target.value, 10))}
+                              className="w-full"
+                              min="0"
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Input
+                              type="number"
+                              value={item.unitPrice}
+                              onChange={(e) => handlePriceChange(index, parseFloat(e.target.value))}
+                              className="w-full text-right"
+                              min="0"
+                              step="0.01"
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">{(item.unitPrice * item.quantity).toFixed(2)} {dictionary.dashboard?.currency || 'DZD'}</TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </CardContent>
-            </Card>
-          )}
+              </Card>
+            )}
 
-          <div className="flex justify-end font-bold text-lg">
-            <span>{d.total}: {totalAmount.toFixed(2)} {dictionary.dashboard?.currency || 'DZD'}</span>
+            <div className="flex justify-end font-bold text-lg">
+              <span>{d.total}: {totalAmount.toFixed(2)} {dictionary.dashboard?.currency || 'DZD'}</span>
+            </div>
+
           </div>
-
-        </div>
-        <DialogFooter>
-          <Button onClick={handleSubmit} disabled={!supplierInput.trim() || purchaseItems.length === 0}>
-            {d.submit}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter>
+            <Button onClick={handleSubmit} disabled={!supplierInput.trim() || purchaseItems.length === 0}>
+              {d.submit}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TrialButtonLock>
   );
 }
