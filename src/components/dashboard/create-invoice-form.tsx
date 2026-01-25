@@ -25,7 +25,7 @@ import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firesto
 import { User as AppUser } from '@/lib/types';
 import { canExport, getExportRestrictionMessage } from '@/lib/trial-utils';
 import { getUserSettings, getNextDocumentNumber, updateLastDocumentNumber, AppSettings } from '@/lib/settings-utils';
-import { saveInvoiceData, calculateInvoiceTotals, deductStockFromInvoice } from '@/lib/invoices-utils';
+import { saveInvoiceData, calculateInvoiceTotals, deductStockFromInvoice, updateInvoice } from '@/lib/invoices-utils';
 import { useToast } from '@/hooks/use-toast';
 import type { Locale } from '@/lib/config';
 import { getDictionary } from '@/lib/dictionaries';
@@ -54,6 +54,8 @@ const formSchema = z.object({
   lineItems: z.array(lineItemSchema).min(1, 'At least one item is required'),
   paymentMethod: z.string().optional().default('Espèce'),
   applyVatToAll: z.boolean().default(false),
+  discountType: z.enum(['percentage', 'amount']).default('percentage'),
+  discountValue: z.coerce.number().min(0).default(0),
 });
 
 export type InvoiceFormData = z.infer<typeof formSchema>;
@@ -110,6 +112,8 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
         lineItems: [{ designation: '', quantity: 1, unitPrice: 0, reference: '', unit: 'pcs' }],
         paymentMethod: 'Espèce',
         applyVatToAll: documentType === 'PURCHASE_ORDER',
+        discountType: 'percentage',
+        discountValue: 0,
       },
     });
 
@@ -173,7 +177,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
       setValue('clientRc', inv.clientRc || '');
       setValue('clientArt', inv.clientArt || '');
       setValue('clientRib', inv.clientRib || '');
-      setValue('lineItems', (inv.lineItems || []).map((item: any) => ({
+      setValue(`lineItems`, (inv.lineItems || []).map((item: any) => ({
         reference: item.reference || '',
         designation: item.designation || '',
         unit: item.unit || 'pcs',
@@ -181,6 +185,8 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
         unitPrice: item.unitPrice || 0
       })));
       setValue('applyVatToAll', !!inv.applyVatToAll);
+      setValue('discountType', inv.discountType || 'percentage');
+      setValue('discountValue', inv.discountValue || 0);
       toast({ title: 'Success', description: 'Invoice data loaded.' });
     };
 
@@ -220,9 +226,45 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
           logoUrl: (settings as any).logoUrl
         };
         const defaultVat = (settings as any).defaultVat ?? 0;
-        await generateDocumentPdf(values, documentType, companyInfo as any, defaultVat, values.applyVatToAll);
-        const { subtotal, vatAmount, total } = calculateInvoiceTotals(values.lineItems, values.applyVatToAll, defaultVat || 19);
-        const invoiceId = await saveInvoiceData(firestore, user.uid, values, companyInfo as any, defaultVat, total, subtotal, vatAmount, documentType);
+
+        const { subtotal, vatAmount, discountAmount, total } = calculateInvoiceTotals(
+          values.lineItems,
+          values.applyVatToAll,
+          defaultVat || 19,
+          values.discountType,
+          values.discountValue
+        );
+
+        await generateDocumentPdf(
+          values,
+          documentType,
+          companyInfo as any,
+          defaultVat,
+          values.applyVatToAll
+        );
+
+        const invoiceId = await saveInvoiceData(
+          firestore,
+          user.uid,
+          values,
+          companyInfo as any,
+          defaultVat,
+          total,
+          subtotal,
+          vatAmount,
+          documentType
+        );
+
+        // Update the document to include discount info (persisting what we calculated)
+        await updateInvoice(firestore, invoiceId, {
+          discountType: values.discountType,
+          discountValue: values.discountValue,
+          discountAmount,
+          subtotal,
+          vatAmount,
+          total
+        });
+
         if (!values.isProforma) {
           await deductStockFromInvoice(firestore, { ...values, id: invoiceId, userId: user.uid, documentType, total, subtotal, vatAmount, companyInfo, defaultVat } as any);
         }
@@ -676,6 +718,50 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
                     </div>
                   )}
                 />
+              </div>
+
+              {/* Discount Section */}
+              <div className="flex flex-col gap-4 p-4 border border-dashed border-primary/30 rounded-md bg-primary/5">
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <FormField
+                      control={form.control}
+                      name="discountType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{dictionary?.createInvoiceForm?.discountType || 'Discount Type'}</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="percentage">Percent (%)</SelectItem>
+                              <SelectItem value="amount">Fixed Amount</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <FormField
+                      control={form.control}
+                      name="discountValue"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{dictionary?.createInvoiceForm?.discountValue || 'Discount Value'}</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="number" min="0" placeholder="0" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>

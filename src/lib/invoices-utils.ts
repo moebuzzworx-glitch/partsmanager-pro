@@ -1,4 +1,4 @@
-import { Firestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, serverTimestamp } from 'firebase/firestore';
+import { Firestore, collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, query, where, serverTimestamp } from 'firebase/firestore';
 import type { InvoiceFormData } from '@/components/dashboard/create-invoice-form';
 import type { CompanyInfo } from '@/components/dashboard/document-generator';
 
@@ -27,9 +27,12 @@ export interface StoredInvoice {
   applyVatToAll: boolean;
   companyInfo?: CompanyInfo;
   defaultVat?: number;
-  total?: number;
   subtotal?: number;
   vatAmount?: number;
+  discountType?: 'percentage' | 'amount';
+  discountValue?: number;
+  discountAmount?: number;
+  total?: number;
   paid: boolean;
   createdAt?: any;
   updatedAt?: any;
@@ -96,7 +99,7 @@ export async function getInvoiceData(
 ): Promise<StoredInvoice | null> {
   try {
     const invoiceRef = doc(firestore, 'invoices', invoiceId);
-    const invoiceSnap = await firestore.getDoc?.(invoiceRef) || (await import('firebase/firestore').then(mod => mod.getDoc(invoiceRef)));
+    const invoiceSnap = await getDoc(invoiceRef);
 
     if (!invoiceSnap?.exists()) {
       return null;
@@ -169,13 +172,25 @@ export async function deleteInvoice(
 export function calculateInvoiceTotals(
   lineItems: Array<{ quantity: number; unitPrice: number }>,
   applyVat: boolean,
-  vatRate: number = 19
-): { subtotal: number; vatAmount: number; total: number } {
+  vatRate: number = 19,
+  discountType?: 'percentage' | 'amount',
+  discountValue: number = 0
+): { subtotal: number; vatAmount: number; discountAmount: number; total: number } {
   const subtotal = lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-  const vatAmount = applyVat ? subtotal * (vatRate / 100) : 0;
-  const total = subtotal + vatAmount;
 
-  return { subtotal, vatAmount, total };
+  let discountAmount = 0;
+  if (discountValue > 0) {
+    if (discountType === 'percentage') {
+      discountAmount = (subtotal * discountValue) / 100;
+    } else {
+      discountAmount = discountValue;
+    }
+  }
+
+  const vatAmount = applyVat ? (subtotal - discountAmount) * (vatRate / 100) : 0;
+  const total = Math.max(0, subtotal - discountAmount + vatAmount);
+
+  return { subtotal, vatAmount, discountAmount, total };
 }
 
 /**

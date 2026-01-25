@@ -387,16 +387,46 @@ export async function generateDocumentPdf(
     // User asked for "same style".
 
     if (!isDelivery) {
-        const totalHT = data.lineItems.reduce((acc, i) => acc + (i.quantity * i.unitPrice), 0);
-        const totalTVA = applyVat ? totalHT * (defaultVat / 100) : 0;
-        const timbre = 0; // Simple for now
-        const totalTTC = totalHT + totalTVA;
+        const subtotal = data.lineItems.reduce((acc, i) => acc + (i.quantity * i.unitPrice), 0);
+
+        let discountAmount = 0;
+        const dValue = (data as any).discountValue || 0;
+        const dType = (data as any).discountType || 'percentage';
+
+        if (dValue > 0) {
+            if (dType === 'percentage') {
+                discountAmount = (subtotal * dValue) / 100;
+            } else {
+                discountAmount = dValue;
+            }
+        }
+
+        const netHT = subtotal - discountAmount;
+        const totalTVA = applyVat ? netHT * (defaultVat / 100) : 0;
+        const timbre = 0;
+        const totalTTC = netHT + totalTVA;
         const netPay = totalTTC + timbre;
 
-        const labels = ['Montant HT :', 'Montant TVA :', 'Montant TTC :', 'Timbre :', 'Montant Net à payer'];
-        const values = [formatPrice(totalHT), formatPrice(totalTVA), formatPrice(totalTTC), formatPrice(timbre), formatPrice(netPay)];
+        const labels: string[] = ['Montant Brut HT :'];
+        const values: string[] = [formatPrice(subtotal)];
 
-        const summaryW = 85; // Approximate width
+        if (discountAmount > 0) {
+            labels.push(dType === 'percentage' ? `Remise (${dValue}%) :` : 'Remise :');
+            values.push(`-${formatPrice(discountAmount)}`);
+            labels.push('Net HT :');
+            values.push(formatPrice(netHT));
+        }
+
+        labels.push('Montant TVA :');
+        values.push(formatPrice(totalTVA));
+        labels.push('Montant TTC :');
+        values.push(formatPrice(totalTTC));
+        labels.push('Timbre :');
+        values.push(formatPrice(timbre));
+        labels.push('Montant Net à payer');
+        values.push(formatPrice(netPay));
+
+        const summaryW = 85;
         const summaryX = (doc.internal.pageSize.width - summaryW - 14);
         const summaryH = labels.length * 7 + 10;
 
