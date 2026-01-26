@@ -25,7 +25,7 @@ import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firesto
 import { User as AppUser } from '@/lib/types';
 import { canExport, getExportRestrictionMessage } from '@/lib/trial-utils';
 import { getUserSettings, getNextDocumentNumber, updateLastDocumentNumber, AppSettings } from '@/lib/settings-utils';
-import { saveInvoiceData, calculateInvoiceTotals, deductStockFromInvoice, updateInvoice } from '@/lib/invoices-utils';
+import { saveInvoiceData, calculateInvoiceTotals, deductStockFromInvoice, updateInvoice, recordSalesFromInvoice } from '@/lib/invoices-utils';
 import { useToast } from '@/hooks/use-toast';
 import type { Locale } from '@/lib/config';
 import { getDictionary } from '@/lib/dictionaries';
@@ -243,6 +243,8 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
           values.applyVatToAll
         );
 
+        const isPaid = documentType === 'SALES_RECEIPT';
+
         const invoiceId = await saveInvoiceData(
           firestore,
           user.uid,
@@ -252,7 +254,8 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
           total,
           subtotal,
           vatAmount,
-          documentType
+          documentType,
+          isPaid
         );
 
         // Update the document to include discount info (persisting what we calculated)
@@ -266,7 +269,27 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
         });
 
         if (!values.isProforma) {
-          await deductStockFromInvoice(firestore, { ...values, id: invoiceId, userId: user.uid, documentType, total, subtotal, vatAmount, companyInfo, defaultVat } as any);
+          const currentInvoiceData = {
+            ...values,
+            id: invoiceId,
+            userId: user.uid,
+            documentType,
+            total,
+            subtotal,
+            vatAmount,
+            companyInfo,
+            defaultVat,
+            clientName: values.clientName,
+            invoiceDate: values.invoiceDate,
+            discountAmount: discountAmount,
+            paid: isPaid
+          };
+
+          await deductStockFromInvoice(firestore, currentInvoiceData as any);
+
+          if (isPaid) {
+            await recordSalesFromInvoice(firestore, user.uid, currentInvoiceData as any);
+          }
         }
         await updateLastDocumentNumber(firestore, user.uid, settings, documentType);
         toast({ title: 'Success', description: `${documentType} generated.` });

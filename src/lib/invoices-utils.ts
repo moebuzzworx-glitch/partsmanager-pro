@@ -50,7 +50,8 @@ export async function saveInvoiceData(
   total?: number,
   subtotal?: number,
   vatAmount?: number,
-  documentType: 'INVOICE' | 'DELIVERY_NOTE' | 'PURCHASE_ORDER' | 'SALES_RECEIPT' = 'INVOICE'
+  documentType: 'INVOICE' | 'DELIVERY_NOTE' | 'PURCHASE_ORDER' | 'SALES_RECEIPT' = 'INVOICE',
+  paid: boolean = false
 ): Promise<string> {
   try {
     const invoicesRef = collection(firestore, 'invoices');
@@ -76,7 +77,7 @@ export async function saveInvoiceData(
       total,
       subtotal,
       vatAmount,
-      paid: false,
+      paid,
 
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -285,6 +286,117 @@ export async function deductStockFromInvoice(
     return true;
   } catch (error) {
     console.error('Error deducting stock from invoice:', error);
+    return false;
+  }
+}
+/**
+ * Record sales from invoice line items
+ */
+export async function recordSalesFromInvoice(
+  firestore: Firestore,
+  userId: string,
+  invoice: StoredInvoice
+): Promise<boolean> {
+  try {
+    if (invoice.documentType !== 'SALES_RECEIPT' && invoice.documentType !== 'INVOICE') {
+      return true; // only record sales for relevant types
+    }
+    if (invoice.isProforma) return true;
+
+    // Calculate discount ratio
+    const total = invoice.subtotal || 0;
+    const discountAmount = invoice.discountAmount || 0;
+    const discountRatio = total > 0 ? (total - discountAmount) / total : 1;
+
+    const salesRef = collection(firestore, 'sales');
+    const productsRef = collection(firestore, 'products');
+
+    // Group items by unique product to handle duplicates ("if they are identical merge")
+    // Merging logic: same reference/designation
+    const mergedItems = new Map<string, any>();
+
+    for (const item of invoice.lineItems) {
+      const key = item.reference || item.designation;
+      if (mergedItems.has(key)) {
+        const existing = mergedItems.get(key);
+        existing.quantity += item.quantity;
+        existing.originalTotal += item.quantity * item.unitPrice;
+      } else {
+        mergedItems.set(key, {
+          ...item,
+          originalTotal: item.quantity * item.unitPrice
+        });
+      }
+    }
+
+    // Check for existing sales with this invoiceId to prevent duplicates
+    // Strategy: Delete existing sales for this invoice and recreate them to ensure they match current invoice state
+    if (invoice.id) {
+      await deleteSalesForInvoice(firestore, invoice.id);
+    }
+
+    for (const item of Array.from(mergedItems.values())) {
+      // Try to get product details for ID
+      let productId = '';
+      if (item.reference) {
+        const q = query(productsRef, where('reference', '==', item.reference), where('userId', '==', userId));
+        const snap = await getDocs(q);
+        if (!snap.empty) productId = snap.docs[0].id;
+      } else {
+        // Unlikely to match purely on name reliably if duplicates, but best effort
+        const q = query(productsRef, where('name', '==', item.designation), where('userId', '==', userId));
+        const snap = await getDocs(q);
+        if (!snap.empty) productId = snap.docs[0].id;
+      }
+
+      const itemDiscountedTotal = item.originalTotal * discountRatio;
+      const itemDiscountAmount = item.originalTotal - itemDiscountedTotal;
+
+
+      await addDoc(salesRef, {
+        userId,
+        customerId: '', // storedInvoice doesn't easily map back to ID unless we search customers by name (clientName)
+        customer: invoice.clientName,
+        productId: productId,
+        product: item.designation,
+        quantity: item.quantity,
+        amount: itemDiscountedTotal,
+        originalAmount: item.originalTotal,
+        discountAmount: itemDiscountAmount,
+        unitPrice: item.unitPrice,
+        reference: item.reference || '',
+        invoiceId: invoice.id,
+        version: 1,
+        updatedAt: serverTimestamp(),
+        date: invoice.invoiceDate ? new Date(invoice.invoiceDate) : serverTimestamp(),
+      });
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error recording sales from invoice:', error);
+    return false;
+  }
+}
+
+/**
+ * Delete sales records associated with an invoice
+ */
+export async function deleteSalesForInvoice(
+  firestore: Firestore,
+  invoiceId: string
+): Promise<boolean> {
+  try {
+    const salesRef = collection(firestore, 'sales');
+    const q = query(salesRef, where('invoiceId', '==', invoiceId));
+    const querySnapshot = await getDocs(q);
+
+    const deletePromises = querySnapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deletePromises);
+
+    return true;
+  } catch (error) {
+    console.error('Error deleting sales for invoice:', error);
     return false;
   }
 }

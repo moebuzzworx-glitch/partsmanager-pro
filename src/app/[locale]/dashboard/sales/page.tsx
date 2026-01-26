@@ -36,7 +36,10 @@ import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
 import { generateDocumentPdf } from "@/components/dashboard/document-generator";
 import { getUserSettings } from "@/lib/settings-utils";
+import { saveInvoiceData } from "@/lib/invoices-utils";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
+import { getNextDocumentNumber, updateLastDocumentNumber } from "@/lib/settings-utils";
 
 interface Sale {
   id: string;
@@ -62,6 +65,7 @@ export default function SalesPage({
   const [isLoading, setIsLoading] = useState(true);
   const [dictionary, setDictionary] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedSales, setSelectedSales] = useState<Set<string>>(new Set());
 
   // Load dictionary
   useEffect(() => {
@@ -104,34 +108,74 @@ export default function SalesPage({
     }
   };
 
-  const handleGenerateReceipt = async (sale: any) => {
-    if (!firestore || !user) return;
+  const toggleSaleSelection = (saleId: string) => {
+    const newSelected = new Set(selectedSales);
+    if (newSelected.has(saleId)) {
+      newSelected.delete(saleId);
+    } else {
+      newSelected.add(saleId);
+    }
+    setSelectedSales(newSelected);
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedSales(new Set(filteredSales.map(s => s.id)));
+    } else {
+      setSelectedSales(new Set());
+    }
+  };
+
+  const handleGenerateReceipt = async (salesToProcess: Sale[]) => {
+    if (!firestore || !user || salesToProcess.length === 0) return;
+
+    // Validate same customer
+    const firstCustomer = salesToProcess[0].customer;
+    const sameCustomer = salesToProcess.every(s => s.customer === firstCustomer);
+
+    if (!sameCustomer) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner des ventes du même client pour générer un reçu groupé.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       toast({ title: "Génération...", description: "Préparation du document..." });
-      const [settings, customerDoc] = await Promise.all([
-        getUserSettings(firestore, user.uid),
-        sale.customerId ? getDoc(doc(firestore, 'customers', sale.customerId)) : Promise.resolve(null)
-      ]);
 
-      const customerData = customerDoc?.exists() ? customerDoc.data() : {};
+      const settings = await getUserSettings(firestore, user.uid);
+
+      // Get customer data from the first sale (assuming same customer)
+      let customerData: any = {};
+      if (salesToProcess[0].customerId) {
+        const customerDoc = await getDoc(doc(firestore, 'customers', salesToProcess[0].customerId));
+        if (customerDoc.exists()) {
+          customerData = customerDoc.data();
+        }
+      }
+
+      // Get proper document number
+      const invoiceNumber = getNextDocumentNumber(settings, 'SALES_RECEIPT');
 
       const receiptData = {
-        invoiceNumber: `REC-${sale.id.slice(-6).toUpperCase()}`,
-        invoiceDate: sale.date,
-        clientName: sale.customer,
+        invoiceNumber: invoiceNumber,
+        invoiceDate: new Date().toISOString(), // Grouped receipt date is now
+        clientName: firstCustomer,
         clientAddress: customerData?.address || '',
         clientNis: customerData?.nis || '',
         clientNif: customerData?.nif || '',
         clientRc: customerData?.rc || '',
         clientArt: customerData?.art || '',
         clientRib: customerData?.rib || '',
-        lineItems: [{
+        lineItems: salesToProcess.map(sale => ({
           reference: sale.reference || '',
           designation: sale.product,
           quantity: sale.quantity,
-          unitPrice: sale.unitPrice || (sale.amount / sale.quantity),
+          unitPrice: sale.unitPrice || (sale.amount / (sale.quantity || 1)),
           unit: 'pcs'
-        }],
+        })),
         paymentMethod: 'Espèce',
         applyVatToAll: false,
         isProforma: false
@@ -145,8 +189,26 @@ export default function SalesPage({
         rc: settings.rc, nif: settings.nif, art: settings.art, nis: settings.nis, rib: settings.rib
       };
 
+      // Save the receipt to invoices collection for tracking
+      await saveInvoiceData(
+        firestore,
+        user.uid,
+        receiptData,
+        companyInfo as any,
+        0, // defaultVat
+        receiptData.lineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0), // total
+        receiptData.lineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0), // subtotal
+        0, // vatAmount
+        'SALES_RECEIPT',
+        true // Paid
+      );
+
+      // Update the sequence number
+      await updateLastDocumentNumber(firestore, user.uid, settings, 'SALES_RECEIPT');
+
       await generateDocumentPdf(receiptData as any, 'SALES_RECEIPT', companyInfo as any);
-      toast({ title: "Succès", description: "Le reçu a été généré." });
+      toast({ title: "Succès", description: "Le reçu a été enregistré et généré." });
+      setSelectedSales(new Set()); // Clear selection
     } catch (e) {
       console.error(e);
       toast({ title: "Erreur", description: "Échec de la génération.", variant: "destructive" });
@@ -187,6 +249,17 @@ export default function SalesPage({
           <div className="flex justify-between items-center">
             <CardTitle>{dictionary.sales?.title || 'Sales'}</CardTitle>
             <div className="flex items-center gap-4">
+              {selectedSales.size > 0 && (
+                <Button
+                  variant="default"
+                  onClick={() => {
+                    const salesToProcess = sales.filter(s => selectedSales.has(s.id));
+                    handleGenerateReceipt(salesToProcess);
+                  }}
+                >
+                  Générer Reçu Groupé ({selectedSales.size})
+                </Button>
+              )}
               <Input
                 placeholder={dictionary.sales?.searchPlaceholder || 'Search sales...'}
                 className="w-full max-w-sm"
@@ -206,6 +279,12 @@ export default function SalesPage({
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={filteredSales.length > 0 && selectedSales.size === filteredSales.length}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
                   <TableHead>{dictionary.table?.product || 'Product'}</TableHead>
                   <TableHead className="hidden sm:table-cell">{dictionary.table?.customer || 'Customer'}</TableHead>
                   <TableHead className="hidden sm:table-cell">{dictionary.table?.date || 'Date'}</TableHead>
@@ -219,13 +298,19 @@ export default function SalesPage({
               <TableBody>
                 {filteredSales.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       {sales.length === 0 ? (dictionary.sales?.noDataTitle || 'No sales found. Log one to get started!') : (dictionary.sales?.noDataSearch || 'No sales match your search.')}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredSales.map((sale) => (
                     <TableRow key={sale.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedSales.has(sale.id)}
+                          onCheckedChange={() => toggleSaleSelection(sale.id)}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">{sale.product}</TableCell>
                       <TableCell className="hidden sm:table-cell">{sale.customer}</TableCell>
                       <TableCell className="hidden sm:table-cell">{new Date(sale.date).toLocaleDateString()}</TableCell>
@@ -241,7 +326,7 @@ export default function SalesPage({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>{dictionary?.table?.actions || 'Actions'}</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleGenerateReceipt(sale)}>
+                            <DropdownMenuItem onClick={() => handleGenerateReceipt([sale])}>
                               Générer Bon de Vente
                             </DropdownMenuItem>
                             <DropdownMenuItem>{dictionary?.table?.edit || 'Edit'}</DropdownMenuItem>

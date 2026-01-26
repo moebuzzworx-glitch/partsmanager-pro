@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useFirebase } from "@/firebase/provider";
-import { getUserInvoices, deleteInvoice, updateInvoicePaidStatus, type StoredInvoice } from "@/lib/invoices-utils";
+import { getUserInvoices, deleteInvoice, updateInvoicePaidStatus, recordSalesFromInvoice, deleteSalesForInvoice, type StoredInvoice } from "@/lib/invoices-utils";
 
 import { generateDocumentPdf } from "@/components/dashboard/document-generator";
 import { getUserSettings } from "@/lib/settings-utils";
@@ -197,6 +197,16 @@ export default function InvoicesPage({
         setInvoices(invoices.map(inv =>
           inv.id === invoice.id ? { ...inv, paid: newPaidStatus } : inv
         ));
+
+        // Sync with sales: Only track if paid
+        if (newPaidStatus) {
+          // Updated invoice object to reflect paid status
+          await recordSalesFromInvoice(firestore, user.uid, { ...invoice, paid: true });
+        } else {
+          // If unpaid, remove from sales
+          await deleteSalesForInvoice(firestore, invoice.id);
+        }
+
         toast({
           title: 'Success',
           description: newPaidStatus ? (dictionary.invoices?.paidSuccessfully || 'Invoice paid status updated.') : (dictionary.invoices?.unpaidSuccessfully || 'Invoice unpaid status updated.'),
