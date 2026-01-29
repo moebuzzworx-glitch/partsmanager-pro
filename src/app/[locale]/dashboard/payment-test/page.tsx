@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ElectronicPaymentCard } from '@/components/payment/ElectronicPaymentCard';
-import { useToast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function PaymentTestPage() {
@@ -67,13 +67,30 @@ export default function PaymentTestPage() {
                         Select a card type to initiate a test transaction.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <ElectronicPaymentCard
-                        amount={5000}
-                        clientName="John Doe"
-                        onPay={handlePay}
-                        isLoading={isLoading}
-                    />
+                <CardContent className="flex flex-col gap-4 items-center">
+                    <div className="text-center mb-4">
+                        <p className="text-lg font-medium">Test Payment (5000 DZD)</p>
+                        <p className="text-sm text-muted-foreground">Select payment method to proceed to Chargily Checkout</p>
+                    </div>
+
+                    <div className="flex gap-4 w-full max-w-md justify-center">
+                        <Button
+                            onClick={() => handlePay('CIB')}
+                            disabled={isLoading}
+                            className="flex-1"
+                            variant="outline"
+                        >
+                            Pay via CIB
+                        </Button>
+                        <Button
+                            onClick={() => handlePay('EDAHABIA')}
+                            disabled={isLoading}
+                            className="flex-1"
+                            variant="outline"
+                        >
+                            Pay via Edahabia
+                        </Button>
+                    </div>
                 </CardContent>
             </Card>
 

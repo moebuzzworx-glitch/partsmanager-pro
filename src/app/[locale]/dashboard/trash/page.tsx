@@ -45,7 +45,7 @@ export default function TrashPage({
   const [actionProgress, setActionProgress] = useState(0);
   const [isActioning, setIsActioning] = useState(false);
   const [displayLimit, setDisplayLimit] = useState(50);
-  const [displayLimit, setDisplayLimit] = useState(50);
+
   const LOAD_MORE_INCREMENT = 50;
 
   // Deletion Protection State
