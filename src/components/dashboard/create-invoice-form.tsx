@@ -31,6 +31,7 @@ import type { Locale } from '@/lib/config';
 import { getDictionary } from '@/lib/dictionaries';
 import { generateDocumentPdf } from './document-generator';
 import { getCustomersForAutoComplete, getProductsForAutoComplete, type ClientAutoComplete, type ProductAutoComplete } from '@/lib/invoice-autocomplete-utils';
+import { PaymentDialog } from './payment-dialog';
 
 const lineItemSchema = z.object({
   reference: z.string().optional(),
@@ -84,6 +85,11 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
     const [dictionary, setDictionary] = React.useState<any>(null);
     const [invoices, setInvoices] = React.useState<any[]>([]);
     const [selectedInvoiceId, setSelectedInvoiceId] = React.useState<string>('');
+
+    // Payment Logic
+    const [paymentModalOpen, setPaymentModalOpen] = React.useState(false);
+    const [createdInvoiceData, setCreatedInvoiceData] = React.useState<{ amount: number, clientName: string, number: string } | null>(null);
+
 
     // Load dictionary
     React.useEffect(() => {
@@ -292,8 +298,23 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
           }
         }
         await updateLastDocumentNumber(firestore, user.uid, settings, documentType);
-        toast({ title: 'Success', description: `${documentType} generated.` });
-        onSuccess();
+
+
+        // CHECK FOR PAYMENT METHOD: CHARGILY
+        if (values.paymentMethod === 'Carte') {
+          setCreatedInvoiceData({
+            amount: total,
+            clientName: values.clientName,
+            number: values.invoiceNumber
+          });
+          setPaymentModalOpen(true);
+          toast({ title: 'Invoice Saved', description: 'Proceeding to payment...' });
+          // We do NOT call onSuccess() here, we wait for payment dialog to close
+        } else {
+          toast({ title: 'Success', description: `${documentType} generated.` });
+          onSuccess();
+        }
+
       } catch (e) {
         console.error(e);
         toast({ title: 'Error', variant: 'destructive' });
@@ -303,493 +324,507 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
     };
 
     return (
-      <form ref={ref} onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <Form {...form}>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-semibold">{dictionary?.createInvoiceForm?.invoiceDetails || 'Document Details'}</h3>
-              <div className="flex items-center gap-4">
-                {documentType === 'DELIVERY_NOTE' && invoices.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs">Lier à Facture:</Label>
-                    <Select value={selectedInvoiceId} onValueChange={handleInvoiceSelect}>
-                      <SelectTrigger className="w-[150px] h-8 text-xs">
-                        <SelectValue placeholder="Choisir..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {invoices.map(inv => (
-                          <SelectItem key={inv.id} value={inv.id}>{inv.invoiceNumber}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                {!hideTypeSelector && (
-                  <div className="flex items-center gap-2">
-                    <Label>Type:</Label>
-                    <Select value={documentType} onValueChange={(v: any) => setDocumentType(v)}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="INVOICE">Facture</SelectItem>
-                        <SelectItem value="PURCHASE_ORDER">Bon de Commande</SelectItem>
-                        <SelectItem value="DELIVERY_NOTE">Bon de Livraison</SelectItem>
-                        <SelectItem value="SALES_RECEIPT">Bon de Vente</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-              <FormField
-                control={form.control}
-                name="invoiceNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Numéro du Document</FormLabel>
-                    <FormControl>
-                      <Input {...field} readOnly className="bg-muted font-mono" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="invoiceDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date du Document</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="date" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <Separator />
-
-            <h3 className="font-semibold text-lg border-b pb-1">
-              {documentType === 'PURCHASE_ORDER' ? 'Renseignements Fournisseur' : (dictionary?.createInvoiceForm?.clientInformation || 'Renseignements Client')}
-            </h3>
-            <FormField
-              control={form.control}
-              name="clientName"
-              render={({ field }) => {
-                const clientSearchValue = field.value || '';
-                const filteredClients = customers.filter(c =>
-                  c.name.toLowerCase().includes(clientSearchValue.toLowerCase())
-                );
-                return (
-                  <FormItem className="relative">
-                    <FormLabel>
-                      {documentType === 'PURCHASE_ORDER' ? 'Nom du Fournisseur' : (dictionary?.createInvoiceForm?.clientName || 'Nom du Client')}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder={documentType === 'PURCHASE_ORDER' ? 'Nom du fournisseur ou entreprise' : (dictionary?.createInvoiceForm?.clientNamePlaceholder || 'Nom du client ou entreprise')}
-                        onFocus={() => setClientSearchOpen(true)}
-                        onBlur={() => setTimeout(() => setClientSearchOpen(false), 200)}
-                        autoComplete="off"
-                      />
-                    </FormControl>
-                    {clientSearchOpen && filteredClients.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 z-50 bg-background border border-primary rounded-md shadow-lg max-h-48 overflow-y-auto mt-1">
-                        {filteredClients.map((client) => (
-                          <div
-                            key={client.id}
-                            className="px-4 py-2 hover:bg-primary hover:text-primary-foreground cursor-pointer text-sm transition-colors"
-                            onMouseDown={() => handleClientSelect(client)}
-                          >
-                            <div className="font-medium">{client.name}</div>
-                            {client.address && <div className="text-xs opacity-70">{client.address}</div>}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-
-            <FormField
-              control={form.control}
-              name="clientAddress"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{dictionary?.createInvoiceForm?.address || 'Address (Optional)'}</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder={dictionary?.createInvoiceForm?.addressPlaceholder || 'Client address'} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-              <FormField
-                control={form.control}
-                name="clientNis"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{dictionary?.createInvoiceForm?.nis || 'NIS (Optional)'}</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder={dictionary?.createInvoiceForm?.nisPlaceholder || 'NIS'} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="clientNif"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{dictionary?.createInvoiceForm?.nif || 'NIF (Optional)'}</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder={dictionary?.createInvoiceForm?.nifPlaceholder || 'NIF'} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-              <FormField
-                control={form.control}
-                name="clientRc"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{dictionary?.createInvoiceForm?.rc || 'RC (Optional)'}</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder={dictionary?.createInvoiceForm?.rcPlaceholder || 'RC'} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="clientArt"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{dictionary?.createInvoiceForm?.art || 'ART (Optional)'}</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder={dictionary?.createInvoiceForm?.artPlaceholder || 'ART'} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="clientRib"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{dictionary?.createInvoiceForm?.rib || 'RIB (Optional)'}</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder={dictionary?.createInvoiceForm?.ribPlaceholder || 'RIB'} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <Separator />
-
-            <div className="flex justify-between items-center">
-              <h3 className="font-semibold">{dictionary?.createInvoiceForm?.lineItems || 'Line Items'}</h3>
-            </div>
-
+      <>
+        <form ref={ref} onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <Form {...form}>
             <div className="space-y-4">
-              {fields.map((field, index) => (
-                <div key={field.id} className="grid grid-cols-12 gap-x-4 gap-y-2 p-4 border rounded-md relative">
-                  <p className="col-span-12 text-sm font-medium">{dictionary?.createInvoiceForm?.itemNumber?.replace('{number}', String(index + 1)) || `Item ${index + 1}`}</p>
-
-                  <FormField
-                    control={form.control}
-                    name={`lineItems.${index}.reference`}
-                    render={({ field }) => {
-                      const referenceValue = field.value;
-                      const filteredProductsByRef = products.filter(p =>
-                        p.reference && referenceValue && p.reference.toLowerCase().includes(referenceValue.toLowerCase())
-                      );
-                      return (
-                        <FormItem className="col-span-3 relative">
-                          <FormLabel>{dictionary?.createInvoiceForm?.reference || 'Reference'}</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              placeholder={dictionary?.createInvoiceForm?.referencePlaceholder || 'Reference'}
-                              onFocus={() => setProductSearchOpen(prev => ({ ...prev, [index]: true }))}
-                              onBlur={() => setTimeout(() => setProductSearchOpen(prev => ({ ...prev, [index]: false })), 200)}
-                              autoComplete="off"
-                            />
-                          </FormControl>
-                          {productSearchOpen[index] && filteredProductsByRef.length > 0 && (
-                            <div className="absolute top-full left-0 right-0 z-50 bg-background border border-primary rounded-md shadow-lg max-h-48 overflow-y-auto mt-1">
-                              {filteredProductsByRef.map((product) => (
-                                <div
-                                  key={product.id}
-                                  className="px-4 py-2 hover:bg-primary hover:text-primary-foreground cursor-pointer text-sm transition-colors"
-                                  onMouseDown={() => handleProductSelect(product, index)}
-                                >
-                                  <div className="font-medium">{product.reference}</div>
-                                  <div className="text-xs opacity-70">{product.name} {product.stock !== undefined && `• Stock: ${product.stock}`}</div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <FormMessage />
-                        </FormItem>
-                      );
-                    }}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name={`lineItems.${index}.designation`}
-                    render={({ field }) => {
-                      const designationValue = field.value;
-                      const filteredProducts = products.filter(p =>
-                        p.name.toLowerCase().includes(designationValue.toLowerCase()) ||
-                        (p.reference && p.reference.toLowerCase().includes(designationValue.toLowerCase()))
-                      );
-                      return (
-                        <FormItem className="col-span-4 relative">
-                          <FormLabel>{dictionary?.createInvoiceForm?.designation || 'Designation'}</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              placeholder={dictionary?.createInvoiceForm?.designationPlaceholder || 'Product description'}
-                              onFocus={() => setProductSearchOpen(prev => ({ ...prev, [index]: true }))}
-                              onBlur={() => setTimeout(() => setProductSearchOpen(prev => ({ ...prev, [index]: false })), 200)}
-                              autoComplete="off"
-                            />
-                          </FormControl>
-                          {productSearchOpen[index] && filteredProducts.length > 0 && (
-                            <div className="absolute top-full left-0 right-0 z-50 bg-background border border-primary rounded-md shadow-lg max-h-48 overflow-y-auto mt-1">
-                              {filteredProducts.map((product) => (
-                                <div
-                                  key={product.id}
-                                  className="px-4 py-2 hover:bg-primary hover:text-primary-foreground cursor-pointer text-sm transition-colors"
-                                  onMouseDown={() => handleProductSelect(product, index)}
-                                >
-                                  <div className="font-medium">{product.name}</div>
-                                  <div className="text-xs opacity-70">
-                                    {product.reference && `Ref: ${product.reference}`}
-                                    {product.stock !== undefined && ` • Stock: ${product.stock}`}
-                                    {product.price && ` • Price: ${product.price} ${dictionary?.dashboard?.currency || 'DZD'}`}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <FormMessage />
-                        </FormItem>
-                      );
-                    }}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name={`lineItems.${index}.unit`}
-                    render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>{dictionary?.createInvoiceForm?.unit || 'Unit'}</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder={dictionary?.createInvoiceForm?.unitPlaceholder || 'pcs'} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name={`lineItems.${index}.quantity`}
-                    render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>
-                          {documentType === 'DELIVERY_NOTE' ? 'Qté Livrée' : (dictionary?.createInvoiceForm?.quantity || 'Qté')}
-                        </FormLabel>
-                        <FormControl>
-                          <Input {...field} type="number" placeholder="1" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name={`lineItems.${index}.unitPrice`}
-                    render={({ field }) => (
-                      <FormItem className="col-span-3">
-                        <FormLabel>
-                          {documentType === 'PURCHASE_ORDER' ? 'Prix d\'achat' :
-                            documentType === 'DELIVERY_NOTE' ? 'Prix (Facultatif)' :
-                              (dictionary?.createInvoiceForm?.price || 'Prix de vente')}
-                        </FormLabel>
-                        <FormControl>
-                          <Input {...field} type="number" placeholder="0" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  {/* per-line VAT removed — VAT is controlled globally via applyVatToAll */}
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="col-span-1 h-10 mt-8"
-                    onClick={() => remove(index)}
-                    disabled={fields.length === 1}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() =>
-                append({ designation: '', quantity: 1, unitPrice: 0, reference: '', unit: 'pcs' })
-              }
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              {dictionary?.createInvoiceForm?.addLineItem || 'Add Line Item'}
-            </Button>
-
-            <Separator />
-
-            <h3 className="font-semibold">{dictionary?.createInvoiceForm?.payment || 'Payment'}</h3>
-            <div className="space-y-4">
-              <FormField
-                control={form.control}
-                name="paymentMethod"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{dictionary?.createInvoiceForm?.paymentMethod || 'Payment Method'}</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
+              <div className="flex justify-between items-center">
+                <h3 className="font-semibold">{dictionary?.createInvoiceForm?.invoiceDetails || 'Document Details'}</h3>
+                <div className="flex items-center gap-4">
+                  {documentType === 'DELIVERY_NOTE' && invoices.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs">Lier à Facture:</Label>
+                      <Select value={selectedInvoiceId} onValueChange={handleInvoiceSelect}>
+                        <SelectTrigger className="w-[150px] h-8 text-xs">
+                          <SelectValue placeholder="Choisir..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {invoices.map(inv => (
+                            <SelectItem key={inv.id} value={inv.id}>{inv.invoiceNumber}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {!hideTypeSelector && (
+                    <div className="flex items-center gap-2">
+                      <Label>Type:</Label>
+                      <Select value={documentType} onValueChange={(v: any) => setDocumentType(v)}>
+                        <SelectTrigger className="w-[180px]">
                           <SelectValue />
                         </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Espèce">{dictionary?.createInvoiceForm?.cash || 'Cash'}</SelectItem>
-                        <SelectItem value="Chèque">{dictionary?.createInvoiceForm?.check || 'Check'}</SelectItem>
-                        <SelectItem value="Virement">{dictionary?.createInvoiceForm?.transfer || 'Transfer'}</SelectItem>
-                        <SelectItem value="Carte">{dictionary?.createInvoiceForm?.card || 'Card'}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                        <SelectContent>
+                          <SelectItem value="INVOICE">Facture</SelectItem>
+                          <SelectItem value="PURCHASE_ORDER">Bon de Commande</SelectItem>
+                          <SelectItem value="DELIVERY_NOTE">Bon de Livraison</SelectItem>
+                          <SelectItem value="SALES_RECEIPT">Bon de Vente</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              </div>
 
-              <div className="flex flex-col gap-4 p-4 border border-dashed border-primary/30 rounded-md bg-primary/5">
-                {documentType === 'INVOICE' && (
-                  <FormField
-                    control={form.control}
-                    name="isProforma"
-                    render={({ field }) => (
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="proforma-payment"
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                        <Label htmlFor="proforma-payment" className="text-sm font-normal cursor-pointer">
-                          {dictionary?.createInvoiceForm?.isProforma || 'This is a Proforma Invoice'}
-                        </Label>
-                      </div>
-                    )}
-                  />
-                )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <FormField
                   control={form.control}
-                  name="applyVatToAll"
+                  name="invoiceNumber"
                   render={({ field }) => (
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="applyVat-payment"
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                      <Label htmlFor="applyVat-payment" className="text-sm font-normal cursor-pointer">
-                        {dictionary?.createInvoiceForm?.applyVat || 'Apply VAT to all items'}
-                      </Label>
-                    </div>
+                    <FormItem>
+                      <FormLabel>Numéro du Document</FormLabel>
+                      <FormControl>
+                        <Input {...field} readOnly className="bg-muted font-mono" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="invoiceDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date du Document</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="date" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
                 />
               </div>
 
-              {/* Discount Section */}
-              <div className="flex flex-col gap-4 p-4 border border-dashed border-primary/30 rounded-md bg-primary/5">
-                <div className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <FormField
-                      control={form.control}
-                      name="discountType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{dictionary?.createInvoiceForm?.discountType || 'Discount Type'}</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="percentage">Percent (%)</SelectItem>
-                              <SelectItem value="amount">Fixed Amount</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
+              <Separator />
+
+              <h3 className="font-semibold text-lg border-b pb-1">
+                {documentType === 'PURCHASE_ORDER' ? 'Renseignements Fournisseur' : (dictionary?.createInvoiceForm?.clientInformation || 'Renseignements Client')}
+              </h3>
+              <FormField
+                control={form.control}
+                name="clientName"
+                render={({ field }) => {
+                  const clientSearchValue = field.value || '';
+                  const filteredClients = customers.filter(c =>
+                    c.name.toLowerCase().includes(clientSearchValue.toLowerCase())
+                  );
+                  return (
+                    <FormItem className="relative">
+                      <FormLabel>
+                        {documentType === 'PURCHASE_ORDER' ? 'Nom du Fournisseur' : (dictionary?.createInvoiceForm?.clientName || 'Nom du Client')}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder={documentType === 'PURCHASE_ORDER' ? 'Nom du fournisseur ou entreprise' : (dictionary?.createInvoiceForm?.clientNamePlaceholder || 'Nom du client ou entreprise')}
+                          onFocus={() => setClientSearchOpen(true)}
+                          onBlur={() => setTimeout(() => setClientSearchOpen(false), 200)}
+                          autoComplete="off"
+                        />
+                      </FormControl>
+                      {clientSearchOpen && filteredClients.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 z-50 bg-background border border-primary rounded-md shadow-lg max-h-48 overflow-y-auto mt-1">
+                          {filteredClients.map((client) => (
+                            <div
+                              key={client.id}
+                              className="px-4 py-2 hover:bg-primary hover:text-primary-foreground cursor-pointer text-sm transition-colors"
+                              onMouseDown={() => handleClientSelect(client)}
+                            >
+                              <div className="font-medium">{client.name}</div>
+                              {client.address && <div className="text-xs opacity-70">{client.address}</div>}
+                            </div>
+                          ))}
+                        </div>
                       )}
-                    />
-                  </div>
-                  <div className="flex-1">
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+
+              <FormField
+                control={form.control}
+                name="clientAddress"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{dictionary?.createInvoiceForm?.address || 'Address (Optional)'}</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder={dictionary?.createInvoiceForm?.addressPlaceholder || 'Client address'} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                <FormField
+                  control={form.control}
+                  name="clientNis"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{dictionary?.createInvoiceForm?.nis || 'NIS (Optional)'}</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder={dictionary?.createInvoiceForm?.nisPlaceholder || 'NIS'} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="clientNif"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{dictionary?.createInvoiceForm?.nif || 'NIF (Optional)'}</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder={dictionary?.createInvoiceForm?.nifPlaceholder || 'NIF'} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                <FormField
+                  control={form.control}
+                  name="clientRc"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{dictionary?.createInvoiceForm?.rc || 'RC (Optional)'}</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder={dictionary?.createInvoiceForm?.rcPlaceholder || 'RC'} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="clientArt"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{dictionary?.createInvoiceForm?.art || 'ART (Optional)'}</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder={dictionary?.createInvoiceForm?.artPlaceholder || 'ART'} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="clientRib"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{dictionary?.createInvoiceForm?.rib || 'RIB (Optional)'}</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder={dictionary?.createInvoiceForm?.ribPlaceholder || 'RIB'} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Separator />
+
+              <div className="flex justify-between items-center">
+                <h3 className="font-semibold">{dictionary?.createInvoiceForm?.lineItems || 'Line Items'}</h3>
+              </div>
+
+              <div className="space-y-4">
+                {fields.map((field, index) => (
+                  <div key={field.id} className="grid grid-cols-12 gap-x-4 gap-y-2 p-4 border rounded-md relative">
+                    <p className="col-span-12 text-sm font-medium">{dictionary?.createInvoiceForm?.itemNumber?.replace('{number}', String(index + 1)) || `Item ${index + 1}`}</p>
+
                     <FormField
                       control={form.control}
-                      name="discountValue"
+                      name={`lineItems.${index}.reference`}
+                      render={({ field }) => {
+                        const referenceValue = field.value;
+                        const filteredProductsByRef = products.filter(p =>
+                          p.reference && referenceValue && p.reference.toLowerCase().includes(referenceValue.toLowerCase())
+                        );
+                        return (
+                          <FormItem className="col-span-3 relative">
+                            <FormLabel>{dictionary?.createInvoiceForm?.reference || 'Reference'}</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder={dictionary?.createInvoiceForm?.referencePlaceholder || 'Reference'}
+                                onFocus={() => setProductSearchOpen(prev => ({ ...prev, [index]: true }))}
+                                onBlur={() => setTimeout(() => setProductSearchOpen(prev => ({ ...prev, [index]: false })), 200)}
+                                autoComplete="off"
+                              />
+                            </FormControl>
+                            {productSearchOpen[index] && filteredProductsByRef.length > 0 && (
+                              <div className="absolute top-full left-0 right-0 z-50 bg-background border border-primary rounded-md shadow-lg max-h-48 overflow-y-auto mt-1">
+                                {filteredProductsByRef.map((product) => (
+                                  <div
+                                    key={product.id}
+                                    className="px-4 py-2 hover:bg-primary hover:text-primary-foreground cursor-pointer text-sm transition-colors"
+                                    onMouseDown={() => handleProductSelect(product, index)}
+                                  >
+                                    <div className="font-medium">{product.reference}</div>
+                                    <div className="text-xs opacity-70">{product.name} {product.stock !== undefined && `• Stock: ${product.stock}`}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`lineItems.${index}.designation`}
+                      render={({ field }) => {
+                        const designationValue = field.value;
+                        const filteredProducts = products.filter(p =>
+                          p.name.toLowerCase().includes(designationValue.toLowerCase()) ||
+                          (p.reference && p.reference.toLowerCase().includes(designationValue.toLowerCase()))
+                        );
+                        return (
+                          <FormItem className="col-span-4 relative">
+                            <FormLabel>{dictionary?.createInvoiceForm?.designation || 'Designation'}</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder={dictionary?.createInvoiceForm?.designationPlaceholder || 'Product description'}
+                                onFocus={() => setProductSearchOpen(prev => ({ ...prev, [index]: true }))}
+                                onBlur={() => setTimeout(() => setProductSearchOpen(prev => ({ ...prev, [index]: false })), 200)}
+                                autoComplete="off"
+                              />
+                            </FormControl>
+                            {productSearchOpen[index] && filteredProducts.length > 0 && (
+                              <div className="absolute top-full left-0 right-0 z-50 bg-background border border-primary rounded-md shadow-lg max-h-48 overflow-y-auto mt-1">
+                                {filteredProducts.map((product) => (
+                                  <div
+                                    key={product.id}
+                                    className="px-4 py-2 hover:bg-primary hover:text-primary-foreground cursor-pointer text-sm transition-colors"
+                                    onMouseDown={() => handleProductSelect(product, index)}
+                                  >
+                                    <div className="font-medium">{product.name}</div>
+                                    <div className="text-xs opacity-70">
+                                      {product.reference && `Ref: ${product.reference}`}
+                                      {product.stock !== undefined && ` • Stock: ${product.stock}`}
+                                      {product.price && ` • Price: ${product.price} ${dictionary?.dashboard?.currency || 'DZD'}`}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`lineItems.${index}.unit`}
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{dictionary?.createInvoiceForm?.discountValue || 'Discount Value'}</FormLabel>
+                        <FormItem className="col-span-2">
+                          <FormLabel>{dictionary?.createInvoiceForm?.unit || 'Unit'}</FormLabel>
                           <FormControl>
-                            <Input {...field} type="number" min="0" placeholder="0" />
+                            <Input {...field} placeholder={dictionary?.createInvoiceForm?.unitPlaceholder || 'pcs'} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+
+                    <FormField
+                      control={form.control}
+                      name={`lineItems.${index}.quantity`}
+                      render={({ field }) => (
+                        <FormItem className="col-span-2">
+                          <FormLabel>
+                            {documentType === 'DELIVERY_NOTE' ? 'Qté Livrée' : (dictionary?.createInvoiceForm?.quantity || 'Qté')}
+                          </FormLabel>
+                          <FormControl>
+                            <Input {...field} type="number" placeholder="1" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`lineItems.${index}.unitPrice`}
+                      render={({ field }) => (
+                        <FormItem className="col-span-3">
+                          <FormLabel>
+                            {documentType === 'PURCHASE_ORDER' ? 'Prix d\'achat' :
+                              documentType === 'DELIVERY_NOTE' ? 'Prix (Facultatif)' :
+                                (dictionary?.createInvoiceForm?.price || 'Prix de vente')}
+                          </FormLabel>
+                          <FormControl>
+                            <Input {...field} type="number" placeholder="0" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    {/* per-line VAT removed — VAT is controlled globally via applyVatToAll */}
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="col-span-1 h-10 mt-8"
+                      onClick={() => remove(index)}
+                      disabled={fields.length === 1}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() =>
+                  append({ designation: '', quantity: 1, unitPrice: 0, reference: '', unit: 'pcs' })
+                }
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                {dictionary?.createInvoiceForm?.addLineItem || 'Add Line Item'}
+              </Button>
+
+              <Separator />
+
+              <h3 className="font-semibold">{dictionary?.createInvoiceForm?.payment || 'Payment'}</h3>
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="paymentMethod"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{dictionary?.createInvoiceForm?.paymentMethod || 'Payment Method'}</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Espèce">{dictionary?.createInvoiceForm?.cash || 'Cash'}</SelectItem>
+                          <SelectItem value="Chèque">{dictionary?.createInvoiceForm?.check || 'Check'}</SelectItem>
+                          <SelectItem value="Virement">{dictionary?.createInvoiceForm?.transfer || 'Transfer'}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex flex-col gap-4 p-4 border border-dashed border-primary/30 rounded-md bg-primary/5">
+                  {documentType === 'INVOICE' && (
+                    <FormField
+                      control={form.control}
+                      name="isProforma"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="proforma-payment"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                          <Label htmlFor="proforma-payment" className="text-sm font-normal cursor-pointer">
+                            {dictionary?.createInvoiceForm?.isProforma || 'This is a Proforma Invoice'}
+                          </Label>
+                        </div>
+                      )}
+                    />
+                  )}
+                  <FormField
+                    control={form.control}
+                    name="applyVatToAll"
+                    render={({ field }) => (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="applyVat-payment"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                        <Label htmlFor="applyVat-payment" className="text-sm font-normal cursor-pointer">
+                          {dictionary?.createInvoiceForm?.applyVat || 'Apply VAT to all items'}
+                        </Label>
+                      </div>
+                    )}
+                  />
+                </div>
+
+                {/* Discount Section */}
+                <div className="flex flex-col gap-4 p-4 border border-dashed border-primary/30 rounded-md bg-primary/5">
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1">
+                      <FormField
+                        control={form.control}
+                        name="discountType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{dictionary?.createInvoiceForm?.discountType || 'Discount Type'}</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="percentage">Percent (%)</SelectItem>
+                                <SelectItem value="amount">Fixed Amount</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <FormField
+                        control={form.control}
+                        name="discountValue"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{dictionary?.createInvoiceForm?.discountValue || 'Discount Value'}</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="number" min="0" placeholder="0" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </Form>
-      </form>
+          </Form>
+        </form>
+
+        {createdInvoiceData && (
+          <PaymentDialog
+            open={paymentModalOpen}
+            onOpenChange={(open) => {
+              setPaymentModalOpen(open);
+              if (!open) onSuccess(); // If they close the payment dialog, we proceed to close the invoice dialog
+            }}
+            amount={createdInvoiceData.amount}
+            clientName={createdInvoiceData.clientName}
+            invoiceNumber={createdInvoiceData.number}
+          />
+        )}
+      </>
     );
   }
 );
