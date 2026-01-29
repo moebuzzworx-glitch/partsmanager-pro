@@ -9,13 +9,22 @@ function getFirebaseAdmin() {
         // For production, use service account credentials
         // For now, we'll use the project ID from env
         const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+        const privateKeyRaw = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
 
-        if (process.env.FIREBASE_ADMIN_PRIVATE_KEY) {
+        if (privateKeyRaw) {
+            // Handle various key formats to avoid Netlify/Env issues
+            let privateKey = privateKeyRaw.replace(/\\n/g, '\n'); // Handle literal \n
+
+            // If the user pasted JUST the base64 string (to save space/avoid errors), add headers back
+            if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+                privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----\n`;
+            }
+
             initializeApp({
                 credential: cert({
                     projectId: projectId,
                     clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-                    privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+                    privateKey: privateKey,
                 }),
             });
         } else {
