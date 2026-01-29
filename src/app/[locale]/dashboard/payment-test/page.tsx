@@ -4,17 +4,24 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useFirebase } from "@/firebase/provider";
 
 export default function PaymentTestPage() {
     const { toast } = useToast();
+    const { user } = useFirebase();
     const [isLoading, setIsLoading] = useState(false);
 
     const handlePay = async (mode: 'CIB' | 'EDAHABIA') => {
+        if (!user) {
+            toast({ title: "Error", description: "You must be logged in to test payment.", variant: "destructive" });
+            return;
+        }
+
         setIsLoading(true);
         try {
             // Demo Data
             const demoAmount = 5000;
-            const demoClient = 'Test Client';
+            const demoClient = user.displayName || 'Test Client';
 
             const response = await fetch('/api/chargily/checkout', {
                 method: 'POST',
@@ -25,6 +32,10 @@ export default function PaymentTestPage() {
                     amount: demoAmount,
                     clientName: demoClient,
                     mode: mode,
+                    metadata: {
+                        userId: user.uid,
+                        paymentType: 'FIRST_PURCHASE'
+                    }
                 }),
             });
 
