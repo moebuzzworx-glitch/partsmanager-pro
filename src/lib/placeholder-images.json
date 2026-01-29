@@ -2,9 +2,9 @@
   "placeholderImages": [
     {
       "id": "hero-background",
-      "description": "A modern and clean workshop or parts warehouse, brightly lit.",
-      "imageUrl": "https://images.unsplash.com/photo-1764115901808-37c953675b98?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHx3YXJlaG91c2UlMjB3b3Jrc2hvcHxlbnwwfHx8fDE3NjUxNTI4Njl8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "warehouse workshop"
+      "description": "Hero background image",
+      "imageUrl": "/images/Hero.webp",
+      "imageHint": "hero background"
     },
     {
       "id": "avatar-1",
@@ -20,20 +20,20 @@
     },
     {
       "id": "feature-stock",
-      "description": "Organized shelves of parts in a warehouse.",
-      "imageUrl": "https://images.unsplash.com/photo-1601602899110-201f02bd3cc2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHx3YXJlaG91c2UlMjBzaGVsdmVzfGVufDB8fHx8MTc2NTEwMzgwMXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "description": "Stock feature image",
+      "imageUrl": "/images/stock.webp",
       "imageHint": "warehouse shelves"
     },
     {
       "id": "feature-billing",
-      "description": "A person working on a laptop with invoices on screen.",
-      "imageUrl": "https://images.unsplash.com/photo-1529443601747-2d02ab3da2c8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxsYXB0b3AlMjBpbnZvaWNlfGVufDB8fHx8MTc2NTE1Mjg2OXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "description": "Billing feature image",
+      "imageUrl": "/images/invoices.webp",
       "imageHint": "laptop invoice"
     },
     {
       "id": "feature-collaboration",
-      "description": "A team of people collaborating around a table.",
-      "imageUrl": "https://images.unsplash.com/photo-1542744095-fcf48d80b0fd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHx0ZWFtJTIwbWVldGluZ3xlbnwwfHx8fDE3NjUwODQ0NTl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "description": "CRM feature image",
+      "imageUrl": "/images/CRM.webp",
       "imageHint": "team meeting"
     }
   ]

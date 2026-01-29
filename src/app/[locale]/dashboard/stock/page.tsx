@@ -45,6 +45,7 @@ import { hybridDeleteProduct } from "@/lib/hybrid-import-v2";
 import { useToast } from "@/hooks/use-toast";
 import { getProductsByUserExcludingPending, getStorageSize, initDB } from "@/lib/indexeddb";
 import { useOffline } from "@/hooks/use-offline";
+import { ProtectedActionDialog } from "@/components/protected-action-dialog";
 
 interface Product {
   id: string;
@@ -73,19 +74,22 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
   const [isDeleting, setIsDeleting] = useState(false);
   const LOAD_MORE_INCREMENT = 50;
 
+  // Protection State
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [confirmBatchDelete, setConfirmBatchDelete] = useState(false);
+
   const fetchProducts = async () => {
     if (!firestore || !user?.uid) return;
     try {
       setIsLoading(true);
-      
+
       // Initialize IndexedDB
       await initDB();
-      
+
       // STEP 1: Try to load from IndexedDB first (instant)
       let fetchedProducts: Product[] = [];
       try {
         // Fetch active products, excluding those with pending deletes
-        // This prevents reloading products that are in the process of being deleted
         const cachedProducts = await getProductsByUserExcludingPending(user.uid);
         if (cachedProducts && cachedProducts.length > 0) {
           // Map products to display format
@@ -106,27 +110,24 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
       } catch (localErr) {
         console.warn('Failed to load from IndexedDB:', localErr);
       }
-      
+
       // Display cached products immediately
       setProducts(fetchedProducts);
       setDisplayedProducts(fetchedProducts.slice(0, 50));
       setDisplayLimit(50);
-      
+
       // STEP 2: Sync with Firebase in background (async, doesn't block UI)
       try {
         const productsRef = collection(firestore, 'products');
-        // Query only by userId to avoid needing composite indexes
-        // We'll filter deleted products in JavaScript
         const q = query(productsRef, where('userId', '==', user.uid));
         const querySnapshot = await getDocs(q);
-        
+
         const freshProducts: Product[] = [];
-        
+
         // Process all documents for display (filtering only)
         for (const doc of querySnapshot.docs) {
           const firebaseData = doc.data();
-          
-          // Filter out deleted products for display
+
           if (firebaseData.isDeleted !== true) {
             freshProducts.push({
               id: doc.id,
@@ -141,33 +142,24 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
             });
           }
         }
-        
+
         console.log(`[Stock] Fetched ${freshProducts.length} active products from Firebase`);
-        
-        // Only update display if we got fresh data from Firebase AND it has different products
-        // Merge strategy: Keep IndexedDB products, add/update with Firebase products (by ID)
+
         if (freshProducts.length > 0) {
-          // Create a map of existing products by ID
-          const existingMap = new Map(products.map(p => [p.id, p]));
-          
-          // Update or add Firebase products
           const mergedProducts: Product[] = [];
           const seenIds = new Set<string>();
-          
-          // First, add fresh Firebase products
+
           for (const fresh of freshProducts) {
             mergedProducts.push(fresh);
             seenIds.add(fresh.id);
           }
-          
-          // Then, add any IndexedDB products that don't exist in Firebase yet (new uploads in progress)
-          // IMPORTANT: Only add non-deleted products!
+
           for (const existing of products) {
             if (!seenIds.has(existing.id) && existing.isDeleted !== true) {
               mergedProducts.push(existing);
             }
           }
-          
+
           console.log(`[Stock] Merged: ${freshProducts.length} from Firebase + ${mergedProducts.length - freshProducts.length} new local = ${mergedProducts.length} total`);
           setProducts(mergedProducts);
           setDisplayedProducts(mergedProducts.slice(0, 50));
@@ -176,7 +168,6 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
         console.log(`✅ Updated from Firebase with ${freshProducts.length} products`);
       } catch (firebaseErr) {
         console.warn('Failed to fetch from Firebase (using cached data):', firebaseErr);
-        // Data remains from IndexedDB
       }
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -210,33 +201,32 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
     fetchProducts();
   }, [firestore]);
 
-  const handleDeleteProduct = async (productId: string) => {
+  const executeDeleteProduct = async (productId: string) => {
     if (!user) return;
-    
+
     setIsDeleting(true);
     setDeleteProgress(0);
     try {
-      // Delete product using new hybrid system (local + queued for Firebase)
       await hybridDeleteProduct(user, productId);
-      
-      // Remove from local display immediately
+
       setProducts(products.filter(p => p.id !== productId));
       setDeleteProgress(100);
-      
+
       toast({
-        title: d.deletedSuccessTitle || 'Success',
-        description: d.deletedSuccessMessageSingle || 'Product moved to trash',
+        title: dictionary?.stockPage?.deletedSuccessTitle || 'Success',
+        description: dictionary?.stockPage?.deletedSuccessMessageSingle || 'Product moved to trash',
       });
     } catch (error) {
       console.error('Error deleting product:', error);
       toast({
-        title: d.deleteErrorTitle || 'Error',
-        description: error instanceof Error ? error.message : (d.deleteErrorGeneralSingle || 'An error occurred while deleting the product'),
+        title: dictionary?.stockPage?.deleteErrorTitle || 'Error',
+        description: error instanceof Error ? error.message : (dictionary?.stockPage?.deleteErrorGeneralSingle || 'An error occurred while deleting the product'),
         variant: 'destructive',
       });
     } finally {
       setIsDeleting(false);
       setDeleteProgress(0);
+      setProductToDelete(null); // Close dialog
     }
   };
 
@@ -258,22 +248,14 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
     }
   };
 
-  const handleBatchDelete = async () => {
+  const executeBatchDelete = async () => {
+    // No redundant confirmation here, handled by Dialog
     if (selectedProducts.size === 0) return;
-
-    const confirmMessage = (d.deleteConfirmMessage || 'Delete {count} product(s)? They will be moved to trash.')
-      .replace('{count}', selectedProducts.size.toString());
-    
-    if (!confirm(confirmMessage)) {
-      return;
-    }
-
     if (!user) return;
 
     setIsDeleting(true);
     setDeleteProgress(0);
     try {
-      // Delete each product using hybrid system (local + queued for Firebase)
       const productIds = Array.from(selectedProducts);
       const totalProducts = productIds.length;
       let processedCount = 0;
@@ -284,24 +266,24 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
         setDeleteProgress(Math.round((processedCount / totalProducts) * 100));
       }
 
-      // Remove deleted items from local state
       setProducts(products.filter(p => !selectedProducts.has(p.id)));
       setSelectedProducts(new Set());
       toast({
-        title: d.deletedSuccessTitle || 'Success',
-        description: (d.deletedSuccessMessage || '{count} product(s) moved to trash')
+        title: dictionary?.stockPage?.deletedSuccessTitle || 'Success',
+        description: (dictionary?.stockPage?.deletedSuccessMessage || '{count} product(s) moved to trash')
           .replace('{count}', selectedProducts.size.toString()),
       });
     } catch (error) {
       console.error('Error batch deleting products:', error);
       toast({
-        title: d.deleteErrorTitle || 'Error',
-        description: error instanceof Error ? error.message : (d.deleteErrorGeneral || 'An error occurred while deleting products'),
+        title: dictionary?.stockPage?.deleteErrorTitle || 'Error',
+        description: error instanceof Error ? error.message : (dictionary?.stockPage?.deleteErrorGeneral || 'An error occurred while deleting products'),
         variant: 'destructive',
       });
     } finally {
       setIsDeleting(false);
       setDeleteProgress(0);
+      setConfirmBatchDelete(false); // Close dialog
     }
   };
 
@@ -324,11 +306,28 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
 
   return (
     <div className="space-y-8">
+      <ProtectedActionDialog
+        open={!!productToDelete}
+        onOpenChange={(open) => !open && setProductToDelete(null)}
+        onConfirm={() => productToDelete && executeDeleteProduct(productToDelete)}
+        title={dictionary?.stockPage?.deleteTitle || "Delete Product?"}
+        description={dictionary?.stockPage?.deleteConfirmMessageSingle || "This requires your deletion password."}
+        resourceName={products.find(p => p.id === productToDelete)?.name}
+      />
+
+      <ProtectedActionDialog
+        open={confirmBatchDelete}
+        onOpenChange={setConfirmBatchDelete}
+        onConfirm={executeBatchDelete}
+        title="Delete Multiple Products?"
+        description={`This will delete ${selectedProducts.size} products. This requires your deletion password.`}
+      />
+
       <ProgressModal
         isOpen={isDeleting}
         progress={deleteProgress}
         title="Deleting Products"
-        message={`Deleting ${selectedProducts.size} product(s)...`}
+        message={`Deleting ${selectedProducts.size > 0 ? selectedProducts.size : 1} product(s)...`}
         isCancelable={false}
       />
       <div>
@@ -341,17 +340,17 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
             <CardTitle>{d.product}</CardTitle>
             <div className="flex items-center gap-2">
               {selectedProducts.size > 0 && (
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   size="sm"
-                  onClick={handleBatchDelete}
+                  onClick={() => setConfirmBatchDelete(true)}
                 >
                   {d.deleteSelected || 'Delete Selected'} ({selectedProducts.size})
                 </Button>
               )}
-              <Input 
-                placeholder={d.searchPlaceholder} 
-                className="w-full max-w-sm" 
+              <Input
+                placeholder={d.searchPlaceholder}
+                className="w-full max-w-sm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -369,7 +368,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[50px]">
-                    <Checkbox 
+                    <Checkbox
                       checked={selectedProducts.size === displayedProducts.length && displayedProducts.length > 0}
                       onCheckedChange={handleSelectAll}
                     />
@@ -396,7 +395,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
                   displayedProducts.map((product) => (
                     <TableRow key={product.id}>
                       <TableCell className="w-[50px]">
-                        <Checkbox 
+                        <Checkbox
                           checked={selectedProducts.has(product.id)}
                           onCheckedChange={() => handleToggleSelect(product.id)}
                         />
@@ -428,9 +427,9 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>{d.actions}</DropdownMenuLabel>
                             <DropdownMenuItem>{d.edit}</DropdownMenuItem>
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                              onClick={() => handleDeleteProduct(product.id)}
+                              onClick={() => setProductToDelete(product.id)}
                             >
                               {d.delete}
                             </DropdownMenuItem>
@@ -449,8 +448,8 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
             Showing <strong>{displayedProducts.length}</strong> of <strong>{totalFilteredCount}</strong> {d.itemName || 'products'}
           </div>
           {displayedProducts.length < totalFilteredCount && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => setDisplayLimit(prev => prev + LOAD_MORE_INCREMENT)}
             >

@@ -33,7 +33,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogSaleDialog } from "@/components/dashboard/log-sale-dialog";
 import { useFirebase } from "@/firebase/provider";
-import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, getDoc, deleteDoc } from "firebase/firestore";
+import { ProtectedActionDialog } from "@/components/protected-action-dialog";
 import { generateDocumentPdf } from "@/components/dashboard/document-generator";
 import { getUserSettings } from "@/lib/settings-utils";
 import { saveInvoiceData } from "@/lib/invoices-utils";
@@ -66,6 +67,21 @@ export default function SalesPage({
   const [dictionary, setDictionary] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSales, setSelectedSales] = useState<Set<string>>(new Set());
+  const [saleToDelete, setSaleToDelete] = useState<string | null>(null);
+
+  const confirmDeleteSale = async () => {
+    if (!firestore || !saleToDelete) return;
+    try {
+      await deleteDoc(doc(firestore, 'sales', saleToDelete));
+      setSales(prev => prev.filter(s => s.id !== saleToDelete));
+      toast({ title: "Success", description: "Sale deleted successfully." });
+    } catch (error) {
+      console.error("Error deleting sale:", error);
+      toast({ title: "Error", description: "Failed to delete sale.", variant: "destructive" });
+    } finally {
+      setSaleToDelete(null);
+    }
+  };
 
   // Load dictionary
   useEffect(() => {
@@ -238,6 +254,15 @@ export default function SalesPage({
 
   return (
     <div className="space-y-8">
+
+      <ProtectedActionDialog
+        open={!!saleToDelete}
+        onOpenChange={(open) => !open && setSaleToDelete(null)}
+        onConfirm={confirmDeleteSale}
+        title={dictionary?.stockPage?.deleteTitle || "Delete Sale?"}
+        description={dictionary?.stockPage?.deleteConfirmMessageSingle || "This action cannot be undone."}
+        resourceName={sales.find(s => s.id === saleToDelete)?.product}
+      />
       <div>
         <h1 className="text-3xl font-headline font-bold">
           {dictionary.dashboard.sales}
@@ -330,7 +355,12 @@ export default function SalesPage({
                               Générer Bon de Vente
                             </DropdownMenuItem>
                             <DropdownMenuItem>{dictionary?.table?.edit || 'Edit'}</DropdownMenuItem>
-                            <DropdownMenuItem>{dictionary?.table?.delete || 'Delete'}</DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => setSaleToDelete(sale.id)}
+                              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            >
+                              {dictionary?.table?.delete || 'Delete'}
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

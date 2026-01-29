@@ -27,6 +27,7 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { getDeletedProductsByUser, initDB, getProductPendingChanges } from "@/lib/indexeddb";
 import { hybridRestoreProduct, hybridPermanentlyDeleteProduct } from "@/lib/hybrid-import-v2";
 import { useToast } from "@/hooks/use-toast";
+import { ProtectedActionDialog } from "@/components/protected-action-dialog";
 
 export default function TrashPage({
   params,
@@ -44,7 +45,22 @@ export default function TrashPage({
   const [actionProgress, setActionProgress] = useState(0);
   const [isActioning, setIsActioning] = useState(false);
   const [displayLimit, setDisplayLimit] = useState(50);
+  const [displayLimit, setDisplayLimit] = useState(50);
   const LOAD_MORE_INCREMENT = 50;
+
+  // Deletion Protection State
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isBatchDelete, setIsBatchDelete] = useState(false);
+
+  const executeProtection = async () => {
+    if (deleteId) {
+      await handlePermanentDelete(deleteId);
+      setDeleteId(null);
+    } else if (isBatchDelete) {
+      await handleBatchPermanentDelete();
+      setIsBatchDelete(false);
+    }
+  };
 
 
   // Load dictionary
@@ -217,9 +233,8 @@ export default function TrashPage({
   const handlePermanentDelete = async (productId: string) => {
     if (!user) return;
 
-    if (!confirm(dictionary?.trash?.confirmDeleteMessage || 'Are you sure you want to permanently delete this product? This action cannot be undone.')) {
-      return;
-    }
+    if (!user) return;
+    // Confirm check moved to ProtectedActionDialog
 
     setIsActioning(true);
     setActionProgress(0);
@@ -318,12 +333,9 @@ export default function TrashPage({
   const handleBatchPermanentDelete = async () => {
     if (selectedItems.size === 0) return;
 
-    const confirmMessage = dictionary?.trash?.confirmBatchDelete?.replace('{count}', String(selectedItems.size)) || `Permanently delete ${selectedItems.size} item(s)? This action cannot be undone.`;
-    if (!confirm(confirmMessage)) {
-      return;
-    }
-
+    if (selectedItems.size === 0) return;
     if (!user) return;
+    // Confirm check moved to ProtectedActionDialog
 
     setIsActioning(true);
     setActionProgress(0);
@@ -366,6 +378,19 @@ export default function TrashPage({
 
   return (
     <div className="space-y-8">
+      <ProtectedActionDialog
+        open={!!deleteId || isBatchDelete}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteId(null);
+            setIsBatchDelete(false);
+          }
+        }}
+        onConfirm={executeProtection}
+        title={isBatchDelete ? (dictionary?.trash?.deleteSelectedPermanently || "Delete Selected Permanently?") : (dictionary?.trash?.deletePermanently || "Delete Permanently?")}
+        description={dictionary?.trash?.deleteConfirmMessage || "This cannot be undone. Password required."}
+        resourceName={deleteId ? allDeletedItems.find(i => i.id === deleteId)?.name : (isBatchDelete ? `${selectedItems.size} items` : undefined)}
+      />
       <ProgressModal
         isOpen={isActioning}
         progress={actionProgress}
@@ -398,7 +423,7 @@ export default function TrashPage({
                 <Button
                   variant="destructive"
                   size="sm"
-                  onClick={handleBatchPermanentDelete}
+                  onClick={() => setIsBatchDelete(true)}
                 >
                   <Trash className="mr-2 h-4 w-4" />
                   {dictionary?.trash?.deleteSelectedPermanently || 'Delete Permanently'} ({selectedItems.size})
@@ -445,7 +470,7 @@ export default function TrashPage({
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => handlePermanentDelete(product.id)}
+                      onClick={() => setDeleteId(product.id)}
                     >
                       <Trash className="mr-2 h-4 w-4" />
                       {dictionary?.trash?.deletePermanently || 'Delete Permanently'}

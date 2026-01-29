@@ -38,6 +38,7 @@ import { AddSupplierDialog } from "@/components/dashboard/add-supplier-dialog";
 import { EditSupplierDialog } from "@/components/dashboard/edit-supplier-dialog";
 import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, deleteDoc, doc, where } from "firebase/firestore";
+import { ProtectedActionDialog } from "@/components/protected-action-dialog";
 
 interface Supplier {
   id: string;
@@ -61,14 +62,17 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
   const [searchTerm, setSearchTerm] = useState("");
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [supplierToDelete, setSupplierToDelete] = useState<string | null>(null);
 
-  const handleDeleteSupplier = async (id: string) => {
-    if (!firestore) return;
+  const confirmDeleteSupplier = async () => {
+    if (!firestore || !supplierToDelete) return;
     try {
-      await deleteDoc(doc(firestore, 'suppliers', id));
-      setSuppliers(prev => prev.filter(s => s.id !== id));
+      await deleteDoc(doc(firestore, 'suppliers', supplierToDelete));
+      setSuppliers(prev => prev.filter(s => s.id !== supplierToDelete));
     } catch (error) {
       console.error('Error deleting supplier:', error);
+    } finally {
+      setSupplierToDelete(null);
     }
   };
 
@@ -79,7 +83,7 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
       const suppliersRef = collection(firestore, 'suppliers');
       const q = query(suppliersRef, where('userId', '==', user.uid));
       const querySnapshot = await getDocs(q);
-      
+
       const fetchedSuppliers: Supplier[] = [];
       querySnapshot.forEach((doc) => {
         fetchedSuppliers.push({
@@ -138,6 +142,14 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
 
   return (
     <div className="space-y-8">
+      <ProtectedActionDialog
+        open={!!supplierToDelete}
+        onOpenChange={(open) => !open && setSupplierToDelete(null)}
+        onConfirm={confirmDeleteSupplier}
+        title={d.deleteTitle || "Delete Supplier?"}
+        description={d.deleteConfirmMessageSingle || "This requires your deletion password."}
+        resourceName={suppliers.find(s => s.id === supplierToDelete)?.name}
+      />
       <div>
         <h1 className="text-3xl font-headline font-bold">{dictionary.dashboard.suppliers}</h1>
         <p className="text-muted-foreground">{dictionary.suppliers?.description || 'Manage your supplier information.'}</p>
@@ -147,8 +159,8 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
           <div className="flex justify-between items-center">
             <CardTitle>{dictionary.suppliers?.title || 'Suppliers'}</CardTitle>
             <div className="flex items-center gap-4">
-              <Input 
-                placeholder={dictionary.suppliers?.searchPlaceholder || 'Search suppliers...'} 
+              <Input
+                placeholder={dictionary.suppliers?.searchPlaceholder || 'Search suppliers...'}
                 className="w-full max-w-sm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -186,7 +198,7 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
                     <TableRow key={supplier.id}>
                       <TableCell className="font-medium">{supplier.name}
                         <div className="text-xs text-muted-foreground md:hidden">
-                            {supplier.email}
+                          {supplier.email}
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
@@ -215,8 +227,8 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
                             }}>
                               {d.edit}
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteSupplier(supplier.id)}
+                            <DropdownMenuItem
+                              onClick={() => setSupplierToDelete(supplier.id)}
                               className="text-destructive focus:text-destructive focus:bg-destructive/10"
                             >
                               {d.delete}
@@ -253,7 +265,7 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
                 const suppliersRef = collection(firestore, 'suppliers');
                 const q = query(suppliersRef, where('userId', '==', user.uid));
                 const querySnapshot = await getDocs(q);
-                
+
                 const fetchedSuppliers: Supplier[] = [];
                 querySnapshot.forEach((doc) => {
                   fetchedSuppliers.push({

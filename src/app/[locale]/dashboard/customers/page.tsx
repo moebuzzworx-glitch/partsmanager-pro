@@ -35,6 +35,7 @@ import { AddCustomerDialog } from "@/components/dashboard/add-customer-dialog";
 import { EditCustomerDialog } from "@/components/dashboard/edit-customer-dialog";
 import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, deleteDoc, doc, where } from "firebase/firestore";
+import { ProtectedActionDialog } from "@/components/protected-action-dialog";
 
 interface Customer {
   id: string;
@@ -60,14 +61,17 @@ export default function CustomersPage({
   const [searchTerm, setSearchTerm] = useState("");
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
 
-  const handleDeleteCustomer = async (id: string) => {
-    if (!firestore) return;
+  const confirmDeleteCustomer = async () => {
+    if (!firestore || !customerToDelete) return;
     try {
-      await deleteDoc(doc(firestore, 'customers', id));
-      setCustomers(prev => prev.filter(c => c.id !== id));
+      await deleteDoc(doc(firestore, 'customers', customerToDelete));
+      setCustomers(prev => prev.filter(c => c.id !== customerToDelete));
     } catch (error) {
       console.error('Error deleting customer:', error);
+    } finally {
+      setCustomerToDelete(null);
     }
   };
 
@@ -78,7 +82,7 @@ export default function CustomersPage({
       const customersRef = collection(firestore, 'customers');
       const q = query(customersRef, where('userId', '==', user.uid));
       const querySnapshot = await getDocs(q);
-      
+
       const fetchedCustomers: Customer[] = [];
       querySnapshot.forEach((doc) => {
         fetchedCustomers.push({
@@ -135,6 +139,14 @@ export default function CustomersPage({
 
   return (
     <div className="space-y-8">
+      <ProtectedActionDialog
+        open={!!customerToDelete}
+        onOpenChange={(open) => !open && setCustomerToDelete(null)}
+        onConfirm={confirmDeleteCustomer}
+        title={d.deleteTitle || "Delete Customer?"}
+        description={d.deleteConfirmMessageSingle || "This requires your deletion password."}
+        resourceName={customers.find(c => c.id === customerToDelete)?.name}
+      />
       <div>
         <h1 className="text-3xl font-headline font-bold">
           {dictionary.dashboard.customers}
@@ -146,9 +158,9 @@ export default function CustomersPage({
           <div className="flex justify-between items-center">
             <CardTitle>{dictionary.customers?.title || 'Customers'}</CardTitle>
             <div className="flex items-center gap-4">
-              <Input 
-                placeholder={dictionary.customers?.searchPlaceholder || 'Search customers...'} 
-                className="w-full max-w-sm" 
+              <Input
+                placeholder={dictionary.customers?.searchPlaceholder || 'Search customers...'}
+                className="w-full max-w-sm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -211,8 +223,8 @@ export default function CustomersPage({
                             }}>
                               {d.edit}
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteCustomer(customer.id)}
+                            <DropdownMenuItem
+                              onClick={() => setCustomerToDelete(customer.id)}
                               className="text-destructive focus:text-destructive focus:bg-destructive/10"
                             >
                               {d.delete}
@@ -250,7 +262,7 @@ export default function CustomersPage({
                 const customersRef = collection(firestore, 'customers');
                 const q = query(customersRef);
                 const querySnapshot = await getDocs(q);
-                
+
                 const fetchedCustomers: Customer[] = [];
                 querySnapshot.forEach((doc) => {
                   fetchedCustomers.push({

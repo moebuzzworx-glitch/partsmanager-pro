@@ -34,6 +34,7 @@ import {
 import { LogPurchaseDialog } from "@/components/dashboard/log-purchase-dialog";
 import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, deleteDoc, doc, where } from "firebase/firestore";
+import { ProtectedActionDialog } from "@/components/protected-action-dialog";
 
 interface PurchaseItem {
   description: string;
@@ -61,14 +62,17 @@ export default function PurchasesPage({
   const [isLoading, setIsLoading] = useState(true);
   const [dictionary, setDictionary] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [purchaseToDelete, setPurchaseToDelete] = useState<string | null>(null);
 
-  const handleDeletePurchase = async (id: string) => {
-    if (!firestore) return;
+  const confirmDeletePurchase = async () => {
+    if (!firestore || !purchaseToDelete) return;
     try {
-      await deleteDoc(doc(firestore, 'purchases', id));
-      setPurchases(prev => prev.filter(p => p.id !== id));
+      await deleteDoc(doc(firestore, 'purchases', purchaseToDelete));
+      setPurchases(prev => prev.filter(p => p.id !== purchaseToDelete));
     } catch (error) {
       console.error('Error deleting purchase:', error);
+    } finally {
+      setPurchaseToDelete(null);
     }
   };
 
@@ -79,7 +83,7 @@ export default function PurchasesPage({
       const purchasesRef = collection(firestore, 'purchases');
       const q = query(purchasesRef, where('userId', '==', user.uid));
       const querySnapshot = await getDocs(q);
-      
+
       const fetchedPurchases: Purchase[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
@@ -132,6 +136,14 @@ export default function PurchasesPage({
 
   return (
     <div className="space-y-8">
+      <ProtectedActionDialog
+        open={!!purchaseToDelete}
+        onOpenChange={(open) => !open && setPurchaseToDelete(null)}
+        onConfirm={confirmDeletePurchase}
+        title={dictionary?.stockPage?.deleteTitle || "Delete Purchase?"}
+        description={dictionary?.stockPage?.deleteConfirmMessageSingle || "This action cannot be undone."}
+        resourceName={purchases.find(p => p.id === purchaseToDelete)?.supplier}
+      />
       <div>
         <h1 className="text-3xl font-headline font-bold">
           {dictionary.dashboard.purchases}
@@ -143,8 +155,8 @@ export default function PurchasesPage({
           <div className="flex justify-between items-center">
             <CardTitle>{dictionary.purchases?.title || 'Purchases'}</CardTitle>
             <div className="flex items-center gap-4">
-              <Input 
-                placeholder={dictionary.purchases?.searchPlaceholder || 'Search purchases...'} 
+              <Input
+                placeholder={dictionary.purchases?.searchPlaceholder || 'Search purchases...'}
                 className="w-full max-w-sm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -204,7 +216,7 @@ export default function PurchasesPage({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleDeletePurchase(purchase.id)} className="text-destructive">
+                            <DropdownMenuItem onClick={() => setPurchaseToDelete(purchase.id)} className="text-destructive">
                               Delete Purchase
                             </DropdownMenuItem>
                           </DropdownMenuContent>

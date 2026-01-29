@@ -21,7 +21,7 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
   const dictionary = await getDictionary(locale);
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-[100dvh] bg-background overflow-x-hidden">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 sm:h-16 items-center justify-between px-4 sm:px-6">
           <Logo />
@@ -37,20 +37,21 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
 
       <main className="flex-1">
         <section className="relative w-full overflow-hidden">
-          <div className="relative h-[50vh] sm:h-[60vh] flex items-center justify-center text-center text-white">
-            {heroImage && 
-              <Image 
-                src={heroImage.imageUrl} 
-                alt={heroImage.description} 
-                fill 
+          <div className="relative h-[45vh] sm:h-[55vh] flex items-center justify-center text-center text-white">
+            {heroImage &&
+              <Image
+                src={heroImage.imageUrl}
+                alt={heroImage.description}
+                fill
                 className="object-cover"
                 data-ai-hint={heroImage.imageHint}
                 priority
+                unoptimized={heroImage.imageUrl.startsWith('/')}
               />
             }
             <div className="absolute inset-0 bg-black/50 sm:bg-black/60" />
             <div className="relative z-10 max-w-4xl px-4 sm:px-6 py-8">
-              <h1 className="text-3xl sm:text-4xl md:text-6xl font-headline font-bold drop-shadow-lg leading-tight">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-headline font-bold drop-shadow-lg leading-tight">
                 {dictionary.landing.title}
               </h1>
               <p className="mt-3 sm:mt-4 text-sm sm:text-lg md:text-xl text-white/90 drop-shadow-md">
@@ -63,9 +64,9 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
           </div>
         </section>
 
-        <section id="features" className="py-12 sm:py-16 md:py-24 px-4 sm:px-6">
+        <section id="features" className="py-8 sm:py-12 md:py-16 px-4 sm:px-6">
           <div className="container max-w-7xl mx-auto">
-            <div className="text-center mb-8 sm:mb-12">
+            <div className="text-center mb-8 sm:mb-10">
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-headline font-bold">
                 {dictionary.landing.featuresTitle}
               </h2>
@@ -94,10 +95,14 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
         </section>
       </main>
 
-      <footer className="border-t mt-12 sm:mt-16">
-        <div className="container px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between h-auto sm:h-20 py-6 sm:py-0">
-          <p className="text-muted-foreground text-xs sm:text-sm text-center sm:text-left mb-4 sm:mb-0">&copy; {new Date().getFullYear()} {dictionary.appName}. All rights reserved.</p>
-          <Logo className="opacity-50 h-6 w-6 sm:h-8 sm:w-8" />
+      <footer className="border-t mt-8 sm:mt-12 w-full bg-background">
+        <div className="container mx-auto px-4 sm:px-6 w-full max-w-7xl">
+          <div className="flex flex-col sm:flex-row items-center justify-end py-6 gap-4 sm:gap-6 sm:h-16 sm:py-0">
+            <p className="text-muted-foreground text-xs text-center sm:text-right break-words">
+              &copy; {new Date().getFullYear()} ALGEOSYS. All rights reserved.
+            </p>
+
+          </div>
         </div>
       </footer>
     </div>
@@ -107,14 +112,15 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
 function FeatureCard({ icon, title, description, image }: { icon: React.ReactNode, title: string, description: string, image?: any }) {
   return (
     <Card className="text-center flex flex-col h-full overflow-hidden transition-transform hover:shadow-lg hover:scale-105">
-      {image && 
+      {image &&
         <div className="relative h-32 sm:h-40 w-full">
-          <Image 
-            src={image.imageUrl} 
-            alt={image.description} 
-            fill 
+          <Image
+            src={image.imageUrl}
+            alt={image.description}
+            fill
             className="object-cover"
             data-ai-hint={image.imageHint}
+            unoptimized={image.imageUrl.startsWith('/')}
           />
         </div>
       }

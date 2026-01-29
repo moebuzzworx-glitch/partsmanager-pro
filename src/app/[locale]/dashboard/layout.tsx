@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -48,15 +48,19 @@ import {
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import { useNotifications } from '@/hooks/use-notifications';
 import { DashboardLayoutClient } from './layout-client';
+import { FullScreenToggle } from '@/components/fullscreen-toggle';
+
+import { MobileTriggerLogo } from '@/components/dashboard/mobile-trigger-logo';
+import { SidebarNavLink } from '@/components/dashboard/sidebar-nav-link';
 
 export default function DashboardLayout({
   children,
   params,
 }: {
   children: React.ReactNode;
-  params: { locale: Locale };
+  params: Promise<{ locale: Locale }>;
 }) {
-  const { locale } = params;
+  const { locale } = use(params);
   const [dictionary, setDictionary] = useState<any>(null);
   const { notifications, unreadCount, markAsRead } = useNotifications();
 
@@ -84,19 +88,20 @@ export default function DashboardLayout({
 
   if (!dictionary) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-[100dvh]">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
-        <Logo />
+    <SidebarProvider className="flex flex-col h-[100dvh] bg-background w-full">
+      <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6 w-full">
+        <MobileTriggerLogo />
         <div className="flex-1">
-            {/* Search can go here */}
+          {/* Search can go here */}
         </div>
+        <FullScreenToggle />
         <LanguageSwitcher />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -110,7 +115,7 @@ export default function DashboardLayout({
             <ThemeSwitcher />
           </DropdownMenuContent>
         </DropdownMenu>
-         <DropdownMenu>
+        <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
@@ -170,11 +175,11 @@ export default function DashboardLayout({
                           <p className="text-xs text-muted-foreground mt-1">
                             {notification.createdAt
                               ? new Date(
-                                  notification.createdAt.toDate?.() || notification.createdAt
-                                ).toLocaleTimeString([], {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
+                                notification.createdAt.toDate?.() || notification.createdAt
+                              ).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
                               : 'Just now'}
                           </p>
                         </div>
@@ -194,53 +199,45 @@ export default function DashboardLayout({
           </DropdownMenuContent>
         </DropdownMenu>
         {mockUser && (
-          <UserNav 
+          <UserNav
             user={mockUser}
-            dictionary={dictionary.auth} 
+            dictionary={dictionary.auth}
           />
         )}
       </header>
-      <div className='flex flex-1 overflow-hidden'>
-        <SidebarProvider>
-          <Sidebar>
-            <SidebarHeader>
-            </SidebarHeader>
-            <SidebarContent className="pt-16">
-              <SidebarMenu>
-                {navItems.map((item) => (
-                  <SidebarMenuItem key={item.label}>
-                    <SidebarMenuButton asChild>
-                      <Link href={`/${locale}${item.href}`}>
-                        {item.icon}
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-                 {mockUser.role === 'admin' && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <Link href={`/${locale}/dashboard/settings`}>
-                        <Settings />
-                        <span>{dictionary.dashboard.settings}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                 )}
-              </SidebarMenu>
-            </SidebarContent>
-            <SidebarFooter>
-            </SidebarFooter>
-          </Sidebar>
-          <SidebarInset>
-              <main className="flex-1 overflow-y-auto p-4 md:p-8 pt-6">
-                <DashboardLayoutClient locale={locale}>
-                  {children}
-                </DashboardLayoutClient>
-              </main>
-          </SidebarInset>
-        </SidebarProvider>
+      <div className='flex flex-1 overflow-hidden w-full'>
+        <Sidebar>
+          <SidebarHeader>
+          </SidebarHeader>
+          <SidebarContent className="pt-16">
+            <SidebarMenu>
+              {navItems.map((item) => (
+                <SidebarMenuItem key={item.label}>
+                  <SidebarNavLink href={`/${locale}${item.href}`} icon={item.icon}>
+                    {item.label}
+                  </SidebarNavLink>
+                </SidebarMenuItem>
+              ))}
+              {mockUser.role === 'admin' && (
+                <SidebarMenuItem>
+                  <SidebarNavLink href={`/${locale}/dashboard/settings`} icon={<Settings />}>
+                    {dictionary.dashboard.settings}
+                  </SidebarNavLink>
+                </SidebarMenuItem>
+              )}
+            </SidebarMenu>
+          </SidebarContent>
+          <SidebarFooter>
+          </SidebarFooter>
+        </Sidebar>
+        <SidebarInset>
+          <main className="flex-1 overflow-y-auto p-4 md:p-8 pt-6">
+            <DashboardLayoutClient locale={locale}>
+              {children}
+            </DashboardLayoutClient>
+          </main>
+        </SidebarInset>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }

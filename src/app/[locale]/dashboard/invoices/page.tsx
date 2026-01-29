@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { useFirebase } from "@/firebase/provider";
 import { getUserInvoices, deleteInvoice, updateInvoicePaidStatus, recordSalesFromInvoice, deleteSalesForInvoice, type StoredInvoice } from "@/lib/invoices-utils";
+import { ProtectedActionDialog } from "@/components/protected-action-dialog";
 
 import { generateDocumentPdf } from "@/components/dashboard/document-generator";
 import { getUserSettings } from "@/lib/settings-utils";
@@ -70,6 +71,31 @@ export default function InvoicesPage({
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [activeTab, setActiveTab] = useState<string>('INVOICE');
+  const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
+
+  const confirmDeleteInvoice = async () => {
+    if (!firestore || !invoiceToDelete) return;
+
+    try {
+      const success = await deleteInvoice(firestore, invoiceToDelete);
+      if (success) {
+        setInvoices(invoices.filter(inv => inv.id !== invoiceToDelete));
+        toast({
+          title: 'Success',
+          description: dictionary?.invoices?.deleteInvoiceSuccess || 'Invoice deleted successfully.',
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting invoice:', error);
+      toast({
+        title: 'Error',
+        description: dictionary?.invoices?.deleteInvoiceErrorDescription || 'Failed to delete invoice.',
+        variant: 'destructive',
+      });
+    } finally {
+      setInvoiceToDelete(null);
+    }
+  };
 
   const fetchInvoicesList = async () => {
     if (!firestore || !user) return;
@@ -253,6 +279,14 @@ export default function InvoicesPage({
 
   return (
     <div className="space-y-8">
+      <ProtectedActionDialog
+        open={!!invoiceToDelete}
+        onOpenChange={(open) => !open && setInvoiceToDelete(null)}
+        onConfirm={confirmDeleteInvoice}
+        title={dictionary?.invoices?.deleteTitle || "Delete Invoice?"}
+        description={dictionary?.invoices?.deleteConfirm || "This action cannot be undone. This requires your deletion password."}
+        resourceName={invoices.find(inv => inv.id === invoiceToDelete)?.invoiceNumber}
+      />
       <div>
         <h1 className="text-3xl font-headline font-bold">
           {dictionary.dashboard.invoices}
@@ -413,7 +447,7 @@ export default function InvoicesPage({
                             variant="outline"
                             size="sm"
                             className="text-destructive hover:text-destructive"
-                            onClick={() => invoice.id && handleDeleteInvoice(invoice.id)}
+                            onClick={() => invoice.id && setInvoiceToDelete(invoice.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
