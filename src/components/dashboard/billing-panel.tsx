@@ -80,41 +80,46 @@ export function BillingPanel({ dictionary }: { dictionary?: any }) {
 
   // Determine subscription status
   const isTrial = profile?.subscription === 'trial';
-  const isPremium = profile?.subscription === 'premium';
+
+  // A user is "premium" if their subscription is 'premium' OR 'expired'
+  // (since expired users were once premium and own the license)
+  const isPremiumRaw = profile?.subscription === 'premium';
+  const isExplicitlyExpired = profile?.subscription === 'expired';
+
+  // For backward compatibility with existing code
+  const isPremium = isPremiumRaw || isExplicitlyExpired;
+
   const hasExpiryDate = !!profile?.premiumExpiryDate;
 
-  // Check if after-sales service has expired (for premium users)
-  // Handle both Timestamp objects and Date objects
+  // Check if after-sales service has expired
   let afterSalesExpired = false;
-  if (isPremium && hasExpiryDate) {
+
+  // Case 1: Explicitly marked as 'expired' in subscription field
+  if (isExplicitlyExpired) {
+    afterSalesExpired = true;
+  }
+  // Case 2: Marked as 'premium' but date has passed
+  else if (isPremium && hasExpiryDate) {
     try {
       let expiryDate: Date;
-
-      // Handle Firestore Timestamp
       if (profile.premiumExpiryDate.seconds) {
         expiryDate = new Date(profile.premiumExpiryDate.seconds * 1000);
-      }
-      // Handle Firestore Timestamp with toDate method
-      else if (typeof profile.premiumExpiryDate.toDate === 'function') {
+      } else if (typeof profile.premiumExpiryDate.toDate === 'function') {
         expiryDate = profile.premiumExpiryDate.toDate();
-      }
-      // Handle plain Date object or string
-      else {
+      } else {
         expiryDate = new Date(profile.premiumExpiryDate);
       }
-
       afterSalesExpired = expiryDate < new Date();
 
-      // Debug logging
-      console.log('🔍 Subscription Debug:', {
-        subscription: profile.subscription,
-        expiryDate: expiryDate.toISOString(),
+      // Debug log
+      console.log('🔍 [BillingPanel] Expiry Check:', {
+        sub: profile.subscription,
+        expiry: expiryDate.toISOString(),
         now: new Date().toISOString(),
-        isExpired: afterSalesExpired,
-        rawExpiryData: profile.premiumExpiryDate
+        expired: afterSalesExpired
       });
     } catch (e) {
-      console.error('Error parsing expiry date:', e, profile.premiumExpiryDate);
+      console.error('Error parsing expiry date:', e);
       afterSalesExpired = false;
     }
   }
