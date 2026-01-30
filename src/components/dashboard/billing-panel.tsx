@@ -23,19 +23,51 @@ export function BillingPanel({ dictionary }: { dictionary?: any }) {
   const [paymentDialogOpen, setPaymentDialogOpen] = React.useState(false);
   const [paymentType, setPaymentType] = React.useState<PaymentType>('FIRST_PURCHASE');
 
-  React.useEffect(() => {
-    let mounted = true;
-    (async () => {
-      if (!user || !firestore) return;
-      try {
-        const p = await fetchUserById(firestore, user.uid);
-        if (mounted) setProfile(p);
-      } catch (e) {
-        console.error('Failed to fetch user profile for billing', e);
-      }
-    })();
-    return () => { mounted = false };
+  // Fetch user profile
+  const fetchProfile = React.useCallback(async () => {
+    if (!user || !firestore) return;
+    try {
+      const p = await fetchUserById(firestore, user.uid);
+      setProfile(p);
+    } catch (e) {
+      console.error('Failed to fetch user profile for billing', e);
+    }
   }, [user, firestore]);
+
+  React.useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
+  // Listen for payment success/failure in URL params
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentStatus = params.get('payment');
+
+    if (paymentStatus === 'success') {
+      // Payment successful - refresh profile to show updated subscription
+      toast({
+        title: dictionary?.billing?.paymentSuccess || 'Payment Successful!',
+        description: dictionary?.billing?.activating || 'Your subscription is being activated...',
+      });
+
+      // Refresh after a short delay to allow webhook to process
+      setTimeout(() => {
+        fetchProfile();
+      }, 2000);
+
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (paymentStatus === 'failed') {
+      toast({
+        title: dictionary?.billing?.paymentFailed || 'Payment Failed',
+        description: dictionary?.billing?.tryAgain || 'Please try again or contact support.',
+        variant: 'destructive',
+      });
+
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [fetchProfile, toast, dictionary]);
 
   // Determine subscription status
   const isTrial = profile?.subscription === 'trial';
@@ -70,6 +102,7 @@ export function BillingPanel({ dictionary }: { dictionary?: any }) {
     if (!user || !firestore) return;
     setLoading(true);
     try {
+      // For both trial and expired premium, activate premium subscription
       const ok = await changeUserSubscription(firestore, user.uid, 'premium');
       if (ok) {
         toast({
@@ -78,13 +111,30 @@ export function BillingPanel({ dictionary }: { dictionary?: any }) {
             ? (dictionary?.billing?.purchaseSuccessMessage || 'Your license has been activated. Welcome to Premium!')
             : (dictionary?.billing?.renewalSuccessMessage || 'Your after-sales service has been renewed for 1 year.')
         });
-        const p = await fetchUserById(firestore, user.uid);
-        setProfile(p);
+        // Refresh profile
+        await fetchProfile();
       } else {
         toast({ title: dictionary?.billing?.renewalError || 'Activation Failed', variant: 'destructive' });
       }
     } catch (e) {
       console.error('Activation failed', e);
+      toast({ title: dictionary?.table?.error || 'Error', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Manual refresh for admin-modified subscriptions
+  async function handleRefreshStatus() {
+    setLoading(true);
+    try {
+      await fetchProfile();
+      toast({
+        title: dictionary?.billing?.refreshed || 'Status Refreshed',
+        description: dictionary?.billing?.refreshedDesc || 'Subscription status has been updated.',
+      });
+    } catch (e) {
+      console.error('Refresh failed', e);
       toast({ title: dictionary?.table?.error || 'Error', variant: 'destructive' });
     } finally {
       setLoading(false);
@@ -106,7 +156,7 @@ export function BillingPanel({ dictionary }: { dictionary?: any }) {
             {/* Current Status Card */}
             <div className="p-4 rounded-lg bg-muted/50 border">
               <div className="flex justify-between items-start">
-                <div>
+                <div className="flex-1">
                   <p className="text-sm text-muted-foreground">{dictionary?.billing?.currentStatus || 'Current Status'}</p>
                   <p className="text-2xl font-bold capitalize mt-1">
                     {isTrial && (dictionary?.billing?.trialMode || 'Trial Mode')}
@@ -115,7 +165,22 @@ export function BillingPanel({ dictionary }: { dictionary?: any }) {
                     {!profile && 'Loading...'}
                   </p>
                 </div>
-                <div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRefreshStatus}
+                    disabled={loading}
+                    className="h-8 px-2"
+                    title={dictionary?.billing?.refresh || 'Refresh status'}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={loading ? 'animate-spin' : ''}>
+                      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                      <path d="M3 3v5h5" />
+                      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                      <path d="M16 16h5v5" />
+                    </svg>
+                  </Button>
                   {isTrial && (
                     <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 rounded-full">
                       <Clock className="h-3 w-3" />
