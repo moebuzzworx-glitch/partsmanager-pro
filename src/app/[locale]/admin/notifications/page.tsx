@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { sendTargetedNotifications, TargetAudience } from '@/lib/notifications-admin';
 import { Loader2, Send } from 'lucide-react';
 import { UserRole } from '@/lib/types';
@@ -190,8 +190,8 @@ export default function NotificationsPage() {
                             <ul className="list-disc list-inside space-y-1 text-sm">
                                 <li><strong>Title:</strong> {title || '(No title)'}</li>
                                 <li><strong>Type:</strong> <span className={`capitalize ${type === 'error' || type === 'alert' ? 'text-red-500' :
-                                        type === 'warning' ? 'text-yellow-500' :
-                                            type === 'success' ? 'text-green-500' : 'text-blue-500'
+                                    type === 'warning' ? 'text-yellow-500' :
+                                        type === 'success' ? 'text-green-500' : 'text-blue-500'
                                     }`}>{type}</span></li>
                                 <li><strong>Role:</strong> {targetRole === 'user' ? 'Regular Users' : 'Administrators'}</li>
                                 <li><strong>Subscription:</strong> {targetAudience === 'all' ? 'All Plans' : targetAudience.charAt(0).toUpperCase() + targetAudience.slice(1)}</li>
@@ -202,8 +202,8 @@ export default function NotificationsPage() {
                             <h4 className="font-semibold mb-2 text-sm text-muted-foreground">Notification Preview</h4>
                             <div className="flex gap-3 p-3 rounded-md bg-secondary/50 border">
                                 <div className={`h-2 w-2 rounded-full mt-2 shrink-0 ${type === 'error' || type === 'alert' ? 'bg-red-500' :
-                                        type === 'warning' ? 'bg-yellow-500' :
-                                            type === 'success' ? 'bg-green-500' : 'bg-blue-500'
+                                    type === 'warning' ? 'bg-yellow-500' :
+                                        type === 'success' ? 'bg-green-500' : 'bg-blue-500'
                                     }`} />
                                 <div>
                                     <p className="font-medium text-sm">{title || "Notification Title"}</p>
