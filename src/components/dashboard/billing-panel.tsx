@@ -75,9 +75,40 @@ export function BillingPanel({ dictionary }: { dictionary?: any }) {
   const hasExpiryDate = !!profile?.premiumExpiryDate;
 
   // Check if after-sales service has expired (for premium users)
-  const afterSalesExpired = isPremium && hasExpiryDate
-    ? new Date(profile.premiumExpiryDate.seconds * 1000) < new Date()
-    : false;
+  // Handle both Timestamp objects and Date objects
+  let afterSalesExpired = false;
+  if (isPremium && hasExpiryDate) {
+    try {
+      let expiryDate: Date;
+
+      // Handle Firestore Timestamp
+      if (profile.premiumExpiryDate.seconds) {
+        expiryDate = new Date(profile.premiumExpiryDate.seconds * 1000);
+      }
+      // Handle Firestore Timestamp with toDate method
+      else if (typeof profile.premiumExpiryDate.toDate === 'function') {
+        expiryDate = profile.premiumExpiryDate.toDate();
+      }
+      // Handle plain Date object or string
+      else {
+        expiryDate = new Date(profile.premiumExpiryDate);
+      }
+
+      afterSalesExpired = expiryDate < new Date();
+
+      // Debug logging
+      console.log('🔍 Subscription Debug:', {
+        subscription: profile.subscription,
+        expiryDate: expiryDate.toISOString(),
+        now: new Date().toISOString(),
+        isExpired: afterSalesExpired,
+        rawExpiryData: profile.premiumExpiryDate
+      });
+    } catch (e) {
+      console.error('Error parsing expiry date:', e, profile.premiumExpiryDate);
+      afterSalesExpired = false;
+    }
+  }
 
   // Premium with active after-sales (not expired)
   const isPremiumActive = isPremium && hasExpiryDate && !afterSalesExpired;
@@ -203,16 +234,31 @@ export function BillingPanel({ dictionary }: { dictionary?: any }) {
               </div>
 
               {/* Show expiry date for premium users */}
-              {isPremium && hasExpiryDate && (
-                <p className="text-sm text-muted-foreground mt-3">
-                  {afterSalesExpired
-                    ? (dictionary?.billing?.expiredOn || 'After-sales service expired on:')
-                    : (dictionary?.billing?.expiresOn || 'After-sales service valid until:')} {' '}
-                  <span className={`font-medium ${afterSalesExpired ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                    {new Date(profile.premiumExpiryDate.seconds * 1000).toLocaleDateString()}
-                  </span>
-                </p>
-              )}
+              {isPremium && hasExpiryDate && (() => {
+                try {
+                  let expiryDate: Date;
+                  if (profile.premiumExpiryDate.seconds) {
+                    expiryDate = new Date(profile.premiumExpiryDate.seconds * 1000);
+                  } else if (typeof profile.premiumExpiryDate.toDate === 'function') {
+                    expiryDate = profile.premiumExpiryDate.toDate();
+                  } else {
+                    expiryDate = new Date(profile.premiumExpiryDate);
+                  }
+
+                  return (
+                    <p className="text-sm text-muted-foreground mt-3">
+                      {afterSalesExpired
+                        ? (dictionary?.billing?.expiredOn || 'After-sales service expired on:')
+                        : (dictionary?.billing?.expiresOn || 'After-sales service valid until:')} {' '}
+                      <span className={`font-medium ${afterSalesExpired ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                        {expiryDate.toLocaleDateString()}
+                      </span>
+                    </p>
+                  );
+                } catch (e) {
+                  return null;
+                }
+              })()}
             </div>
 
             {/* Payment Options - Only show when needed */}
