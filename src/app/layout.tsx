@@ -6,6 +6,9 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'PartsManager Pro',
   description: 'Revolutionize Your Parts Management',
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({
