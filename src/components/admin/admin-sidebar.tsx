@@ -19,6 +19,7 @@ import {
   HardDrive,
   Lock,
   Key,
+  Bell,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -96,6 +97,13 @@ export function AdminSidebar({ locale }: AdminSidebarProps) {
       href: `/${locale}/admin/access-rights`,
       badge: null,
       requiresPermission: 'accessRights' as const,
+    },
+    {
+      icon: Bell,
+      label: "Notifications",
+      href: `/${locale}/admin/notifications`,
+      badge: null,
+      requiresPermission: 'systemSettings' as const, // Assuming systemSettings permission is sufficient, or create a new one if needed. Let's reuse 'systemSettings' for now or 'users'
     },
   ];
 
