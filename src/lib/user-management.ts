@@ -5,21 +5,21 @@
  * Only accessible by admins through Firestore security rules
  */
 
-import { 
-  Firestore, 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  setDoc, 
-  updateDoc, 
-  deleteDoc, 
+import {
+  Firestore,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  deleteDoc,
   query,
   Query,
   QueryConstraint,
   where,
   orderBy,
-  Timestamp 
+  Timestamp
 } from 'firebase/firestore';
 import type { AccessRightProfile } from './access-rights';
 
@@ -48,7 +48,7 @@ export async function fetchAllUsers(firestore: Firestore): Promise<UserProfile[]
     const usersRef = collection(firestore, 'users');
     const q = query(usersRef, orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
-    
+
     const users: UserProfile[] = [];
     snapshot.forEach((doc) => {
       users.push({
@@ -77,7 +77,7 @@ export async function fetchUserById(
   try {
     const userRef = doc(firestore, 'users', userId);
     const userSnap = await getDoc(userRef);
-    
+
     if (!userSnap.exists()) {
       return null;
     }
@@ -107,10 +107,10 @@ export async function updateUser(
   try {
     const userRef = doc(firestore, 'users', userId);
     const updateData = { ...data };
-    
+
     // Remove id field if present
     delete updateData.id;
-    
+
     await updateDoc(userRef, updateData);
     return true;
   } catch (error) {
@@ -141,7 +141,7 @@ export async function createUser(
   try {
     const userRef = doc(firestore, 'users', userId);
     const now = Timestamp.now();
-    
+
     // Calculate trial or premium expiry dates
     let trialStartDate = undefined;
     let premiumExpiryDate = undefined;
@@ -212,7 +212,7 @@ export async function changeUserSubscription(
   try {
     const userRef = doc(firestore, 'users', userId);
     const now = Timestamp.now();
-    
+
     const updateData: any = {
       subscription,
     };
@@ -226,12 +226,12 @@ export async function changeUserSubscription(
       expiryDate.setDate(expiryDate.getDate() + 365);
       updateData.premiumExpiryDate = Timestamp.fromDate(expiryDate);
       updateData.trialStartDate = null;
-      
+
       // AUTO-SYNC: Trigger immediate sync for newly upgraded premium users
       // This pushes all their IndexedDB data (accumulated during trial) to Firebase
       console.log('[UserManagement] Premium upgrade detected for user:', userId);
       console.log('[UserManagement] Triggering immediate sync to push IndexedDB data to Firebase...');
-      
+
       try {
         const { triggerImmediateSync } = await import('./sync-worker');
         triggerImmediateSync().catch(err => {
@@ -241,9 +241,13 @@ export async function changeUserSubscription(
         console.warn('[UserManagement] Could not trigger sync:', err);
       }
     } else if (subscription === 'expired') {
-      // Expired users: clear trial and premium dates
+      // Expired users: set expiry date to yesterday to trigger renewal flow
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      updateData.premiumExpiryDate = Timestamp.fromDate(yesterday);
       updateData.trialStartDate = null;
-      updateData.premiumExpiryDate = null;
+      // Keep subscription as 'premium' so they see the renewal option
+      updateData.subscription = 'premium';
     }
 
     await updateDoc(userRef, updateData);
@@ -312,7 +316,7 @@ export async function getUserStatistics(firestore: Firestore): Promise<{
 }> {
   try {
     const users = await fetchAllUsers(firestore);
-    
+
     return {
       totalUsers: users.length,
       premiumUsers: users.filter(u => u.subscription === 'premium').length,
