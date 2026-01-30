@@ -62,7 +62,7 @@ export default function DashboardLayout({
 }) {
   const { locale } = use(params);
   const [dictionary, setDictionary] = useState<any>(null);
-  const { notifications, unreadCount, markAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
   // Set dir attribute based on locale
   useEffect(() => {
@@ -135,7 +135,7 @@ export default function DashboardLayout({
                   size="sm"
                   className="h-auto p-0 text-xs"
                   onClick={() => {
-                    // Mark all as read
+                    markAllAsRead();
                   }}
                 >
                   Mark all as read

@@ -101,19 +101,19 @@ const SidebarProvider = React.forwardRef<
         ? setOpenMobile((open) => !open)
         : setOpen((open) => !open)
     }, [isMobile, setOpen, setOpenMobile])
-    
+
     const handleMouseEnter = React.useCallback(() => {
-        if (!isMobile) {
-            setIsHovered(true);
-            setOpen(true);
-        }
+      if (!isMobile) {
+        setIsHovered(true);
+        setOpen(true);
+      }
     }, [isMobile, setOpen]);
-    
+
     const handleMouseLeave = React.useCallback(() => {
-        if (!isMobile) {
-            setIsHovered(false);
-            setOpen(false);
-        }
+      if (!isMobile) {
+        setIsHovered(false);
+        setOpen(false);
+      }
     }, [isMobile, setOpen]);
 
     // Adds a keyboard shortcut to toggle the sidebar.
@@ -242,15 +242,21 @@ const Sidebar = React.forwardRef<
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
-            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+            className="w-[--sidebar-width] bg-neutral-950/90 backdrop-blur-lg p-0 text-white [&>button]:hidden shadow-[0_0_40px_-10px_rgba(0,0,0,0.5)] border-r border-white/10"
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+                "--sidebar-background": "transparent",
+                "--sidebar-foreground": "white",
+                "--sidebar-accent": "rgba(255,255,255,0.1)",
+                "--sidebar-accent-foreground": "white",
+                "--sidebar-border": "rgba(255,255,255,0.1)",
+                "--sidebar-ring": "rgba(255,255,255,0.5)",
               } as React.CSSProperties
             }
             side={side}
           >
-            <div className="flex h-full w-full flex-col">{children}</div>
+            <div className="flex h-full w-full flex-col drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">{children}</div>
           </SheetContent>
         </Sheet>
       )
@@ -661,7 +667,7 @@ const SidebarMenuAction = React.forwardRef<
         "peer-data-[size=lg]/menu-button:top-2.5",
         "group-data-[collapsible=icon]:hidden",
         showOnHover &&
-          "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground md:opacity-0",
+        "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground md:opacity-0",
         className
       )}
       {...props}
