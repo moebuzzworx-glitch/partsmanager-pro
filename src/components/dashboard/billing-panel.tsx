@@ -25,12 +25,21 @@ export function BillingPanel({ dictionary }: { dictionary?: any }) {
 
   // Fetch user profile
   const fetchProfile = React.useCallback(async () => {
-    if (!user || !firestore) return;
+    console.log('🔍 [BillingPanel] Fetching profile...', { user: user?.uid, firestore: !!firestore });
+    if (!user || !firestore) {
+      console.warn('🔍 [BillingPanel] Missing user or firestore', { user: !!user, firestore: !!firestore });
+      return;
+    }
     try {
       const p = await fetchUserById(firestore, user.uid);
+      console.log('🔍 [BillingPanel] Profile fetched:', p);
       setProfile(p);
+
+      if (!p) {
+        console.error('🔍 [BillingPanel] Profile is null - user document may not exist in Firestore');
+      }
     } catch (e) {
-      console.error('Failed to fetch user profile for billing', e);
+      console.error('🔍 [BillingPanel] Failed to fetch user profile for billing', e);
     }
   }, [user, firestore]);
 
