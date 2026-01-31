@@ -81,7 +81,7 @@ function RobotModel({ mouse, isChatOpen, onClick }: { mouse: React.MutableRefObj
     });
 
     return (
-        <group ref={group} dispose={null} onClick={(e) => {
+        <group ref={group} dispose={null} scale={2.5} onClick={(e) => {
             e.stopPropagation();
             if (onClick) onClick();
         }}>
@@ -269,7 +269,7 @@ export default function GlobalBotWidget() {
                 exit={{ opacity: 0, scale: 0, rotate: 90, y: 100 }}
                 transition={{ type: "spring", bounce: 0.4, duration: 0.8 }}
                 className="relative cursor-pointer pointer-events-auto z-50 group"
-                style={{ width: '300px', height: '400px' }}
+                style={{ width: '350px', height: '450px' }}
                 onClick={() => setIsChatExpanded(true)}
             >
                 <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/10 rounded-full blur-3xl transition-all duration-500" />
@@ -277,8 +277,8 @@ export default function GlobalBotWidget() {
                     <ErrorBoundary FallbackComponent={() => null}>
                         <React.Suspense fallback={null}>
                             {/* Adjusted Camera for Larger Appearance */}
-                            <PerspectiveCamera makeDefault position={[0, 1, 6]} fov={50} />
-                            <ambientLight intensity={1.2} />
+                            <PerspectiveCamera makeDefault position={[0, 1, 4]} fov={50} />
+                            <ambientLight intensity={1.5} />
                             <spotLight position={[10, 10, 10]} intensity={20} angle={0.5} penumbra={1} />
                             <pointLight position={[-10, -10, -10]} intensity={10} color="#8b5cf6" />
                             <Environment preset="city" />
