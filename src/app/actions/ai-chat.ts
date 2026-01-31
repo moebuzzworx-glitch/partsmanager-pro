@@ -59,11 +59,9 @@ export async function sendChatMessage(history: { role: 'user' | 'model'; parts: 
             parts: [{ text: newMessage }]
         });
 
-        // Using 'gemini-2.0-flash-exp' as the closest valid ID for "2.5 Flash".
-        // If the user insists on 2.5, they might have access to a very specific preview model ID like 'gemini-2.5-flash-001' or similar.
-        // I will use 'gemini-2.0-flash-exp' for now as a safe bet for "next gen flash".
+        // Using 'gemini-2.5-flash' as explicitly requested by the user.
         const result = await genAI.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
+            model: 'gemini-2.5-flash',
             contents: contents,
             config: {
                 systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
