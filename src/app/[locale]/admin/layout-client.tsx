@@ -29,9 +29,9 @@ import { useBotStore } from '@/hooks/use-bot-store';
 function SupportButton() {
   const { openBot } = useBotStore();
   return (
-    <Button variant="outline" size="sm" className="hidden md:flex gap-2" onClick={openBot}>
-      <Headphones size={16} />
-      Support
+    <Button variant="ghost" size="icon" onClick={openBot}>
+      <Headphones className="h-[1.2rem] w-[1.2rem]" />
+      <span className="sr-only">Support</span>
     </Button>
   );
 }
