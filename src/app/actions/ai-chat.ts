@@ -78,7 +78,7 @@ export async function sendChatMessage(history: { role: 'user' | 'model'; parts: 
             contents: contents,
             config: {
                 systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-                maxOutputTokens: 500,
+                maxOutputTokens: 2048,
             }
         });
 
