@@ -11,7 +11,7 @@ import { UserNav } from "@/components/dashboard/user-nav";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Button } from "@/components/ui/button";
-import { Sun, Moon, Bell, Loader2, CheckCircle, AlertCircle, Info } from "lucide-react";
+import { Sun, Moon, Bell, Loader2, CheckCircle, AlertCircle, Info, Headphones } from "lucide-react";
 import { useFirebase } from "@/firebase/provider";
 import { doc, getDoc } from 'firebase/firestore';
 import { User as AppUser } from "@/lib/types";
@@ -24,6 +24,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNotifications } from "@/hooks/use-notifications";
+import { useBotStore } from '@/hooks/use-bot-store';
+
+function SupportButton() {
+  const { openBot } = useBotStore();
+  return (
+    <Button variant="outline" size="sm" className="hidden md:flex gap-2" onClick={openBot}>
+      <Headphones size={16} />
+      Support
+    </Button>
+  );
+}
 
 export function AdminLayoutClient({
   children,
@@ -183,8 +194,9 @@ export function AdminLayoutClient({
       <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
         <Logo />
         <div className="flex-1">
-            {/* Search can go here */}
+          {/* Search can go here */}
         </div>
+        <SupportButton />
         <LanguageSwitcher />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -198,7 +210,7 @@ export function AdminLayoutClient({
             <ThemeSwitcher />
           </DropdownMenuContent>
         </DropdownMenu>
-         <DropdownMenu>
+        <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
@@ -258,11 +270,11 @@ export function AdminLayoutClient({
                           <p className="text-xs text-muted-foreground mt-1">
                             {notification.createdAt
                               ? new Date(
-                                  notification.createdAt.toDate?.() || notification.createdAt
-                                ).toLocaleTimeString([], {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
+                                notification.createdAt.toDate?.() || notification.createdAt
+                              ).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
                               : 'Just now'}
                           </p>
                         </div>
@@ -282,14 +294,14 @@ export function AdminLayoutClient({
           </DropdownMenuContent>
         </DropdownMenu>
         {userDoc && dictionary && (
-          <UserNav 
-            user={{ 
-              ...userDoc, 
-              name: userDoc.email, 
+          <UserNav
+            user={{
+              ...userDoc,
+              name: userDoc.email,
               avatarUrl: '',
               createdAt: userDoc.createdAt as any
-            }} 
-            dictionary={dictionary.auth} 
+            }}
+            dictionary={dictionary.auth}
           />
         )}
       </header>
@@ -297,9 +309,9 @@ export function AdminLayoutClient({
         <SidebarProvider>
           <AdminSidebar locale={locale} />
           <SidebarInset>
-              <main className="flex-1 overflow-y-auto p-4 md:p-8 pt-6">
-                {children}
-              </main>
+            <main className="flex-1 overflow-y-auto p-4 md:p-8 pt-6">
+              {children}
+            </main>
           </SidebarInset>
         </SidebarProvider>
       </div>

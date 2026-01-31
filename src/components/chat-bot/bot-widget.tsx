@@ -183,9 +183,12 @@ export default function GlobalBotWidget() {
         }
     };
 
+    // If closed, return nothing (hidden)
+    if (!isOpen) return null;
+
     return (
         <div
-            className="fixed bottom-6 right-6 z-50 flex flex-col items-end pointer-events-none" // pointer-events-none to let clicks pass through empty space
+            className="fixed bottom-0 right-10 z-50 flex items-end gap-4 pointer-events-none"
             onMouseMove={handleMouseMove}
         >
             <AnimatePresence>
@@ -194,7 +197,7 @@ export default function GlobalBotWidget() {
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="pointer-events-auto mb-4 w-[380px] h-[550px] bg-neutral-900/90 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+                        className="pointer-events-auto mb-20 w-[360px] h-[500px] bg-neutral-900/90 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden relative z-20"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/10">
@@ -215,8 +218,8 @@ export default function GlobalBotWidget() {
                             {messages.map((msg, idx) => (
                                 <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                     <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${msg.role === 'user'
-                                        ? 'bg-blue-600 text-white rounded-tr-sm'
-                                        : 'bg-white/10 text-neutral-200 rounded-tl-sm'
+                                            ? 'bg-blue-600 text-white rounded-tr-sm'
+                                            : 'bg-white/10 text-neutral-200 rounded-tl-sm'
                                         }`}>
                                         {msg.text}
                                     </div>
@@ -265,33 +268,30 @@ export default function GlobalBotWidget() {
                 )}
             </AnimatePresence>
 
-            {/* The 3D Trigger Button */}
-            <div
-                className="pointer-events-auto relative w-24 h-24 cursor-pointer hover:scale-110 transition-transform duration-300"
-                onClick={toggleBot}
+            {/* The LARGE 3D Bot, only visible when open */}
+            <motion.div
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 50 }}
+                className="relative w-[300px] h-[400px] pointer-events-none z-10 -ml-20 translate-y-10"
             >
-                <div className="absolute inset-0 z-10">
-                    <Canvas shadows dpr={[1, 2]} gl={{ alpha: true }}>
-                        <ErrorBoundary FallbackComponent={() => null}>
-                            <React.Suspense fallback={null}>
-                                <PerspectiveCamera makeDefault position={[0, 0, 8]} fov={50} />
-                                <ambientLight intensity={0.8} />
-                                <spotLight position={[10, 10, 10]} intensity={10} angle={0.5} penumbra={1} />
-                                <pointLight position={[-10, -10, -10]} intensity={5} color="#8b5cf6" />
-                                <Environment preset="city" />
-                                <Center top>
-                                    <RobotModel mouse={mouse} isChatOpen={isOpen} />
-                                </Center>
-                                <ContactShadows position={[0, -2, 0]} opacity={0.4} scale={10} blur={2.5} far={4} />
-                                <Rig mouse={mouse} />
-                            </React.Suspense>
-                        </ErrorBoundary>
-                    </Canvas>
-                </div>
-
-                {/* Glow behind bot */}
-                <div className="absolute inset-0 bg-blue-500/20 blur-[40px] rounded-full z-0 animate-pulse" />
-            </div>
+                <Canvas shadows dpr={[1, 2]} gl={{ alpha: true }}>
+                    <ErrorBoundary FallbackComponent={() => null}>
+                        <React.Suspense fallback={null}>
+                            <PerspectiveCamera makeDefault position={[0, 0, 8]} fov={45} />
+                            <ambientLight intensity={0.8} />
+                            <spotLight position={[10, 10, 10]} intensity={10} angle={0.5} penumbra={1} />
+                            <pointLight position={[-10, -10, -10]} intensity={5} color="#8b5cf6" />
+                            <Environment preset="city" />
+                            <Center top>
+                                <RobotModel mouse={mouse} isChatOpen={isOpen} />
+                            </Center>
+                            <ContactShadows position={[0, -2, 0]} opacity={0.4} scale={10} blur={2.5} far={4} />
+                            <Rig mouse={mouse} />
+                        </React.Suspense>
+                    </ErrorBoundary>
+                </Canvas>
+            </motion.div>
         </div>
     );
 }
