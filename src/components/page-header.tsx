@@ -30,9 +30,45 @@ import { Headphones } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 function SupportButton() {
-  const { openBot } = useBotStore();
+  const store = useBotStore();
+
+  React.useEffect(() => {
+    console.group('SupportButton Debug');
+    console.log('Mounted');
+    console.log('Store state:', store);
+    console.log('Window width:', window.innerWidth);
+
+    // Check computed style to see if hidden
+    const btn = document.getElementById('header-support-btn');
+    if (btn) {
+      const style = window.getComputedStyle(btn);
+      console.log('Computed display:', style.display);
+      console.log('Classes:', btn.className);
+      if (style.display === 'none') {
+        console.warn('Support button is hidden via CSS (likely "hidden md:flex" class)');
+      }
+    } else {
+      console.error('Support button element not found in DOM');
+    }
+    console.groupEnd();
+  }, [store]);
+
+  if (!store || !store.openBot) {
+    console.error('Bot store not initialized correctly');
+    return null;
+  }
+
   return (
-    <Button variant="outline" size="sm" className="hidden md:flex gap-2" onClick={openBot}>
+    <Button
+      id="header-support-btn"
+      variant="outline"
+      size="sm"
+      className="hidden md:flex gap-2"
+      onClick={() => {
+        console.log('Support button clicked');
+        store.openBot();
+      }}
+    >
       <Headphones size={16} />
       Support
     </Button>

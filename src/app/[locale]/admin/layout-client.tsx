@@ -28,8 +28,16 @@ import { useBotStore } from '@/hooks/use-bot-store';
 
 function SupportButton() {
   const { openBot } = useBotStore();
+
+  useEffect(() => {
+    console.log('Admin SupportButton mounted');
+  }, []);
+
   return (
-    <Button variant="ghost" size="icon" onClick={openBot}>
+    <Button variant="ghost" size="icon" onClick={() => {
+      console.log('Admin SupportButton clicked');
+      openBot();
+    }}>
       <Headphones className="h-[1.2rem] w-[1.2rem]" />
       <span className="sr-only">Support</span>
     </Button>
