@@ -81,7 +81,7 @@ function RobotModel({ mouse, isChatOpen, onClick }: { mouse: React.MutableRefObj
     });
 
     return (
-        <group ref={group} dispose={null} scale={2.5} onClick={(e) => {
+        <group ref={group} dispose={null} scale={3.5} onClick={(e) => {
             e.stopPropagation();
             if (onClick) onClick();
         }}>
@@ -182,7 +182,7 @@ export default function GlobalBotWidget() {
 
     return (
         <div
-            className="fixed bottom-0 right-10 z-[100] flex items-end gap-4 pointer-events-none"
+            className="fixed bottom-4 right-4 z-[100] flex items-end gap-2 pointer-events-none"
             onMouseMove={handleMouseMove}
         >
             <AnimatePresence>
@@ -192,7 +192,7 @@ export default function GlobalBotWidget() {
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="pointer-events-auto mb-10 w-[360px] h-[500px] bg-neutral-900/90 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden relative z-20"
+                        className="pointer-events-auto mb-4 w-[380px] h-[600px] bg-neutral-900/90 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden relative z-20"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/10">
@@ -269,7 +269,7 @@ export default function GlobalBotWidget() {
                 exit={{ opacity: 0, scale: 0, rotate: 90, y: 100 }}
                 transition={{ type: "spring", bounce: 0.4, duration: 0.8 }}
                 className="relative cursor-pointer pointer-events-auto z-50 group"
-                style={{ width: '350px', height: '450px' }}
+                style={{ width: '450px', height: '600px' }}
                 onClick={() => setIsChatExpanded(true)}
             >
                 <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/10 rounded-full blur-3xl transition-all duration-500" />
@@ -277,7 +277,7 @@ export default function GlobalBotWidget() {
                     <ErrorBoundary FallbackComponent={() => null}>
                         <React.Suspense fallback={null}>
                             {/* Adjusted Camera for Larger Appearance */}
-                            <PerspectiveCamera makeDefault position={[0, 1, 4]} fov={50} />
+                            <PerspectiveCamera makeDefault position={[0, 1.5, 5]} fov={50} />
                             <ambientLight intensity={1.5} />
                             <spotLight position={[10, 10, 10]} intensity={20} angle={0.5} penumbra={1} />
                             <pointLight position={[-10, -10, -10]} intensity={10} color="#8b5cf6" />
