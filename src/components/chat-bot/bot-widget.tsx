@@ -41,7 +41,9 @@ function Typewriter({ text, onComplete }: { text: string; onComplete?: () => voi
 
 // --- 3D Components ---
 
-function RobotModel({ mouse, isChatOpen }: { mouse: React.MutableRefObject<[number, number]>, isChatOpen: boolean }) {
+// --- 3D Components ---
+
+function RobotModel({ mouse, isChatOpen, onClick }: { mouse: React.MutableRefObject<[number, number]>, isChatOpen: boolean, onClick?: () => void }) {
     const group = useRef<THREE.Group>(null);
     const { scene, animations } = useGLTF('/images/robot-model.glb');
     const { actions, names } = useAnimations(animations, group);
@@ -59,21 +61,16 @@ function RobotModel({ mouse, isChatOpen }: { mouse: React.MutableRefObject<[numb
 
     // Animations
     useEffect(() => {
-        // Example: Play 'Wave' on load or 'Talk' when chatting?
-        // For now, keep it simple: Wave on load
         const waveAnim = names.find(n => n.toLowerCase().includes('wave')) || names[0];
         if (waveAnim && actions[waveAnim]) {
             actions[waveAnim]?.reset().fadeIn(0.5).play();
         }
     }, [actions, names]);
 
-    useFrame((state, delta) => {
+    useFrame((state) => {
         if (group.current) {
-            // Track mouse ONLY if chat is NOT open (or limited tracking)
-            // If chat is open, maybe look at the chat window (fixed position)
-
             const targetRotX = isChatOpen ? 0 : (mouse.current[1] * 0.15);
-            const targetRotY = isChatOpen ? -0.2 : (mouse.current[0] * 0.35); // Look slightly left at chat
+            const targetRotY = isChatOpen ? -0.2 : (mouse.current[0] * 0.35);
 
             group.current.rotation.x = THREE.MathUtils.lerp(group.current.rotation.x, targetRotX, 0.1);
             group.current.rotation.y = THREE.MathUtils.lerp(group.current.rotation.y, targetRotY, 0.1);
@@ -84,13 +81,16 @@ function RobotModel({ mouse, isChatOpen }: { mouse: React.MutableRefObject<[numb
     });
 
     return (
-        <group ref={group} dispose={null}>
+        <group ref={group} dispose={null} onClick={(e) => {
+            e.stopPropagation();
+            if (onClick) onClick();
+        }}>
             <primitive object={scene} rotation={[0, -Math.PI / 2, 0]} />
         </group>
     );
 }
 
-function Rig({ mouse }: { mouse: React.MutableRefObject<[number, number]> }) {
+function Rig() {
     const { camera } = useThree();
     useFrame(() => {
         camera.lookAt(0, 0, 0);
@@ -102,23 +102,26 @@ function Rig({ mouse }: { mouse: React.MutableRefObject<[number, number]> }) {
 
 import { useBotStore } from '@/hooks/use-bot-store';
 
-// ... (previous code)
-
 export default function GlobalBotWidget() {
-    const { isOpen, closeBot, toggleBot } = useBotStore();
-    // Local state for messages/typing remains...
+    const { isOpen, closeBot } = useBotStore();
+    const [isChatExpanded, setIsChatExpanded] = useState(false);
+
+    // Reset chat expansion when closed
+    useEffect(() => {
+        if (!isOpen) setIsChatExpanded(false);
+    }, [isOpen]);
+
     const [messages, setMessages] = useState<Message[]>([
         { role: 'bot', text: 'Hello! I am your PartsManager assistant. How can I help you today?', timestamp: Date.now() }
     ]);
 
     const [input, setInput] = useState('');
     const [isThinking, setIsThinking] = useState(false);
-    const [typingMessage, setTypingMessage] = useState<string | null>(null); // Message currently being typed out
+    const [typingMessage, setTypingMessage] = useState<string | null>(null);
 
     const mouse = useRef<[number, number]>([0, 0]);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    // Auto-scroll
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -126,9 +129,6 @@ export default function GlobalBotWidget() {
     }, [messages, typingMessage, isThinking]);
 
     const handleMouseMove = (e: React.MouseEvent) => {
-        // Calculate localized mouse pos for the 3D scene (small canvas)
-        // This is tricky for a small fixed widget. 
-        // We will just use screen normalized coords for general "looking"
         const x = (e.clientX / window.innerWidth) * 2 - 1;
         const y = -(e.clientY / window.innerHeight) * 2 + 1;
         mouse.current = [x, y];
@@ -141,21 +141,17 @@ export default function GlobalBotWidget() {
         const userText = input.trim();
         setInput('');
 
-        // Add User Message
         setMessages(prev => [...prev, { role: 'user', text: userText, timestamp: Date.now() }]);
         setIsThinking(true);
 
-        // Prepare History for API
         const historyForApi = messages.map(m => ({
             role: m.role === 'user' ? 'user' : 'model',
             parts: m.text
         })) as { role: 'user' | 'model'; parts: string }[];
 
-        // Artificial Delay for "Thinking" (1-2s)
         const delay = Math.random() * 1000 + 1000;
 
         try {
-            // Call API parallel with delay
             const [apiResult] = await Promise.all([
                 sendChatMessage(historyForApi, userText),
                 new Promise(resolve => setTimeout(resolve, delay))
@@ -164,7 +160,6 @@ export default function GlobalBotWidget() {
             setIsThinking(false);
 
             if (apiResult.success && apiResult.message) {
-                // start typing effect
                 setTypingMessage(apiResult.message);
             } else {
                 setMessages(prev => [...prev, { role: 'bot', text: apiResult.error || "Connection Error.", timestamp: Date.now() }]);
@@ -183,21 +178,21 @@ export default function GlobalBotWidget() {
         }
     };
 
-    // If closed, return nothing (hidden)
     if (!isOpen) return null;
 
     return (
         <div
-            className="fixed bottom-0 right-10 z-50 flex items-end gap-4 pointer-events-none"
+            className="fixed bottom-0 right-10 z-[100] flex items-end gap-4 pointer-events-none"
             onMouseMove={handleMouseMove}
         >
             <AnimatePresence>
-                {isOpen && (
+                {/* Chat Window */}
+                {isChatExpanded && (
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="pointer-events-auto mb-20 w-[360px] h-[500px] bg-neutral-900/90 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden relative z-20"
+                        className="pointer-events-auto mb-10 w-[360px] h-[500px] bg-neutral-900/90 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden relative z-20"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/10">
@@ -206,10 +201,10 @@ export default function GlobalBotWidget() {
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                                 </span>
-                                <span className="text-sm font-semibold text-white tracking-wide">AI Support Assistant</span>
+                                <span className="text-sm font-semibold text-white tracking-wide">AI Assistant</span>
                             </div>
-                            <button onClick={closeBot} className="text-white/50 hover:text-white transition-colors">
-                                <LucideX size={18} />
+                            <button onClick={() => setIsChatExpanded(false)} className="text-white/50 hover:text-white transition-colors">
+                                <LucideMinimize2 size={18} />
                             </button>
                         </div>
 
@@ -218,15 +213,14 @@ export default function GlobalBotWidget() {
                             {messages.map((msg, idx) => (
                                 <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                     <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${msg.role === 'user'
-                                            ? 'bg-blue-600 text-white rounded-tr-sm'
-                                            : 'bg-white/10 text-neutral-200 rounded-tl-sm'
+                                        ? 'bg-blue-600 text-white rounded-tr-sm'
+                                        : 'bg-white/10 text-neutral-200 rounded-tl-sm'
                                         }`}>
                                         {msg.text}
                                     </div>
                                 </div>
                             ))}
 
-                            {/* Typing Indicator / Active Typing */}
                             {isThinking && (
                                 <div className="flex justify-start">
                                     <div className="bg-white/10 rounded-2xl rounded-tl-sm px-4 py-3 flex gap-1 items-center">
@@ -268,29 +262,46 @@ export default function GlobalBotWidget() {
                 )}
             </AnimatePresence>
 
-            {/* The LARGE 3D Bot, only visible when open */}
+            {/* The LARGE 3D Bot - Clickable */}
             <motion.div
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 50 }}
-                className="relative w-[300px] h-[400px] pointer-events-none z-10 -ml-20 translate-y-10"
+                initial={{ opacity: 0, scale: 0, rotate: 90, y: 100 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0, y: 0 }}
+                exit={{ opacity: 0, scale: 0, rotate: 90, y: 100 }}
+                transition={{ type: "spring", bounce: 0.4, duration: 0.8 }}
+                className="relative mb-0 mr-4 cursor-pointer pointer-events-auto z-50 group"
+                style={{ width: '400px', height: '500px' }} // Increased size ~150-200%
+                onClick={() => setIsChatExpanded(true)}
             >
+                <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/10 rounded-full blur-3xl transition-all duration-500" />
                 <Canvas shadows dpr={[1, 2]} gl={{ alpha: true }}>
                     <ErrorBoundary FallbackComponent={() => null}>
                         <React.Suspense fallback={null}>
-                            <PerspectiveCamera makeDefault position={[0, 0, 8]} fov={45} />
+                            {/* Adjusted Camera for Larger Appearance */}
+                            <PerspectiveCamera makeDefault position={[0, 0, 6]} fov={45} />
                             <ambientLight intensity={0.8} />
                             <spotLight position={[10, 10, 10]} intensity={10} angle={0.5} penumbra={1} />
                             <pointLight position={[-10, -10, -10]} intensity={5} color="#8b5cf6" />
                             <Environment preset="city" />
                             <Center top>
-                                <RobotModel mouse={mouse} isChatOpen={isOpen} />
+                                <RobotModel mouse={mouse} isChatOpen={isChatExpanded} onClick={() => setIsChatExpanded(true)} />
                             </Center>
                             <ContactShadows position={[0, -2, 0]} opacity={0.4} scale={10} blur={2.5} far={4} />
-                            <Rig mouse={mouse} />
+                            <Rig />
                         </React.Suspense>
                     </ErrorBoundary>
                 </Canvas>
+
+                {/* Tooltip hint if chat not open */}
+                {!isChatExpanded && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        delay={1}
+                        className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur border border-white/20 text-white text-xs px-3 py-1 rounded-full whitespace-nowrap pointer-events-none"
+                    >
+                        Click me for help!
+                    </motion.div>
+                )}
             </motion.div>
         </div>
     );
