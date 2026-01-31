@@ -11,6 +11,12 @@ export const metadata: Metadata = {
   },
 };
 
+import dynamic from 'next/dynamic';
+
+const GlobalBotWidget = dynamic(() => import('@/components/chat-bot/bot-widget'), {
+  ssr: false,
+});
+
 export default function RootLayout({
   children,
 }: {
@@ -27,6 +33,7 @@ export default function RootLayout({
         <RootLayoutClient>
           {children}
           <Toaster />
+          <GlobalBotWidget />
         </RootLayoutClient>
       </body>
     </html>
