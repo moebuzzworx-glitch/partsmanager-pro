@@ -69,7 +69,24 @@ export async function sendChatMessage(history: { role: 'user' | 'model'; parts: 
             }
         });
 
-        const text = result.response.text();
+        // Robustly handle response parsing
+        let text = '';
+        // @ts-ignore
+        if (result && typeof result.text === 'function') {
+            // @ts-ignore
+            text = result.text();
+            // @ts-ignore
+        } else if (result && typeof result.text === 'string') {
+            // @ts-ignore
+            text = result.text;
+            // @ts-ignore
+        } else if (result && result.candidates && result.candidates.length > 0) {
+            // @ts-ignore
+            text = result.candidates[0].content?.parts?.[0]?.text || '';
+        } else {
+            console.warn("Gemini Response Structure Unknown:", JSON.stringify(result, null, 2));
+            text = "Received empty response from AI.";
+        }
 
         return { success: true, message: text };
     } catch (error: any) {
