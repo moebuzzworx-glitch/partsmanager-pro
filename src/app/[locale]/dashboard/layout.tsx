@@ -106,10 +106,13 @@ export default function DashboardLayout({
         <div className="flex-1">
           {/* Search can go here */}
         </div>
-        <Button variant="ghost" size="icon" onClick={openBot} title="Support">
-          <Headphones className="h-[1.2rem] w-[1.2rem]" />
-          <span className="sr-only">Support</span>
-        </Button>
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] sm:text-xs font-extrabold text-green-600 bg-green-100 px-1.5 py-0.5 rounded-full whitespace-nowrap">24/7</span>
+          <Button variant="ghost" size="icon" onClick={openBot} title="Support">
+            <Headphones className="h-[1.2rem] w-[1.2rem]" />
+            <span className="sr-only">Support</span>
+          </Button>
+        </div>
         <FullScreenToggle />
         <LanguageSwitcher />
         <DropdownMenu>
