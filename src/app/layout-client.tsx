@@ -11,6 +11,13 @@ import { calculateTrialDaysRemaining, isTrialExpired } from '@/lib/trial-utils';
 import { createTrialCountdownNotification } from '@/lib/subscription-notifications';
 import { initNotificationSound } from '@/lib/notification-sound';
 
+import dynamic from 'next/dynamic';
+
+// Dynamically import the bot widget to ensure it only renders on client
+const GlobalBotWidget = dynamic(() => import('@/components/chat-bot/bot-widget'), {
+  ssr: false,
+});
+
 const { firebaseApp, firestore, auth } = initializeFirebase();
 
 export function RootLayoutClient({ children }: { children: React.ReactNode }) {
@@ -18,15 +25,15 @@ export function RootLayoutClient({ children }: { children: React.ReactNode }) {
     // Domain verification - prevent running on cloned/scraped versions
     if (typeof window !== 'undefined') {
       const hostname = window.location.hostname;
-      
+
       // Allow all netlify.app and vercel.app subdomains, localhost, and specific custom domains
-      const isAllowedDomain = 
+      const isAllowedDomain =
         hostname.includes('netlify.app') ||
         hostname.includes('vercel.app') ||
         hostname === 'localhost' ||
         hostname === '127.0.0.1' ||
         hostname === 'partsmanager-pro.com'; // Add custom domain if you have one
-      
+
       if (!isAllowedDomain && process.env.NODE_ENV === 'production') {
         // Redirect to official site if running on unauthorized domain
         console.warn(`Unauthorized domain detected: ${hostname}. Redirecting to official site.`);
@@ -41,7 +48,7 @@ export function RootLayoutClient({ children }: { children: React.ReactNode }) {
     // Initialize notification sound system
     initNotificationSound();
 
-    return () => {};
+    return () => { };
   }, []);
 
   // Start background sync (push) and pull services when user is authenticated
@@ -49,35 +56,35 @@ export function RootLayoutClient({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       if (authUser && firestore) {
         console.log('User authenticated, starting Git-like sync services...');
-        
+
         // Set Firebase context for both sync and pull services
         setSyncContext(firestore, authUser.uid);
         setFirebaseContextPull(firestore, authUser.uid);
-        
+
         // TRIAL NOTIFICATION: Check trial status and send countdown notification
         try {
           const userRef = doc(firestore, 'users', authUser.uid);
           const userSnap = await getDoc(userRef);
-          
+
           if (userSnap.exists()) {
             const userData = userSnap.data();
-            
+
             // Send trial countdown notification if user is in trial
             if (userData.subscription === 'trial') {
               const daysRemaining = calculateTrialDaysRemaining(userData);
-              
+
               if (daysRemaining !== null) {
                 console.log(`[Trial] ${daysRemaining} days remaining in trial`);
-                
+
                 // Send notification on login (always)
                 await createTrialCountdownNotification(firestore, authUser.uid, daysRemaining);
-                
+
                 // Daily reminder: Check if last reminder was >24h ago
                 const lastReminderKey = `trial_reminder_${authUser.uid}`;
                 const lastReminderTime = localStorage.getItem(lastReminderKey);
                 const now = Date.now();
                 const oneDayMs = 24 * 60 * 60 * 1000;
-                
+
                 if (!lastReminderTime || (now - parseInt(lastReminderTime)) > oneDayMs) {
                   console.log('[Trial] Sending daily reminder notification');
                   // Notification already sent above on login, but tracking for daily reminder logic
@@ -89,16 +96,16 @@ export function RootLayoutClient({ children }: { children: React.ReactNode }) {
         } catch (err) {
           console.warn('[Trial] Could not fetch user for trial notification:', err);
         }
-        
+
         // Start FIFO push worker (every 30 seconds, checks queue and syncs to Firebase)
         const cleanupSync = startSyncWorker(30000);
-        
+
         // Start adaptive pull service (every 10-30 minutes, fetches Firebase changes)
         const cleanupPull = startPullService();
-        
+
         // Note: Activity listeners removed - poll interval only resets on data modifications (add, edit, delete)
         // View-only activities (click, keypress, scroll) no longer trigger interval reset
-        
+
         return () => {
           // Cleanup: stop all services
           stopSyncWorker();
@@ -108,7 +115,7 @@ export function RootLayoutClient({ children }: { children: React.ReactNode }) {
         };
       }
     });
-    
+
     return () => {
       unsubscribe();
     };
@@ -118,6 +125,7 @@ export function RootLayoutClient({ children }: { children: React.ReactNode }) {
     <FirebaseProvider firebaseApp={firebaseApp} firestore={firestore} auth={auth}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         {children}
+        <GlobalBotWidget />
       </ThemeProvider>
     </FirebaseProvider>
   );
