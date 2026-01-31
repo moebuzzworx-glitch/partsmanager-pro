@@ -81,7 +81,7 @@ function RobotModel({ mouse, isChatOpen, onClick }: { mouse: React.MutableRefObj
     });
 
     return (
-        <group ref={group} dispose={null} scale={3.5} onClick={(e) => {
+        <group ref={group} dispose={null} scale={2.4} onClick={(e) => {
             e.stopPropagation();
             if (onClick) onClick();
         }}>
@@ -192,7 +192,9 @@ export default function GlobalBotWidget() {
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="pointer-events-auto mb-4 w-[380px] h-[600px] bg-neutral-900/90 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden relative z-20"
+                        className="pointer-events-auto border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden 
+                                   absolute bottom-0 right-0 z-[60] w-[calc(100vw-2rem)] h-[500px] bg-neutral-900/30 backdrop-blur-sm
+                                   md:static md:z-20 md:mb-4 md:w-[380px] md:h-[600px] md:bg-neutral-900/90 md:backdrop-blur-md"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/10">
@@ -212,9 +214,9 @@ export default function GlobalBotWidget() {
                         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
                             {messages.map((msg, idx) => (
                                 <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${msg.role === 'user'
-                                        ? 'bg-blue-600 text-white rounded-tr-sm'
-                                        : 'bg-white/10 text-neutral-200 rounded-tl-sm'
+                                    <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm backdrop-blur-sm ${msg.role === 'user'
+                                        ? 'bg-blue-600 text-white rounded-tr-sm shadow-blue-900/20 drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]'
+                                        : 'bg-neutral-800/60 text-white rounded-tl-sm shadow-black/40 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]'
                                         }`}>
                                         {msg.text}
                                     </div>
@@ -264,12 +266,12 @@ export default function GlobalBotWidget() {
 
             {/* The LARGE 3D Bot - Clickable */}
             <motion.div
-                initial={{ opacity: 0, scale: 0, rotate: 90, y: 100 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0, y: 0 }}
-                exit={{ opacity: 0, scale: 0, rotate: 90, y: 100 }}
-                transition={{ type: "spring", bounce: 0.4, duration: 0.8 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                transition={{ duration: 0.4 }}
                 className="relative cursor-pointer pointer-events-auto z-50 group"
-                style={{ width: '450px', height: '600px' }}
+                style={{ width: '300px', height: '450px' }}
                 onClick={() => setIsChatExpanded(true)}
             >
                 <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/10 rounded-full blur-3xl transition-all duration-500" />
@@ -277,7 +279,7 @@ export default function GlobalBotWidget() {
                     <ErrorBoundary FallbackComponent={() => null}>
                         <React.Suspense fallback={null}>
                             {/* Adjusted Camera for Larger Appearance */}
-                            <PerspectiveCamera makeDefault position={[0, 1.5, 5]} fov={50} />
+                            <PerspectiveCamera makeDefault position={[0, 1.5, 6.5]} fov={50} />
                             <ambientLight intensity={1.5} />
                             <spotLight position={[10, 10, 10]} intensity={20} angle={0.5} penumbra={1} />
                             <pointLight position={[-10, -10, -10]} intensity={10} color="#8b5cf6" />
@@ -291,17 +293,17 @@ export default function GlobalBotWidget() {
                     </ErrorBoundary>
                 </Canvas>
 
-                {/* Tooltip hint if chat not open */}
-                {!isChatExpanded && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 1 }}
-                        className="absolute bottom-12 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur border border-white/20 text-white text-xs px-3 py-1 rounded-full whitespace-nowrap pointer-events-none"
-                    >
-                        Click for Support
-                    </motion.div>
-                )}
+                {/* Close Button for the Bot Model itself */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        closeBot();
+                    }}
+                    className="absolute top-10 right-10 z-[60] bg-neutral-800/80 hover:bg-red-500 text-white p-2 rounded-full backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 shadow-md border border-white/20"
+                    title="Close Assistant"
+                >
+                    <LucideX size={16} />
+                </button>
             </motion.div>
         </div>
     );
