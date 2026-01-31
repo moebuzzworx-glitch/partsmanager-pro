@@ -268,8 +268,8 @@ export default function GlobalBotWidget() {
                 animate={{ opacity: 1, scale: 1, rotate: 0, y: 0 }}
                 exit={{ opacity: 0, scale: 0, rotate: 90, y: 100 }}
                 transition={{ type: "spring", bounce: 0.4, duration: 0.8 }}
-                className="relative mb-0 mr-4 cursor-pointer pointer-events-auto z-50 group"
-                style={{ width: '400px', height: '500px' }} // Increased size ~150-200%
+                className="relative cursor-pointer pointer-events-auto z-50 group"
+                style={{ width: '300px', height: '400px' }}
                 onClick={() => setIsChatExpanded(true)}
             >
                 <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/10 rounded-full blur-3xl transition-all duration-500" />
@@ -277,15 +277,15 @@ export default function GlobalBotWidget() {
                     <ErrorBoundary FallbackComponent={() => null}>
                         <React.Suspense fallback={null}>
                             {/* Adjusted Camera for Larger Appearance */}
-                            <PerspectiveCamera makeDefault position={[0, 0, 6]} fov={45} />
-                            <ambientLight intensity={0.8} />
-                            <spotLight position={[10, 10, 10]} intensity={10} angle={0.5} penumbra={1} />
-                            <pointLight position={[-10, -10, -10]} intensity={5} color="#8b5cf6" />
+                            <PerspectiveCamera makeDefault position={[0, 1, 6]} fov={50} />
+                            <ambientLight intensity={1.2} />
+                            <spotLight position={[10, 10, 10]} intensity={20} angle={0.5} penumbra={1} />
+                            <pointLight position={[-10, -10, -10]} intensity={10} color="#8b5cf6" />
                             <Environment preset="city" />
-                            <Center top>
+                            <Center>
                                 <RobotModel mouse={mouse} isChatOpen={isChatExpanded} onClick={() => setIsChatExpanded(true)} />
                             </Center>
-                            <ContactShadows position={[0, -2, 0]} opacity={0.4} scale={10} blur={2.5} far={4} />
+                            <ContactShadows position={[0, -2.5, 0]} opacity={0.4} scale={10} blur={2.5} far={4} />
                             <Rig />
                         </React.Suspense>
                     </ErrorBoundary>
@@ -296,10 +296,10 @@ export default function GlobalBotWidget() {
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        delay={1}
-                        className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur border border-white/20 text-white text-xs px-3 py-1 rounded-full whitespace-nowrap pointer-events-none"
+                        transition={{ delay: 1 }}
+                        className="absolute bottom-12 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur border border-white/20 text-white text-xs px-3 py-1 rounded-full whitespace-nowrap pointer-events-none"
                     >
-                        Click me for help!
+                        Click for Support
                     </motion.div>
                 )}
             </motion.div>
