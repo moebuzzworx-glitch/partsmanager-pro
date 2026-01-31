@@ -29,7 +29,9 @@ import {
   AlertCircle,
   Info,
   Loader2,
+  Headphones,
 } from 'lucide-react';
+import { useBotStore } from '@/hooks/use-bot-store';
 import { getDictionary } from '@/lib/dictionaries';
 import { Locale } from '@/lib/config';
 import { Logo } from '@/components/logo';
@@ -94,6 +96,8 @@ export default function DashboardLayout({
     );
   }
 
+  const { openBot } = useBotStore();
+
   return (
     <SidebarProvider className="flex flex-col h-[100dvh] bg-background w-full">
       <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6 w-full">
@@ -101,6 +105,10 @@ export default function DashboardLayout({
         <div className="flex-1">
           {/* Search can go here */}
         </div>
+        <Button variant="ghost" size="icon" onClick={openBot} title="Support">
+          <Headphones className="h-[1.2rem] w-[1.2rem]" />
+          <span className="sr-only">Support</span>
+        </Button>
         <FullScreenToggle />
         <LanguageSwitcher />
         <DropdownMenu>
