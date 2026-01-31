@@ -192,9 +192,9 @@ export default function GlobalBotWidget() {
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="pointer-events-auto border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden 
-                                   absolute bottom-0 right-0 z-[60] w-[calc(100vw-2rem)] h-[500px] bg-neutral-900/30 backdrop-blur-sm
-                                   md:static md:z-20 md:mb-4 md:w-[380px] md:h-[600px] md:bg-neutral-900/90 md:backdrop-blur-md"
+                        className="pointer-events-auto shadow-2xl flex flex-col overflow-hidden 
+                                   fixed bottom-0 left-0 right-0 z-[1001] w-full h-[85dvh] rounded-t-2xl border-t border-white/10 bg-neutral-900/80 backdrop-blur-md
+                                   md:static md:z-20 md:mb-4 md:w-[380px] md:h-[600px] md:rounded-2xl md:border md:bg-neutral-900/90"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/10">
