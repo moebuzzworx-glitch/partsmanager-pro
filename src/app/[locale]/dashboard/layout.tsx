@@ -65,6 +65,7 @@ export default function DashboardLayout({
   const { locale } = use(params);
   const [dictionary, setDictionary] = useState<any>(null);
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { openBot } = useBotStore();
 
   // Set dir attribute based on locale
   useEffect(() => {
@@ -96,7 +97,7 @@ export default function DashboardLayout({
     );
   }
 
-  const { openBot } = useBotStore();
+
 
   return (
     <SidebarProvider className="flex flex-col h-[100dvh] bg-background w-full">
