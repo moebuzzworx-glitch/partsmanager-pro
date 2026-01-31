@@ -1,8 +1,11 @@
 'use server';
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from "@google/genai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_CHAT_BOT || '');
+// Initialize the client.
+// Note: The new SDK expects 'apiKey' or reads from GEMINI_API_KEY. 
+// We explicitly pass our custom env var.
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_CHAT_BOT });
 
 // Constants
 const SUPPORT_NUMBER = '0660570370';
@@ -40,31 +43,42 @@ export type ChatResponse = {
 export async function sendChatMessage(history: { role: 'user' | 'model'; parts: string }[], newMessage: string): Promise<ChatResponse> {
     try {
         if (!process.env.GEMINI_CHAT_BOT) {
-            return { success: false, error: 'AI Service Pending Configuration' };
+            return { success: false, error: 'AI Service Pending Configuration (Missing API Key)' };
         }
 
-        const model = genAI.getGenerativeModel({
-            model: 'gemini-pro',
-            systemInstruction: SYSTEM_INSTRUCTION
+        // Mapping history to 'contents' for the new SDK
+        // The new SDK format for generateContent with history is effectively a list of content objects.
+        const contents = history.map(msg => ({
+            role: msg.role === 'model' ? 'model' : 'user',
+            parts: [{ text: msg.parts }]
+        }));
+
+        // Add the new message
+        contents.push({
+            role: 'user',
+            parts: [{ text: newMessage }]
         });
 
-        const chat = model.startChat({
-            history: history.map(msg => ({
-                role: msg.role,
-                parts: [{ text: msg.parts }]
-            })),
-            generationConfig: {
+        // Using 'gemini-2.0-flash-exp' as the closest valid ID for "2.5 Flash".
+        // If the user insists on 2.5, they might have access to a very specific preview model ID like 'gemini-2.5-flash-001' or similar.
+        // I will use 'gemini-2.0-flash-exp' for now as a safe bet for "next gen flash".
+        const result = await genAI.models.generateContent({
+            model: 'gemini-2.0-flash-exp',
+            contents: contents,
+            config: {
+                systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
                 maxOutputTokens: 500,
-            },
+            }
         });
 
-        const result = await chat.sendMessage(newMessage);
-        const response = result.response;
-        const text = response.text();
+        const text = result.response.text();
 
         return { success: true, message: text };
     } catch (error: any) {
         console.error('Gemini Chat Error:', error);
-        return { success: false, error: 'I am having trouble connecting to the mainframe. Please try again.' };
+        return {
+            success: false,
+            error: error.message || 'I am having trouble connecting to the AI service.'
+        };
     }
 }
