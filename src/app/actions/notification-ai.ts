@@ -2,9 +2,48 @@
 
 import { GoogleGenAI } from "@google/genai";
 
+// Initialize the client exactly as ai-chat.ts does
 const genAI = process.env.GEMINI_CHAT_BOT
     ? new GoogleGenAI({ apiKey: process.env.GEMINI_CHAT_BOT })
     : null;
+
+// System Instruction from AI_AGENT_PROMPT.md
+const SYSTEM_INSTRUCTION = `
+# System Prompt: Notification Specialist Agent (JSON Mode)
+
+## Role
+You are the **Notification Specialist Agent** for a professional inventory management system. Your goal is process draft notifications by enhancing the English text and providing accurate translations in French and Arabic.
+
+## Input Format
+You will receive a JSON object containing the draft content.
+
+## Task Instructions
+1.  **Enhance (English)**: Rewrite the title and message to be professional, engaging, clear, and concise.
+2.  **Translate (French)**: Translate the *enhanced* English content into professional business French.
+3.  **Translate (Arabic)**: Translate the *enhanced* English content into formal business Arabic.
+
+## Output Format
+You must respond with a **Single Valid JSON Object**. Do not include markdown formatting (like \`\`\`json ... \`\`\`) or conversational text.
+
+{
+  "en": {
+    "title": "Enhanced English Title",
+    "message": "Enhanced English Message"
+  },
+  "fr": {
+    "title": "Titre en Français",
+    "message": "Message en Français"
+  },
+  "ar": {
+    "title": "العنوان بالعربية",
+    "message": "الرسالة بالعربية"
+  }
+}
+
+## Guidelines
+*   **Tone**: Corporate, Professional, Helpful.
+*   **Structure**: Ensure the JSON is strictly valid.
+`;
 
 export type EnhancedNotification = {
     en: { title: string; message: string };
@@ -17,70 +56,79 @@ export async function enhanceAndTranslateNotification(
     message: string
 ): Promise<{ success: boolean; data?: EnhancedNotification; error?: string }> {
     try {
+        // Double check API Key at runtime in case it changed (though global init is used above)
+        // If global init failed, we can't recover easily unless we re-init.
         if (!genAI) {
-            return { success: false, error: 'AI Service Pending Configuration (Missing API Key)' };
+            const runtimeKey = process.env.GEMINI_CHAT_BOT;
+            if (!runtimeKey) {
+                return { success: false, error: 'AI Service Pending Configuration (Missing API Key)' };
+            }
+            // Fallback: try creating a local instance if global failed initially
+            // const localGenAI = new GoogleGenAI({ apiKey: runtimeKey });
+            // For now, fail if global is null as per ai-chat.ts pattern
+            return { success: false, error: 'AI Service Not Initialized (Check Server Logs)' };
         }
 
-        const prompt = `
-      You are a professional business assistant. 
-      1. Enhance the following notification title and message for a professional, clear, and engaging tone (in English).
-      2. Translate the *enhanced* version into French and Arabic.
-      
-      Input Title: "${title}"
-      Input Message: "${message}"
+        const userPayload = JSON.stringify({
+            draft_title: title,
+            draft_message: message
+        });
 
-      Return ONLY valid JSON in the following format (no markdown code blocks):
-      {
-        "en": { "title": "...", "message": "..." },
-        "fr": { "title": "...", "message": "..." },
-        "ar": { "title": "...", "message": "..." }
-      }
-    `;
+        const contents = [
+            {
+                role: 'user',
+                parts: [{ text: userPayload }]
+            }
+        ];
 
         const result = await genAI.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            contents: contents,
             config: {
-                responseMimeType: 'application/json',
+                systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+                maxOutputTokens: 2048,
             }
         });
 
         let text = '';
-
-        // Add logging to debug empty responses
-        console.log('[AI Debug] Result received from Gemini');
-
-        // Method 1: result.text() function
         // @ts-ignore
         if (result && typeof result.text === 'function') {
             // @ts-ignore
             text = result.text();
-        }
-        // Method 2: result.response.text() function
-        // @ts-ignore
-        else if (result && result.response && typeof result.response.text === 'function') {
             // @ts-ignore
-            text = result.response.text();
-        }
-        // Method 3: Direct Candidate Access (Common in Node SDK)
-        // @ts-ignore
-        else if (result?.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
+        } else if (result && typeof result.text === 'string') {
             // @ts-ignore
-            text = result.response.candidates[0].content.parts[0].text;
+            text = result.text;
+        } else if (result && result.candidates && result.candidates.length > 0) {
+            // @ts-ignore
+            text = result.candidates[0].content?.parts?.[0]?.text || '';
+        } else {
+            console.warn("Gemini Response Structure Unknown:", JSON.stringify(result, null, 2));
+            // @ts-ignore
+            const finishReason = result?.response?.candidates?.[0]?.finishReason;
+            return { success: false, error: `Empty response from AI. Status: ${finishReason || 'Unknown'}` };
         }
 
-        if (text) {
-            // Clean up markdown if model adds it despite instructions
-            text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        console.log('[AI Debug] Raw Response:', text);
 
-            const data = JSON.parse(text) as EnhancedNotification;
+        const cleanJson = text.replace(/^```json/g, '').replace(/^```/g, '').replace(/```$/g, '').trim();
+
+        try {
+            const data = JSON.parse(cleanJson) as EnhancedNotification;
             return { success: true, data };
+        } catch (jsonError) {
+            console.error('[AI Parse Error]', jsonError);
+            return { success: false, error: 'AI response was not valid JSON.' };
         }
-
-        return { success: false, error: 'No response from AI' };
 
     } catch (error: any) {
         console.error('AI Notification Error:', error);
+
+        // Return raw error for debugging
+        if (error.message?.includes('429') || error.message?.includes('Quota') || error.status === 429) {
+            return { success: false, error: `Google API Error: ${error.message}` };
+        }
+
         return { success: false, error: error.message || 'Failed to process notification' };
     }
 }
