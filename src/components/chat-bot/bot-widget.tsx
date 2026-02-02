@@ -69,7 +69,7 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
             {/* Desktop Preview Popup (Portal to Body) */}
             {isHovered && mounted && createPortal(
                 <div
-                    className="fixed bottom-24 right-[420px] z-[99999] w-[450px] max-w-[50vw] pointer-events-none hidden md:block"
+                    className="fixed bottom-24 right-[420px] z-[99999] w-[650px] max-w-[75vw] pointer-events-none hidden md:block"
                     style={{ filter: 'drop-shadow(0 20px 20px rgba(0,0,0,0.5))' }}
                 >
                     <motion.div
