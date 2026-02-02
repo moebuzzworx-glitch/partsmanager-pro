@@ -41,7 +41,6 @@ function Typewriter({ text, onComplete }: { text: string; onComplete?: () => voi
 
 
 // --- Image Component ---
-// --- Image Component ---
 function ImagePreview({ src, alt }: { src: string; alt: string }) {
     const [isHovered, setIsHovered] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -68,29 +67,31 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
                 loading="lazy"
             />
             {/* Desktop Preview Popup (Portal to Body) */}
-            <AnimatePresence>
-                {isHovered && mounted && createPortal(
+            {isHovered && mounted && createPortal(
+                <div
+                    className="fixed bottom-24 right-[420px] z-[99999] w-[450px] max-w-[50vw] pointer-events-none hidden md:block"
+                    style={{ filter: 'drop-shadow(0 20px 20px rgba(0,0,0,0.5))' }}
+                >
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95, x: 20 }}
+                        initial={{ opacity: 0, scale: 0.9, x: 20 }}
                         animate={{ opacity: 1, scale: 1, x: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, x: 20 }}
-                        transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="fixed bottom-24 right-[420px] z-[99999] w-[500px] max-w-[45vw] bg-neutral-900 border border-white/20 p-2 rounded-xl shadow-2xl backdrop-blur-3xl hidden md:block pointer-events-none"
+                        transition={{ duration: 0.2 }}
+                        className="bg-neutral-900 border border-white/20 p-2 rounded-xl backdrop-blur-3xl"
                     >
                         <div className="relative">
                             <img
                                 src={processedSrc}
                                 alt={alt}
-                                className="w-full h-auto rounded-lg shadow-black/80 shadow-2xl bg-black/50"
+                                className="w-full h-auto rounded-lg bg-black/50"
                             />
-                            <div className="absolute top-3 right-3 bg-black/70 text-white text-[10px] uppercase font-bold px-2 py-1 rounded backdrop-blur-md border border-white/10 tracking-widest">
+                            <div className="absolute top-3 right-3 bg-black/80 text-white text-[10px] uppercase font-bold px-2 py-1 rounded backdrop-blur-md border border-white/10 tracking-widest shadow-sm">
                                 Preview
                             </div>
                         </div>
-                    </motion.div>,
-                    document.body
-                )}
-            </AnimatePresence>
+                    </motion.div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 }
