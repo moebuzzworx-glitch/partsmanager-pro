@@ -66,11 +66,12 @@ interface CreateInvoiceFormProps {
   onSuccess: () => void;
   defaultType?: 'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT';
   hideTypeSelector?: boolean;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 // Invoice number functions are imported from settings-utils
 export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoiceFormProps>(
-  ({ locale, onSuccess, defaultType = 'INVOICE', hideTypeSelector = false }, ref) => {
+  ({ locale, onSuccess, defaultType = 'INVOICE', hideTypeSelector = false, onLoadingChange }, ref) => {
     const { toast } = useToast();
     const { user, firestore } = useFirebase();
     const [userDoc, setUserDoc] = React.useState<AppUser | null>(null);
@@ -222,6 +223,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
     const onSubmit = async (values: InvoiceFormData) => {
       if (!firestore || !user) return;
       setIsLoading(true);
+      onLoadingChange?.(true);
       try {
         const settings = await getUserSettings(firestore, user.uid);
         const companyInfo = {
@@ -320,6 +322,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
         toast({ title: 'Error', variant: 'destructive' });
       } finally {
         setIsLoading(false);
+        onLoadingChange?.(false);
       }
     };
 

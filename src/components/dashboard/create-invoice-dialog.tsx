@@ -90,6 +90,7 @@ export function CreateInvoiceDialog({ locale, dictionary, onInvoiceCreated, defa
             onSuccess={handleSuccess}
             defaultType={defaultType || 'INVOICE'}
             hideTypeSelector={true}
+            onLoadingChange={setIsLoading}
           />
           <DialogFooter className="mt-6 flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>

@@ -161,8 +161,9 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
   const totalAmount = Math.max(0, subTotal - discountAmount);
 
   const handleSubmit = async (autoPrint: boolean = false) => {
-    if (!firestore || !customerInput.trim() || saleItems.length === 0) return;
+    if (!firestore || !customerInput.trim() || saleItems.length === 0 || isLoading) return;
 
+    setIsLoading(true);
     try {
       let customerId = selectedCustomer?.id;
       let customerName = customerInput.trim();
@@ -270,6 +271,8 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
       onSaleAdded?.();
     } catch (error) {
       console.error('Error saving sale:', error);
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -500,16 +503,17 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
             <Button
               variant="outline"
               onClick={() => handleSubmit(false)}
-              disabled={!customerInput.trim() || saleItems.length === 0}
+              disabled={!customerInput.trim() || saleItems.length === 0 || isLoading}
               className="flex-1"
             >
               {d.submit}
             </Button>
             <Button
               onClick={() => handleSubmit(true)}
-              disabled={!customerInput.trim() || saleItems.length === 0}
+              disabled={!customerInput.trim() || saleItems.length === 0 || isLoading}
               className="flex-1"
             >
+              {isLoading ? <span className="animate-spin mr-2">⏳</span> : null}
               Enregistrer & Générer Reçu
             </Button>
           </DialogFooter>
