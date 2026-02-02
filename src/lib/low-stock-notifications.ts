@@ -170,6 +170,16 @@ export async function createLowStockNotification(
       updatedAt: Timestamp.now(),
       actionLink: '/dashboard/products', // Link to products page
       actionLabel: 'View Products',
+      translations: {
+        fr: {
+          title: 'Alerte de Stock Faible',
+          message: `Le stock de ${product.productName} est faible (${product.currentStock} unités restantes). Seuil: ${product.threshold} unités.`
+        },
+        ar: {
+          title: 'تنبيه انخفاض المخزون',
+          message: `مخزون ${product.productName} منخفض (${product.currentStock} وحدة متبقية). الحد: ${product.threshold} وحدة.`
+        }
+      }
     });
 
     console.log(`Created low stock notification for user ${userId}: ${notificationDoc.id}`);
@@ -226,6 +236,16 @@ async function createGroupedLowStockNotification(
       updatedAt: Timestamp.now(),
       actionLink: '/dashboard/products',
       actionLabel: 'View Products',
+      translations: {
+        fr: {
+          title: 'Alerte de Stock Faible',
+          message: `Vous avez ${lowStockProducts.length} produit(s) avec un niveau de stock faible.`
+        },
+        ar: {
+          title: 'تنبيه انخفاض المخزون',
+          message: `لديك ${lowStockProducts.length} منتجات بمستويات مخزون منخفضة.`
+        }
+      }
     };
 
     if (existingSnapshot.size > 0) {

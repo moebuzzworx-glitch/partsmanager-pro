@@ -158,6 +158,20 @@ export async function createSubscriptionRenewalNotification(
       resourceId: subscription,
       subscription,
       daysUntilExpiry,
+      translations: {
+        fr: {
+          title: daysUntilExpiry > 0 ? "Expiration de l'abonnement" : "Abonnement Expiré",
+          message: daysUntilExpiry > 0
+            ? `Votre période ${subscription === 'trial' ? "d'essai" : "Premium"} expire dans ${daysUntilExpiry} jours.`
+            : `Votre période ${subscription === 'trial' ? "d'essai" : "Premium"} a expiré.`
+        },
+        ar: {
+          title: daysUntilExpiry > 0 ? "قرب انتهاء الاشتراك" : "الاشتراك منتهي",
+          message: daysUntilExpiry > 0
+            ? `فترة ${subscription === 'trial' ? "التجربة" : "Premium"} تنتهي خلال ${daysUntilExpiry} أيام.`
+            : `لقد انتهت فترة ${subscription === 'trial' ? "التجربة" : "Premium"}.`
+        }
+      }
     });
 
     console.log(`✅ Created ${subscription} renewal notification for user ${userId}`);
@@ -319,6 +333,20 @@ export async function createTrialCountdownNotification(
       resourceType: 'trial',
       resourceId: 'trial-countdown',
       daysRemaining,
+      translations: {
+        fr: {
+          title: daysRemaining > 0 ? `Essai: ${daysRemaining} jours restants` : 'Essai Expiré',
+          message: daysRemaining > 0
+            ? `Votre essai gratuit expire dans ${daysRemaining} jours.`
+            : 'Votre essai gratuit a expiré. Passez à Premium pour continuer.'
+        },
+        ar: {
+          title: daysRemaining > 0 ? `النسخة التجريبية: ${daysRemaining} أيام متبقية` : 'انتهاء الفترة التجريبية',
+          message: daysRemaining > 0
+            ? `تنتهي فترتك التجريبية خلال ${daysRemaining} أيام.`
+            : 'لقد انتهت فترتك التجريبية. قم بالترقية للمتابعة.'
+        }
+      }
     });
 
     return docRef.id;
