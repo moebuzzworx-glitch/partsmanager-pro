@@ -273,8 +273,12 @@ export function AdminLayoutClient({
                       <div className="flex gap-2 w-full">
                         {getIcon()}
                         <div className="flex-1">
-                          <p className="font-medium text-sm">{notification.title}</p>
-                          <p className="text-xs text-muted-foreground">{notification.message}</p>
+                          <p className="font-medium text-sm">
+                            {notification.translations?.[locale as string]?.title || notification.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {notification.translations?.[locale as string]?.message || notification.message}
+                          </p>
                           <p className="text-xs text-muted-foreground mt-1">
                             {notification.createdAt
                               ? new Date(

@@ -1,4 +1,3 @@
-
 {
   "appName": "PartsManager Pro",
   "landing": {
@@ -123,12 +122,19 @@
     "delete": "Delete",
     "deleteSelected": "Delete Selected",
     "deleteConfirmMessage": "Delete {count} product(s)? They will be moved to trash.",
+    "deleteConfirmMessageSingle": "Are you sure you want to delete this item? This action cannot be undone.",
     "deletedSuccessMessage": "{count} product(s) moved to trash",
     "deletedSuccessMessageSingle": "Product moved to trash",
     "deleteErrorMessage": "Failed to delete products",
     "deleteErrorMessageSingle": "Failed to delete product",
     "deleteErrorGeneral": "An error occurred while deleting products",
-    "deleteErrorGeneralSingle": "An error occurred while deleting the product"
+    "deleteErrorGeneralSingle": "An error occurred while deleting the product",
+    "deleteMultipleTitle": "Delete Multiple Products?",
+    "deleteMultipleDescription": "This will delete {count} products. This requires your deletion password.",
+    "deletingTitle": "Deleting Products",
+    "deletingMessage": "Deleting {count} product(s)...",
+    "loadMore": "Load More",
+    "showingResult": "Showing <strong>{count}</strong> of <strong>{total}</strong> {items}"
   },
   "addProductDialog": {
     "title": "Add New Product",
@@ -162,7 +168,21 @@
     "quantity": "Quantity",
     "price": "Price",
     "total": "Total",
-    "submit": "Log Sale"
+    "submit": "Log Sale",
+    "saveAndGenerate": "Save & Generate Receipt",
+    "saleRecorded": "Sale recorded successfully.",
+    "printReceipt": "Print Receipt"
+  },
+  "editSaleDialog": {
+    "title": "Edit Sale",
+    "description": "Update sale details. Note: Changing amount does not automatically update unit price or stock.",
+    "product": "Product",
+    "customer": "Customer",
+    "date": "Date",
+    "amount": "Amount",
+    "submit": "Save Changes",
+    "updateSuccess": "Sale updated successfully.",
+    "updateError": "Failed to update sale."
   },
   "logPurchaseDialog": {
     "logPurchase": "Log Purchase",
@@ -350,9 +370,17 @@
     "edit": "Edit",
     "submit": "Submit",
     "loading": "Loading...",
+    "loadMore": "Load More",
+    "processingTitle": "Processing",
+    "processingMessage": "Processing your request...",
+    "success": "Success",
+    "error": "Error",
     "saving": "Saving...",
     "updating": "Updating...",
     "processing": "Processing...",
+    "loadMore": "Load More",
+    "processingTitle": "Processing",
+    "processingMessage": "Processing your request...",
     "success": "Success",
     "error": "Error",
     "warning": "Warning",
@@ -479,7 +507,16 @@
     "regenerateError": "Failed to regenerate invoice. Please try again.",
     "createDialogTitle": "Create Invoice",
     "createDialogDescription": "Create a new invoice with line items, VAT, and customer details.",
-    "generateInvoiceButton": "Generate Invoice"
+    "generateInvoiceButton": "Generate Invoice",
+    "tabInvoices": "Invoices",
+    "tabPurchaseOrders": "Purchase Orders",
+    "tabDeliveryNotes": "Delivery Notes",
+    "tabSalesReceipts": "Sales Receipts",
+    "docInvoice": "Invoice",
+    "docPurchaseOrder": "Purchase Order",
+    "docDeliveryNote": "Delivery Note",
+    "docSalesReceipt": "Sales Receipt",
+    "supplier": "Supplier"
   },
   "createInvoiceForm": {
     "invoiceDetails": "Invoice Details",
@@ -550,6 +587,12 @@
     "companyTab": "Company",
     "businessTab": "Business",
     "subscriptionTab": "Subscription",
+    "notificationsTab": "Notifications",
+    "securityTab": "Security",
+    "notificationsTitle": "Notification Settings",
+    "notificationsDescription": "Control how you receive notifications.",
+    "notificationsSubtext": "Notification sounds will play for all notification types including low stock alerts, system messages, and updates.",
+    "soundSettings": "Sound Settings",
     "companyTitle": "Company Information",
     "companyDescription": "This information will be displayed on your invoices.",
     "companySubtext": "Manage your company details including registration numbers and bank information.",
@@ -581,6 +624,20 @@
     "orClick": "or click to select from device",
     "clickToChange": "Click to change",
     "logoInfo": "Recommended: Square image, min 100x100px, max 5MB",
+    "securityTitle": "Security",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "shortPassword": "Password must be at least 4 characters",
+    "incorrectPassword": "Incorrect current password",
+    "passwordUpdated": "Deletion password updated",
+    "passwordSet": "Deletion password set successfully",
+    "changeDeletionPasswordDesc": "Change your deletion password. This password is required for deleting items.",
+    "setDeletionPasswordDesc": "Set a password to protect deletion actions across the app.",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "updatePassword": "Update Password",
+    "setPassword": "Set Password",
     "changeCompanyButton": "Edit Company Information",
     "saveButton": "Save Changes",
     "cancelButton": "Cancel",
@@ -604,10 +661,39 @@
     "renewButton": "Renew / Upgrade to Premium",
     "processing": "Processing...",
     "renewalSuccess": "Subscription Renewed",
-    "renewalSuccessMessage": "Your subscription has been renewed for 1 year.",
     "renewalError": "Renewal Failed",
     "renewalErrorMessage": "Could not renew subscription.",
-    "renewalUnexpectedError": "Unexpected error during renewal."
+    "renewalUnexpectedError": "Unexpected error during renewal.",
+    "paymentSuccess": "Payment Successful!",
+    "activating": "Your subscription is being activated...",
+    "paymentFailed": "Payment Failed",
+    "tryAgain": "Please try again or contact support.",
+    "currentStatus": "Current Status",
+    "trialMode": "Trial Mode",
+    "premiumActive": "Premium (Active)",
+    "premiumExpired": "Premium (Service Expired)",
+    "refresh": "Refresh status",
+    "trial": "Trial",
+    "active": "Active",
+    "expired": "Expired",
+    "expiredOn": "After-sales service expired on:",
+    "expiresOn": "After-sales service valid until:",
+    "firstPurchase": "Lifetime License + 1 Year Service",
+    "lifetimeLicense": "Lifetime Software License",
+    "firstYearService": "First Year After-Sales Service",
+    "total": "Total",
+    "oneTimeNote": "One-time purchase. After-sales service renews annually at 5,000 DZD/year.",
+    "renewService": "Renew After-Sales Service",
+    "annualService": "Annual after-sales service renewal",
+    "perYear": "/ year",
+    "purchaseNow": "Purchase Now (CIB/Edahabia)",
+    "renewNow": "Renew Now (CIB/Edahabia)",
+    "securePayment": "Secure payment powered by Chargily Pay",
+    "allGood": "You're all set!",
+    "serviceActive": "Your license and after-sales service are active.",
+    "refreshed": "Status Refreshed",
+    "refreshedDesc": "Subscription status has been updated.",
+    "purchaseSuccessMessage": "Your license has been activated. Welcome to Premium!"
   },
   "purchases": {
     "title": "Purchases",
@@ -620,7 +706,11 @@
     "totalAmount": "Total Amount",
     "deletePurchaseAction": "Delete Purchase",
     "noData": "No purchases found",
-    "confirmDelete": "Are you sure?"
+    "noDataTitle": "No purchases found. Log one to get started!",
+    "noDataSearch": "No purchases match your search.",
+    "itemName": "purchases",
+    "confirmDelete": "Are you sure?",
+    "deleteConfirmMessage": "This action cannot be undone."
   },
   "stock": {
     "title": "Stock Management",
@@ -641,7 +731,13 @@
     "customer": "Customer",
     "date": "Date",
     "quantity": "Quantity",
-    "amount": "Amount"
+    "amount": "Amount",
+    "generateWrappedReceipt": "Generate Grouped Receipt",
+    "generateReceipt": "Generate Receipt",
+    "sameCustomerError": "Please select sales from the same customer.",
+    "generating": "Generating...",
+    "receiptSuccess": "Receipt generated successfully.",
+    "generationFailed": "Generation failed."
   },
   "suppliers": {
     "title": "Suppliers",
@@ -652,7 +748,11 @@
     "email": "Email",
     "phone": "Phone",
     "noData": "No suppliers found",
-    "noDataSearch": "No suppliers match your search."
+    "noDataTitle": "No suppliers found. Add one to get started!",
+    "noDataSearch": "No suppliers match your search.",
+    "itemName": "suppliers",
+    "deleteTitle": "Delete Supplier?",
+    "deleteConfirmMessage": "Are you sure? This requires your deletion password."
   },
   "customers": {
     "title": "Customers",
@@ -663,6 +763,10 @@
     "email": "Email",
     "phone": "Phone",
     "noData": "No customers found",
-    "noDataSearch": "No customers match your search."
+    "noDataTitle": "No customers found. Add one to get started!",
+    "noDataSearch": "No customers match your search.",
+    "itemName": "customers",
+    "deleteTitle": "Delete Customer?",
+    "deleteConfirmMessage": "Are you sure? This requires your deletion password."
   }
 }

@@ -394,8 +394,8 @@ export default function TrashPage({
       <ProgressModal
         isOpen={isActioning}
         progress={actionProgress}
-        title="Processing"
-        message="Processing your request..."
+        title={dictionary.common?.processingTitle || "Processing"}
+        message={dictionary.common?.processingMessage || "Processing your request..."}
         isCancelable={false}
       />
       <div>
@@ -496,10 +496,10 @@ export default function TrashPage({
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Loading...
+                    {dictionary.common?.loading || 'Loading...'}
                   </>
                 ) : (
-                  'Load More'
+                  dictionary.common?.loadMore || 'Load More'
                 )}
               </Button>
             </div>

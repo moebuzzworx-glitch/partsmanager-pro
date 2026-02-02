@@ -254,11 +254,11 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
       }
 
       toast({
-        title: 'Success',
-        description: 'Sale recorded successfully.',
+        title: d.title,
+        description: d.saleRecorded || 'Sale recorded successfully.',
         action: (
           <ToastAction altText="Print Receipt" onClick={handlePrintReceipt}>
-            Print Receipt
+            {d.printReceipt || 'Print Receipt'}
           </ToastAction>
         ),
       });
@@ -514,7 +514,7 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
               className="flex-1"
             >
               {isLoading ? <span className="animate-spin mr-2">⏳</span> : null}
-              Enregistrer & Générer Reçu
+              {d.saveAndGenerate || 'Save & Generate Receipt'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -218,7 +218,21 @@ export default function GlobalBotWidget() {
                                         ? 'bg-blue-600 text-white rounded-tr-sm shadow-blue-900/20 drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]'
                                         : 'bg-neutral-800/60 text-white rounded-tl-sm shadow-black/40 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]'
                                         }`}>
-                                        {msg.text}
+                                        {msg.text.split(/(!\[.*?\]\(.*?\))/g).map((part, i) => {
+                                            const match = part.match(/!\[(.*?)\]\((.*?)\)/);
+                                            if (match) {
+                                                return (
+                                                    <img
+                                                        key={i}
+                                                        src={match[2]}
+                                                        alt={match[1]}
+                                                        className="max-w-full rounded-lg my-2 border border-white/10 shadow-sm"
+                                                        loading="lazy"
+                                                    />
+                                                );
+                                            }
+                                            return <span key={i}>{part}</span>;
+                                        })}
                                     </div>
                                 </div>
                             ))}

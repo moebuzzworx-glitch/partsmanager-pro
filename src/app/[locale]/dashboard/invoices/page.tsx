@@ -297,10 +297,10 @@ export default function InvoicesPage({
       <Tabs defaultValue="INVOICE" value={activeTab} onValueChange={setActiveTab}>
         <div className="flex justify-between items-center mb-4">
           <TabsList>
-            <TabsTrigger value="INVOICE">Factures</TabsTrigger>
-            <TabsTrigger value="PURCHASE_ORDER">Bons de Commande</TabsTrigger>
-            <TabsTrigger value="DELIVERY_NOTE">Bons de Livraison</TabsTrigger>
-            <TabsTrigger value="SALES_RECEIPT">Bons de Vente</TabsTrigger>
+            <TabsTrigger value="INVOICE">{dictionary.invoices?.tabInvoices || 'Factures'}</TabsTrigger>
+            <TabsTrigger value="PURCHASE_ORDER">{dictionary.invoices?.tabPurchaseOrders || 'Bons de Commande'}</TabsTrigger>
+            <TabsTrigger value="DELIVERY_NOTE">{dictionary.invoices?.tabDeliveryNotes || 'Bons de Livraison'}</TabsTrigger>
+            <TabsTrigger value="SALES_RECEIPT">{dictionary.invoices?.tabSalesReceipts || 'Bons de Vente'}</TabsTrigger>
           </TabsList>
         </div>
 
@@ -310,9 +310,9 @@ export default function InvoicesPage({
               <div className="flex justify-between items-center">
                 <CardTitle>
                   {activeTab === 'INVOICE' && (dictionary.invoices?.title || 'Invoices')}
-                  {activeTab === 'PURCHASE_ORDER' && 'Bons de Commande'}
-                  {activeTab === 'DELIVERY_NOTE' && 'Bons de Livraison'}
-                  {activeTab === 'SALES_RECEIPT' && 'Bons de Vente'}
+                  {activeTab === 'PURCHASE_ORDER' && (dictionary.invoices?.tabPurchaseOrders || 'Bons de Commande')}
+                  {activeTab === 'DELIVERY_NOTE' && (dictionary.invoices?.tabDeliveryNotes || 'Bons de Livraison')}
+                  {activeTab === 'SALES_RECEIPT' && (dictionary.invoices?.tabSalesReceipts || 'Bons de Vente')}
                 </CardTitle>
                 {activeTab === 'INVOICE' && (
                   <CreateInvoiceDialog
@@ -372,7 +372,7 @@ export default function InvoicesPage({
                 <TableHeader>
                   <TableRow>
                     <TableHead>{dictionary.table?.invoiceNumber || 'Number'}</TableHead>
-                    <TableHead>{activeTab === 'PURCHASE_ORDER' ? 'Fournisseur' : (dictionary.table?.client || 'Client')}</TableHead>
+                    <TableHead>{activeTab === 'PURCHASE_ORDER' ? (dictionary.invoices?.supplier || 'Fournisseur') : (dictionary.table?.client || 'Client')}</TableHead>
                     <TableHead>{dictionary.table?.date || 'Date'}</TableHead>
                     <TableHead className="text-right">{dictionary.table?.amount || 'Amount'}</TableHead>
                     <TableHead>{dictionary.table?.status || 'Status'}</TableHead>
@@ -434,11 +434,11 @@ export default function InvoicesPage({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
                               <DropdownMenuItem onClick={() => handleDownloadDocument(invoice, activeTab as any)}>
-                                {activeTab === 'INVOICE' ? 'Facture' : activeTab === 'PURCHASE_ORDER' ? 'Bon de Commande' : 'Bon de Livraison'}
+                                {activeTab === 'INVOICE' ? (dictionary.invoices?.docInvoice || 'Facture') : activeTab === 'PURCHASE_ORDER' ? (dictionary.invoices?.docPurchaseOrder || 'Bon de Commande') : (dictionary.invoices?.docDeliveryNote || 'Bon de Livraison')}
                               </DropdownMenuItem>
                               {activeTab === 'INVOICE' && (
                                 <DropdownMenuItem onClick={() => handleDownloadDocument(invoice, 'DELIVERY_NOTE')}>
-                                  Bon de Livraison
+                                  {dictionary.invoices?.docDeliveryNote || 'Bon de Livraison'}
                                 </DropdownMenuItem>
                               )}
                             </DropdownMenuContent>

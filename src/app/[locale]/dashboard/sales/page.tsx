@@ -154,15 +154,15 @@ export default function SalesPage({
 
     if (!sameCustomer) {
       toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner des ventes du même client pour générer un reçu groupé.",
+        title: dictionary?.errors?.title || "Error",
+        description: dictionary?.sales?.sameCustomerError || "Please select sales from the same customer.",
         variant: "destructive"
       });
       return;
     }
 
     try {
-      toast({ title: "Génération...", description: "Préparation du document..." });
+      toast({ title: dictionary?.sales?.generating || "Generating...", description: dictionary?.sales?.generatingDescription || "Preparing document..." });
 
       const settings = await getUserSettings(firestore, user.uid);
 
@@ -197,7 +197,9 @@ export default function SalesPage({
         })),
         paymentMethod: 'Espèce',
         applyVatToAll: false,
-        isProforma: false
+        isProforma: false,
+        discountType: 'amount' as const,
+        discountValue: 0,
       };
 
       const companyInfo = {
@@ -226,11 +228,11 @@ export default function SalesPage({
       await updateLastDocumentNumber(firestore, user.uid, settings, 'SALES_RECEIPT');
 
       await generateDocumentPdf(receiptData as any, 'SALES_RECEIPT', companyInfo as any);
-      toast({ title: "Succès", description: "Le reçu a été enregistré et généré." });
+      toast({ title: dictionary?.common?.success || "Success", description: dictionary?.sales?.receiptSuccess || "Receipt generated successfully." });
       setSelectedSales(new Set()); // Clear selection
     } catch (e) {
       console.error(e);
-      toast({ title: "Erreur", description: "Échec de la génération.", variant: "destructive" });
+      toast({ title: dictionary?.errors?.title || "Error", description: dictionary?.sales?.generationFailed || "Generation failed.", variant: "destructive" });
     }
   };
 
@@ -285,7 +287,7 @@ export default function SalesPage({
                     handleGenerateReceipt(salesToProcess);
                   }}
                 >
-                  Générer Reçu Groupé ({selectedSales.size})
+                  {dictionary?.sales?.generateWrappedReceipt || 'Generate Grouped Receipt'} ({selectedSales.size})
                 </Button>
               )}
               <Input
@@ -355,7 +357,7 @@ export default function SalesPage({
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>{dictionary?.table?.actions || 'Actions'}</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => handleGenerateReceipt([sale])}>
-                              Générer Bon de Vente
+                              {dictionary?.sales?.generateReceipt || 'Generate Receipt'}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => {
                               setEditingSale(sale);
@@ -381,7 +383,13 @@ export default function SalesPage({
         </CardContent>
         <CardFooter>
           <div className="text-xs text-muted-foreground">
-            {(dictionary.table?.showingText || 'Showing').replace('{start}', '1').replace('{end}', String(filteredSales.length)).replace('{total}', String(sales.length))} <strong>1-{filteredSales.length}</strong> {dictionary.table?.of || 'of'} <strong>{sales.length}</strong> {dictionary.sales?.itemName || 'sales'}
+            <span dangerouslySetInnerHTML={{
+              __html: (dictionary.table?.showing || 'Showing <strong>1-{count}</strong> of <strong>{total}</strong>')
+                .replace('{count}', filteredSales.length.toString())
+                .replace('{total}', sales.length.toString())
+            }} />
+            {' '}
+            {dictionary.sales?.itemName || 'sales'}
           </div>
         </CardFooter>
       </Card>
@@ -391,6 +399,7 @@ export default function SalesPage({
           open={editDialogOpen}
           onOpenChange={setEditDialogOpen}
           onSaleUpdated={() => fetchSales()}
+          dictionary={dictionary}
         />
       )}
     </div>

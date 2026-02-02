@@ -146,8 +146,8 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
         open={!!supplierToDelete}
         onOpenChange={(open) => !open && setSupplierToDelete(null)}
         onConfirm={confirmDeleteSupplier}
-        title={d.deleteTitle || "Delete Supplier?"}
-        description={d.deleteConfirmMessageSingle || "This requires your deletion password."}
+        title={dictionary.suppliers?.deleteTitle || "Delete Supplier?"}
+        description={dictionary.suppliers?.deleteConfirmMessage || "This requires your deletion password."}
         resourceName={suppliers.find(s => s.id === supplierToDelete)?.name}
       />
       <div>
@@ -245,7 +245,13 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
         </CardContent>
         <CardFooter>
           <div className="text-xs text-muted-foreground">
-            {(dictionary.table?.showingText || 'Showing').replace('{start}', '1').replace('{end}', String(filteredSuppliers.length)).replace('{total}', String(suppliers.length))} <strong>1-{filteredSuppliers.length}</strong> {dictionary.table?.of || 'of'} <strong>{suppliers.length}</strong> {dictionary.suppliers?.itemName || 'suppliers'}
+            <span dangerouslySetInnerHTML={{
+              __html: (dictionary.table?.showing || 'Showing <strong>1-{count}</strong> of <strong>{total}</strong>')
+                .replace('{count}', filteredSuppliers.length.toString())
+                .replace('{total}', suppliers.length.toString())
+            }} />
+            {' '}
+            {dictionary.suppliers?.itemName || 'suppliers'}
           </div>
         </CardFooter>
       </Card>

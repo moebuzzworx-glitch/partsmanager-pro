@@ -1,8 +1,8 @@
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
+import {
+  collection,
+  query,
+  where,
+  getDocs,
   Firestore,
   addDoc,
   updateDoc,
@@ -27,6 +27,9 @@ export interface Notification {
   };
   resourceId?: string;
   resourceType?: string;
+  translations?: {
+    [key: string]: { title: string; message: string };
+  };
 }
 
 /**

@@ -140,8 +140,8 @@ export default function PurchasesPage({
         open={!!purchaseToDelete}
         onOpenChange={(open) => !open && setPurchaseToDelete(null)}
         onConfirm={confirmDeletePurchase}
-        title={dictionary?.stockPage?.deleteTitle || "Delete Purchase?"}
-        description={dictionary?.stockPage?.deleteConfirmMessageSingle || "This action cannot be undone."}
+        title={dictionary?.purchases?.deletePurchaseAction || "Delete Purchase?"}
+        description={dictionary?.purchases?.deleteConfirmMessage || "This action cannot be undone."}
         resourceName={purchases.find(p => p.id === purchaseToDelete)?.supplier}
       />
       <div>
@@ -211,13 +211,13 @@ export default function PurchasesPage({
                           <DropdownMenuTrigger asChild>
                             <Button aria-haspopup="true" size="icon" variant="ghost">
                               <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Toggle menu</span>
+                              <span className="sr-only">{dictionary?.table?.actions || 'Toggle menu'}</span>
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuLabel>{dictionary?.table?.actions || 'Actions'}</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => setPurchaseToDelete(purchase.id)} className="text-destructive">
-                              Delete Purchase
+                              {dictionary?.purchases?.deletePurchaseAction || 'Delete Purchase'}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -231,7 +231,13 @@ export default function PurchasesPage({
         </CardContent>
         <CardFooter>
           <div className="text-xs text-muted-foreground">
-            {(dictionary.table?.showingText || 'Showing').replace('{start}', '1').replace('{end}', String(filteredPurchases.length)).replace('{total}', String(purchases.length))} <strong>1-{filteredPurchases.length}</strong> {dictionary.table?.of || 'of'} <strong>{purchases.length}</strong> {dictionary.purchases?.itemName || 'purchases'}
+            <span dangerouslySetInnerHTML={{
+              __html: (dictionary.table?.showing || 'Showing <strong>1-{count}</strong> of <strong>{total}</strong>')
+                .replace('{count}', filteredPurchases.length.toString())
+                .replace('{total}', purchases.length.toString())
+            }} />
+            {' '}
+            {dictionary.purchases?.itemName || 'purchases'}
           </div>
         </CardFooter>
       </Card>

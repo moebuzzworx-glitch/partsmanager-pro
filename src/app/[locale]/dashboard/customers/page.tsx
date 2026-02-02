@@ -143,8 +143,8 @@ export default function CustomersPage({
         open={!!customerToDelete}
         onOpenChange={(open) => !open && setCustomerToDelete(null)}
         onConfirm={confirmDeleteCustomer}
-        title={d.deleteTitle || "Delete Customer?"}
-        description={d.deleteConfirmMessageSingle || "This requires your deletion password."}
+        title={dictionary.customers?.deleteTitle || "Delete Customer?"}
+        description={dictionary.customers?.deleteConfirmMessage || "This requires your deletion password."}
         resourceName={customers.find(c => c.id === customerToDelete)?.name}
       />
       <div>
@@ -241,8 +241,13 @@ export default function CustomersPage({
         </CardContent>
         <CardFooter>
           <div className="text-xs text-muted-foreground">
-            {(dictionary.table?.showingText || 'Showing').replace('{start}', '1').replace('{end}', String(filteredCustomers.length)).replace('{total}', String(customers.length))} <strong>1-{filteredCustomers.length}</strong> {dictionary.table?.of || 'of'}{" "}
-            <strong>{customers.length}</strong> {dictionary.customers?.itemName || 'customers'}
+            <span dangerouslySetInnerHTML={{
+              __html: (dictionary.table?.showing || 'Showing <strong>1-{count}</strong> of <strong>{total}</strong>')
+                .replace('{count}', filteredCustomers.length.toString())
+                .replace('{total}', customers.length.toString())
+            }} />
+            {' '}
+            {dictionary.customers?.itemName || 'customers'}
           </div>
         </CardFooter>
       </Card>

@@ -323,15 +323,17 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
         open={confirmBatchDelete}
         onOpenChange={setConfirmBatchDelete}
         onConfirm={executeBatchDelete}
-        title="Delete Multiple Products?"
-        description={`This will delete ${selectedProducts.size} products. This requires your deletion password.`}
+        title={d.deleteMultipleTitle || "Delete Multiple Products?"}
+        description={(d.deleteMultipleDescription || "This will delete {count} products. This requires your deletion password.")
+          .replace('{count}', selectedProducts.size.toString())}
       />
 
       <ProgressModal
         isOpen={isDeleting}
         progress={deleteProgress}
-        title="Deleting Products"
-        message={`Deleting ${selectedProducts.size > 0 ? selectedProducts.size : 1} product(s)...`}
+        title={d.deletingTitle || "Deleting Products"}
+        message={(d.deletingMessage || "Deleting {count} product(s)...")
+          .replace('{count}', (selectedProducts.size > 0 ? selectedProducts.size : 1).toString())}
         isCancelable={false}
       />
       <div>
@@ -454,7 +456,12 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
         </CardContent>
         <CardFooter className="flex justify-between items-center">
           <div className="text-xs text-muted-foreground">
-            Showing <strong>{displayedProducts.length}</strong> of <strong>{totalFilteredCount}</strong> {d.itemName || 'products'}
+            <span dangerouslySetInnerHTML={{
+              __html: (d.showingResult || 'Showing <strong>{count}</strong> of <strong>{total}</strong> {items}')
+                .replace('{count}', displayedProducts.length.toString())
+                .replace('{total}', totalFilteredCount.toString())
+                .replace('{items}', d.product ? (totalFilteredCount > 1 ? (d.product + 's') : d.product) : 'products')
+            }} />
           </div>
           {displayedProducts.length < totalFilteredCount && (
             <Button
@@ -462,7 +469,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
               size="sm"
               onClick={() => setDisplayLimit(prev => prev + LOAD_MORE_INCREMENT)}
             >
-              Load More
+              {d.loadMore || 'Load More'}
             </Button>
           )}
         </CardFooter>

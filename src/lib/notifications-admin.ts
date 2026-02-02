@@ -30,6 +30,7 @@ export async function sendTargetedNotifications(
     criteria: TargetCriteria,
     options?: {
         action?: { label: string; href: string };
+        translations?: Record<string, { title: string; message: string }>;
     }
 ): Promise<{ success: boolean; count: number; error?: any }> {
     try {
@@ -73,6 +74,7 @@ export async function sendTargetedNotifications(
                 read: false,
                 createdAt: now,
                 action: options?.action || null,
+                translations: options?.translations || null,
             });
 
             operationCount++;

@@ -31,12 +31,14 @@ interface EditSaleDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSaleUpdated: () => void;
+    dictionary?: any;
 }
 
-export function EditSaleDialog({ sale, open, onOpenChange, onSaleUpdated }: EditSaleDialogProps) {
+export function EditSaleDialog({ sale, open, onOpenChange, onSaleUpdated, dictionary }: EditSaleDialogProps) {
     const { user, firestore } = useFirebase();
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
+    const d = dictionary?.editSaleDialog;
 
     const [formData, setFormData] = useState({
         customer: '',
@@ -70,8 +72,8 @@ export function EditSaleDialog({ sale, open, onOpenChange, onSaleUpdated }: Edit
             });
 
             toast({
-                title: 'Success',
-                description: 'Sale updated successfully.',
+                title: dictionary?.common?.success || 'Success',
+                description: d?.updateSuccess || 'Sale updated successfully.',
             });
 
             onSaleUpdated();
@@ -79,8 +81,8 @@ export function EditSaleDialog({ sale, open, onOpenChange, onSaleUpdated }: Edit
         } catch (error: any) {
             console.error('Error updating sale:', error);
             toast({
-                title: 'Error',
-                description: 'Failed to update sale.',
+                title: dictionary?.common?.error || 'Error',
+                description: d?.updateError || 'Failed to update sale.',
                 variant: 'destructive',
             });
         } finally {
@@ -92,15 +94,15 @@ export function EditSaleDialog({ sale, open, onOpenChange, onSaleUpdated }: Edit
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Edit Sale</DialogTitle>
+                    <DialogTitle>{d?.title || 'Edit Sale'}</DialogTitle>
                     <DialogDescription>
-                        Update sale details. Note: Changing amount does not automatically update unit price or stock.
+                        {d?.description || 'Update sale details. Note: Changing amount does not automatically update unit price or stock.'}
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="product" className="text-right">
-                            Product
+                            {d?.product || 'Product'}
                         </Label>
                         <Input
                             id="product"
@@ -111,7 +113,7 @@ export function EditSaleDialog({ sale, open, onOpenChange, onSaleUpdated }: Edit
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="customer" className="text-right">
-                            Customer
+                            {d?.customer || 'Customer'}
                         </Label>
                         <Input
                             id="customer"
@@ -122,7 +124,7 @@ export function EditSaleDialog({ sale, open, onOpenChange, onSaleUpdated }: Edit
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="date" className="text-right">
-                            Date
+                            {d?.date || 'Date'}
                         </Label>
                         <Input
                             id="date"
@@ -134,7 +136,7 @@ export function EditSaleDialog({ sale, open, onOpenChange, onSaleUpdated }: Edit
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="amount" className="text-right">
-                            Amount
+                            {d?.amount || 'Amount'}
                         </Label>
                         <Input
                             id="amount"
@@ -148,7 +150,7 @@ export function EditSaleDialog({ sale, open, onOpenChange, onSaleUpdated }: Edit
                     <DialogFooter>
                         <Button type="submit" disabled={isLoading}>
                             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Save changes
+                            {d?.submit || 'Save changes'}
                         </Button>
                     </DialogFooter>
                 </form>

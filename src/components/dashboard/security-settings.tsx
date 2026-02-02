@@ -62,7 +62,7 @@ export function SecuritySettings({ dictionary }: { dictionary?: any }) {
         }
 
         if (newPassword.length < 4) {
-            toast({ title: 'Error', description: "Password must be at least 4 characters", variant: "destructive" });
+            toast({ title: dictionary?.common?.error || 'Error', description: dictionary?.settings?.shortPassword || "Password must be at least 4 characters", variant: "destructive" });
             return;
         }
 

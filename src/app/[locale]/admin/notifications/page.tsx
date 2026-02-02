@@ -9,8 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { sendTargetedNotifications, TargetAudience } from '@/lib/notifications-admin';
-import { Loader2, Send } from 'lucide-react';
+import { sendTargetedNotificationsAction, TargetAudience } from '@/app/actions/admin-notifications';
+import { Loader2, Send, Sparkles } from 'lucide-react';
+import { enhanceAndTranslateNotification } from '@/app/actions/notification-ai';
 import { UserRole } from '@/lib/types';
 
 export default function NotificationsPage() {
@@ -24,6 +25,48 @@ export default function NotificationsPage() {
     const [targetRole, setTargetRole] = useState<UserRole>('user');
 
     const [isSending, setIsSending] = useState(false);
+    const [isEnhancing, setIsEnhancing] = useState(false);
+    const [translations, setTranslations] = useState<any>(null);
+
+    const handleAIEnhance = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        if (!title.trim() || !message.trim()) {
+            toast({
+                title: "Missing Content",
+                description: "Please enter a title and message first.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        setIsEnhancing(true);
+        try {
+            const result = await enhanceAndTranslateNotification(title, message);
+            if (result.success && result.data) {
+                setTitle(result.data.en.title);
+                setMessage(result.data.en.message);
+                setTranslations(result.data);
+                toast({
+                    title: "Enhanced & Translated",
+                    description: "Content improved and translations generated.",
+                });
+            } else {
+                toast({
+                    title: "AI Error",
+                    description: result.error || "Failed to enhance content.",
+                    variant: "destructive",
+                });
+            }
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "Something went wrong.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsEnhancing(false);
+        }
+    };
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -42,14 +85,16 @@ export default function NotificationsPage() {
         setIsSending(true);
 
         try {
-            const result = await sendTargetedNotifications(
-                firestore,
+            const result = await sendTargetedNotificationsAction(
                 title,
                 message,
                 type,
                 {
                     subscription: targetAudience,
                     role: targetRole,
+                },
+                {
+                    translations: translations || undefined
                 }
             );
 
@@ -115,6 +160,24 @@ export default function NotificationsPage() {
                                     rows={4}
                                     required
                                 />
+                            </div>
+
+                            <div className="flex justify-end">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleAIEnhance}
+                                    disabled={isEnhancing || !title || !message}
+                                    className="gap-2"
+                                >
+                                    {isEnhancing ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Sparkles className="h-4 w-4 text-amber-500" />
+                                    )}
+                                    {isEnhancing ? 'Enhancing...' : 'AI Enhance & Translate'}
+                                </Button>
                             </div>
 
                             <div className="space-y-2">
