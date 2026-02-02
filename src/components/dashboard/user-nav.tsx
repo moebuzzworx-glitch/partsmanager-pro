@@ -68,6 +68,9 @@ export function UserNav({
 
     try {
       setIsLoggingOut(true);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('isLoggingOut', 'true');
+      }
       await signOut(auth);
 
       toast({

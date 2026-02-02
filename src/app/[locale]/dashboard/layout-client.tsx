@@ -45,9 +45,17 @@ export function DashboardLayoutClient({
     setIsChecking(false);
 
     if (!user) {
-      // Not authenticated, redirect to login
-      console.log('❌ No user found, redirecting to login');
-      routerRef.current.push(`/${locale}/login`);
+      // Not authenticated, check if logging out
+      const isLoggingOut = typeof window !== 'undefined' ? sessionStorage.getItem('isLoggingOut') : null;
+
+      if (isLoggingOut) {
+        console.log('👋 Logout detected, redirecting to landing page');
+        sessionStorage.removeItem('isLoggingOut');
+        routerRef.current.push(`/${locale}`);
+      } else {
+        console.log('❌ No user found, redirecting to login');
+        routerRef.current.push(`/${locale}/login`);
+      }
       return;
     }
 
