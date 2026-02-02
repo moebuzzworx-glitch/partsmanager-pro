@@ -9,6 +9,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 import { LucideSend, LucideX, LucideMessageSquare, LucideMinimize2, LucideMaximize2, LucideLoader2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { sendChatMessage } from '@/app/actions/ai-chat';
+import { usePathname } from 'next/navigation';
 
 // --- Types ---
 type Message = {
@@ -160,6 +161,14 @@ import { useBotStore } from '@/hooks/use-bot-store';
 export default function GlobalBotWidget() {
     const { isOpen, closeBot } = useBotStore();
     const [isChatExpanded, setIsChatExpanded] = useState(false);
+    const pathname = usePathname();
+
+    // Auto-close bot when on landing page (or root locale paths)
+    useEffect(() => {
+        if (!pathname || pathname === '/' || /^\/(en|fr|ar)$/.test(pathname)) {
+            closeBot();
+        }
+    }, [pathname, closeBot]);
 
     // Reset chat expansion when closed
     useEffect(() => {

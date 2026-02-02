@@ -26,6 +26,7 @@ import { signOut } from '@/firebase/auth-functions';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { useUser } from '@/firebase/provider';
+import { useBotStore } from '@/hooks/use-bot-store';
 
 export function UserNav({
   user: initialUser,
@@ -41,6 +42,7 @@ export function UserNav({
   const { toast } = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { user: firebaseUser } = useUser();
+  const { closeBot } = useBotStore();
   const [profileOpen, setProfileOpen] = useState(false);
   const [liveUser, setLiveUser] = useState<{ name?: string | null; email?: string | null; avatarUrl?: string | null }>({
     name: initialUser?.name ?? null,
@@ -67,13 +69,15 @@ export function UserNav({
     try {
       setIsLoggingOut(true);
       await signOut(auth);
-      
+
       toast({
         title: 'Logged Out',
         description: 'You have been signed out successfully.',
       });
 
-      router.push(`/${locale}/login`);
+      closeBot();
+
+      router.push(`/${locale}`);
     } catch (error: any) {
       console.error('Logout error:', error);
       toast({
