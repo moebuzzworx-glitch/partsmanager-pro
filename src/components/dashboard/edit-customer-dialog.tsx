@@ -112,7 +112,7 @@ export function EditCustomerDialog({ customer, open, onOpenChange, onCustomerUpd
 
   // Auto-close dialog if user becomes expired
   useEffect(() => {
-    if (open && (user?.subscription === 'expired' || isTrialExpired(userDoc))) {
+    if (open && (user?.subscription === 'expired' || (userDoc && isTrialExpired(userDoc)))) {
       onOpenChange(false);
     }
   }, [user, userDoc, open, onOpenChange]);
