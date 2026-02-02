@@ -31,7 +31,9 @@ async function calculateTotalRevenue(firestore: Firestore, userId: string): Prom
     invoicesSnap.forEach((doc) => {
       const invoice = doc.data() as StoredInvoice;
       // Only count non-proforma, paid invoices
-      if (!invoice.isProforma && invoice.paid && invoice.total) {
+      // CRITICAL FIX: Exclude 'SALES_RECEIPT' because its revenue is already counted in the 'sales' collection loop below.
+      // We only want to count paid Invoices that might NOT be in the sales collection.
+      if (!invoice.isProforma && invoice.paid && invoice.total && invoice.documentType !== 'SALES_RECEIPT') {
         revenue += invoice.total;
       }
     });
