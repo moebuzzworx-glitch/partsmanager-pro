@@ -46,15 +46,27 @@ export async function enhanceAndTranslateNotification(
         });
 
         let text = '';
+
+        // Add logging to debug empty responses
+        console.log('[AI Debug] Result received from Gemini');
+
+        // Method 1: result.text() function
         // @ts-ignore
         if (result && typeof result.text === 'function') {
             // @ts-ignore
             text = result.text();
         }
+        // Method 2: result.response.text() function
         // @ts-ignore
         else if (result && result.response && typeof result.response.text === 'function') {
             // @ts-ignore
             text = result.response.text();
+        }
+        // Method 3: Direct Candidate Access (Common in Node SDK)
+        // @ts-ignore
+        else if (result?.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
+            // @ts-ignore
+            text = result.response.candidates[0].content.parts[0].text;
         }
 
         if (text) {
