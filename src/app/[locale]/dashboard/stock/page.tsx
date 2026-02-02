@@ -1,5 +1,7 @@
 'use client';
 
+import { EditProductDialog } from "@/components/dashboard/edit-product-dialog";
+
 export const dynamic = 'force-dynamic';
 
 import { MoreHorizontal, PlusCircle, Loader2 } from "lucide-react";
@@ -77,6 +79,8 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
   // Protection State
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [confirmBatchDelete, setConfirmBatchDelete] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const fetchProducts = async () => {
     if (!firestore || !user?.uid) return;
@@ -426,7 +430,12 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>{d.actions}</DropdownMenuLabel>
-                            <DropdownMenuItem>{d.edit}</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setEditingProduct(product);
+                              setEditDialogOpen(true);
+                            }}>
+                              {d.edit}
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive focus:bg-destructive/10"
                               onClick={() => setProductToDelete(product.id)}
@@ -458,6 +467,16 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
           )}
         </CardFooter>
       </Card>
+      {editingProduct && (
+        <EditProductDialog
+          product={editingProduct}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onProductUpdated={() => {
+            fetchProducts();
+          }}
+        />
+      )}
     </div>
   );
 }

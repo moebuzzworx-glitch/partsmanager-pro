@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LogSaleDialog } from "@/components/dashboard/log-sale-dialog";
+import { EditSaleDialog } from "@/components/dashboard/edit-sale-dialog";
 import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, where, doc, getDoc, deleteDoc } from "firebase/firestore";
 import { ProtectedActionDialog } from "@/components/protected-action-dialog";
@@ -68,6 +69,8 @@ export default function SalesPage({
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSales, setSelectedSales] = useState<Set<string>>(new Set());
   const [saleToDelete, setSaleToDelete] = useState<string | null>(null);
+  const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const confirmDeleteSale = async () => {
     if (!firestore || !saleToDelete) return;
@@ -354,7 +357,12 @@ export default function SalesPage({
                             <DropdownMenuItem onClick={() => handleGenerateReceipt([sale])}>
                               Générer Bon de Vente
                             </DropdownMenuItem>
-                            <DropdownMenuItem>{dictionary?.table?.edit || 'Edit'}</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setEditingSale(sale);
+                              setEditDialogOpen(true);
+                            }}>
+                              {dictionary?.table?.edit || 'Edit'}
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => setSaleToDelete(sale.id)}
                               className="text-destructive focus:text-destructive focus:bg-destructive/10"
@@ -377,6 +385,14 @@ export default function SalesPage({
           </div>
         </CardFooter>
       </Card>
+      {editingSale && (
+        <EditSaleDialog
+          sale={editingSale}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onSaleUpdated={() => fetchSales()}
+        />
+      )}
     </div>
   );
 }

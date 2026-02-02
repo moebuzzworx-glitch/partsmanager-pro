@@ -260,7 +260,7 @@ export default function CustomersPage({
               if (!firestore) return;
               try {
                 const customersRef = collection(firestore, 'customers');
-                const q = query(customersRef);
+                const q = query(customersRef, where('userId', '==', user.uid));
                 const querySnapshot = await getDocs(q);
 
                 const fetchedCustomers: Customer[] = [];
