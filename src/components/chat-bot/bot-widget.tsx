@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGLTF, Environment, ContactShadows, PerspectiveCamera, Center, Html, useAnimations } from '@react-three/drei';
 import * as THREE from 'three';
@@ -40,8 +41,14 @@ function Typewriter({ text, onComplete }: { text: string; onComplete?: () => voi
 
 
 // --- Image Component ---
+// --- Image Component ---
 function ImagePreview({ src, alt }: { src: string; alt: string }) {
     const [isHovered, setIsHovered] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     // Ensure absolute URL (Centralized logic)
     const processedSrc = src.includes('bot-images') && !src.startsWith('http')
@@ -60,22 +67,28 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
                 className="max-w-full md:max-w-[200px] rounded-lg my-2 border border-white/10 shadow-sm cursor-zoom-in hover:brightness-110 transition-all"
                 loading="lazy"
             />
-            {/* Desktop Preview Popup (Left of chat) */}
+            {/* Desktop Preview Popup (Portal to Body) */}
             <AnimatePresence>
-                {isHovered && (
+                {isHovered && mounted && createPortal(
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95, x: 10 }}
+                        initial={{ opacity: 0, scale: 0.95, x: 20 }}
                         animate={{ opacity: 1, scale: 1, x: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, x: 10 }}
-                        transition={{ duration: 0.15, ease: "easeOut" }}
-                        className="fixed bottom-20 right-[400px] z-[9999] w-[450px] max-w-[80vw] bg-neutral-900/95 border border-white/20 p-1.5 rounded-xl shadow-2xl backdrop-blur-3xl hidden md:block pointer-events-none"
+                        exit={{ opacity: 0, scale: 0.95, x: 20 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="fixed bottom-24 right-[420px] z-[99999] w-[500px] max-w-[45vw] bg-neutral-900 border border-white/20 p-2 rounded-xl shadow-2xl backdrop-blur-3xl hidden md:block pointer-events-none"
                     >
-                        <img
-                            src={processedSrc}
-                            alt={alt}
-                            className="w-full h-auto rounded-lg shadow-lg"
-                        />
-                    </motion.div>
+                        <div className="relative">
+                            <img
+                                src={processedSrc}
+                                alt={alt}
+                                className="w-full h-auto rounded-lg shadow-black/80 shadow-2xl bg-black/50"
+                            />
+                            <div className="absolute top-3 right-3 bg-black/70 text-white text-[10px] uppercase font-bold px-2 py-1 rounded backdrop-blur-md border border-white/10 tracking-widest">
+                                Preview
+                            </div>
+                        </div>
+                    </motion.div>,
+                    document.body
                 )}
             </AnimatePresence>
         </div>
