@@ -39,7 +39,48 @@ function Typewriter({ text, onComplete }: { text: string; onComplete?: () => voi
 }
 
 
-// --- 3D Components ---
+// --- Image Component ---
+function ImagePreview({ src, alt }: { src: string; alt: string }) {
+    const [isHovered, setIsHovered] = useState(false);
+
+    // Ensure absolute URL (Centralized logic)
+    const processedSrc = src.includes('bot-images') && !src.startsWith('http')
+        ? `https://partsmanager-pro.netlify.app${src.startsWith('/') ? '' : '/'}${src}`
+        : src;
+
+    return (
+        <div
+            className="relative group inline-block max-w-full"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            <img
+                src={processedSrc}
+                alt={alt}
+                className="max-w-full md:max-w-[200px] rounded-lg my-2 border border-white/10 shadow-sm cursor-zoom-in hover:brightness-110 transition-all"
+                loading="lazy"
+            />
+            {/* Desktop Preview Popup (Left of chat) */}
+            <AnimatePresence>
+                {isHovered && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, x: 10 }}
+                        animate={{ opacity: 1, scale: 1, x: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, x: 10 }}
+                        transition={{ duration: 0.15, ease: "easeOut" }}
+                        className="fixed bottom-20 right-[400px] z-[9999] w-[450px] max-w-[80vw] bg-neutral-900/95 border border-white/20 p-1.5 rounded-xl shadow-2xl backdrop-blur-3xl hidden md:block pointer-events-none"
+                    >
+                        <img
+                            src={processedSrc}
+                            alt={alt}
+                            className="w-full h-auto rounded-lg shadow-lg"
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
 
 // --- 3D Components ---
 
@@ -222,14 +263,10 @@ export default function GlobalBotWidget() {
                                             const match = part.match(/!\[(.*?)\]\((.*?)\)/);
                                             if (match) {
                                                 return (
-                                                    <img
+                                                    <ImagePreview
                                                         key={i}
-                                                        src={match[2].includes('bot-images') && !match[2].startsWith('http')
-                                                            ? `https://partsmanager-pro.netlify.app${match[2].startsWith('/') ? '' : '/'}${match[2]}`
-                                                            : match[2]}
+                                                        src={match[2]}
                                                         alt={match[1]}
-                                                        className="max-w-full rounded-lg my-2 border border-white/10 shadow-sm"
-                                                        loading="lazy"
                                                     />
                                                 );
                                             }
