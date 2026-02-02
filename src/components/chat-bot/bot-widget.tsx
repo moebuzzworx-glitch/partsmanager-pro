@@ -224,7 +224,9 @@ export default function GlobalBotWidget() {
                                                 return (
                                                     <img
                                                         key={i}
-                                                        src={match[2]}
+                                                        src={match[2].includes('bot-images') && !match[2].startsWith('http')
+                                                            ? `https://partsmanager-pro.netlify.app${match[2].startsWith('/') ? '' : '/'}${match[2]}`
+                                                            : match[2]}
                                                         alt={match[1]}
                                                         className="max-w-full rounded-lg my-2 border border-white/10 shadow-sm"
                                                         loading="lazy"
