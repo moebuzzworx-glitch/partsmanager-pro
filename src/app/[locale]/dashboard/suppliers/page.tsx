@@ -55,7 +55,7 @@ interface Supplier {
 
 export default function SuppliersPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = use(params);
-  const { firestore } = useFirebase();
+  const { firestore, user } = useFirebase();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dictionary, setDictionary] = useState<any>(null);
