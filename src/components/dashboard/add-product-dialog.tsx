@@ -372,7 +372,8 @@ export function AddProductDialog({ dictionary, onProductAdded, products = [] }: 
       const productsToImport = validRows.map((row: any, index: number) => {
         // purchasePrice is already numeric from parsedRows
         const purchasePrice = parseFloat(row.purchasePrice) || 0;
-        const price = purchasePrice > 0 ? purchasePrice * (1 + profitMargin / 100) : 0;
+        // Round to 2 decimal places
+        const price = purchasePrice > 0 ? Math.round(purchasePrice * (1 + profitMargin / 100) * 100) / 100 : 0;
 
         // Log first 3 rows for debugging
         if (index < 3) {

@@ -213,9 +213,12 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
     setValue(`lineItems.${index}.reference`, product.reference || '');
     setValue(`lineItems.${index}.designation`, product.name);
 
-    const priceToUse = documentType === 'PURCHASE_ORDER'
+    const rawPrice = documentType === 'PURCHASE_ORDER'
       ? (product.purchasePrice || 0)
       : (product.price || 0);
+
+    // Round to 2 decimal places
+    const priceToUse = Math.round(rawPrice * 100) / 100;
 
     setValue(`lineItems.${index}.unitPrice`, priceToUse);
     setProductSearchOpen(prev => ({ ...prev, [index]: false }));

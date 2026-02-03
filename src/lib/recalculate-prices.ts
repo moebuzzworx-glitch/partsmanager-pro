@@ -105,8 +105,8 @@ export async function recalculateAllProductPrices(
                         continue;
                     }
 
-                    // Calculate new selling price
-                    const newPrice = purchasePrice * (1 + profitMargin / 100);
+                    // Calculate new selling price (rounded to 2 decimal places)
+                    const newPrice = Math.round(purchasePrice * (1 + profitMargin / 100) * 100) / 100;
 
                     // Only update if price changed significantly
                     if (Math.abs(newPrice - (product.price || 0)) < 0.01) {
