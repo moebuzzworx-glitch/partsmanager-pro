@@ -537,6 +537,7 @@
   "createInvoiceForm": {
     "invoiceDetails": "Invoice Details",
     "termInvoice": "Term Invoice",
+    "applyJuridicTerms": "Apply Invoice Rules",
     "juridicTerms": "Terms & Conditions (Official)",
     "juridicTermsPlaceholder": "Legal terms for this invoice...",
     "juridicTermsHelp": "These terms will be printed on the invoice. You can edit them for this specific document.",

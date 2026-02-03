@@ -525,6 +525,7 @@
   "createInvoiceForm": {
     "invoiceDetails": "Détails de la Facture",
     "termInvoice": "Facture à termes",
+    "applyJuridicTerms": "Appliquer les Règles de Facturation",
     "juridicTerms": "Conditions Générales de Vente (Officiel)",
     "juridicTermsPlaceholder": "Termes légaux pour cette facture...",
     "juridicTermsHelp": "Ces termes seront imprimés sur la facture. Vous pouvez les modifier pour ce document spécifique.",

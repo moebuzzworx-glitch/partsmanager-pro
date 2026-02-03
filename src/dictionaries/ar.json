@@ -534,6 +534,7 @@
   "createInvoiceForm": {
     "invoiceDetails": "تفاصيل الفاتورة",
     "termInvoice": "فاتورة آجلة",
+    "applyJuridicTerms": "تطبيق قواعد الفاتورة",
     "juridicTerms": "الشروط والأحكام (رسمي)",
     "juridicTermsPlaceholder": "الشروط القانونية لهذه الفاتورة...",
     "juridicTermsHelp": "ستتم طباعة هذه الشروط على الفاتورة. يمكنك تعديلها لهذا المستند المحدد.",

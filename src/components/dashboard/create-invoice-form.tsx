@@ -21,6 +21,7 @@ import { PlusCircle, Trash2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useFirebase } from '@/firebase/provider';
 import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { User as AppUser, DocumentType } from '@/lib/types';
@@ -58,6 +59,7 @@ const formSchema = z.object({
   applyVatToAll: z.boolean().default(false),
   discountType: z.enum(['percentage', 'amount']).default('percentage'),
   discountValue: z.coerce.number().min(0).default(0),
+  includeJuridicTerms: z.boolean().default(false),
   juridicTerms: z.string().optional(),
 });
 
@@ -107,6 +109,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
       applyVatToAll: documentType === 'PURCHASE_ORDER',
       discountType: 'percentage',
       discountValue: 0,
+      includeJuridicTerms: false,
       juridicTerms: '',
     },
   });
@@ -125,6 +128,13 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
       const next = getNextDocumentNumber(settingsState, documentType);
       setNextDocNumber(next);
       setTimeout(() => setValue('invoiceNumber', next), 0);
+
+      // Auto-enable juridic terms for Term Invoices
+      if (documentType === 'TERM_INVOICE') {
+        setValue('includeJuridicTerms', true);
+      } else {
+        setValue('includeJuridicTerms', false);
+      }
     }
   }, [documentType, settingsState, setValue]);
 
@@ -805,9 +815,44 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
                 </div>
               </div>
 
-              {/* Juridic Terms - Only for TERM_INVOICE */}
-              {documentType === 'TERM_INVOICE' && (
-                <div className="flex flex-col gap-4 p-4 border border-dashed border-primary/30 rounded-md bg-primary/5 mt-4">
+              {/* Juridic Terms Toggle and Textarea */}
+              <div className="flex flex-col gap-4 p-4 border border-dashed border-primary/30 rounded-md bg-primary/5 mt-4">
+                <FormField
+                  control={form.control}
+                  name="includeJuridicTerms"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel>{dictionary?.createInvoiceForm?.applyJuridicTerms || "Apply Invoice Rules?"}</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={(v) => field.onChange(v === 'true')}
+                          defaultValue={field.value ? 'true' : 'false'}
+                          className="flex flex-row space-x-4 space-y-0"
+                        >
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="true" />
+                            </FormControl>
+                            <FormLabel className="font-normal cursor-pointer">
+                              {dictionary?.common?.yes || "Yes"}
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="false" />
+                            </FormControl>
+                            <FormLabel className="font-normal cursor-pointer">
+                              {dictionary?.common?.no || "No"}
+                            </FormLabel>
+                          </FormItem>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {(form.watch('includeJuridicTerms')) && (
                   <FormField
                     control={form.control}
                     name="juridicTerms"
@@ -828,8 +873,8 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
                       </FormItem>
                     )}
                   />
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </Form>
