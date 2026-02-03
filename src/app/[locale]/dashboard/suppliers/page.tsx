@@ -294,6 +294,7 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
             };
             refreshSuppliers();
           }}
+          dictionary={dictionary}
         />
       )}
     </div>

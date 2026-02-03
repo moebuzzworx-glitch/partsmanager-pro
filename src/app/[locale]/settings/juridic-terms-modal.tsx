@@ -119,14 +119,14 @@ export function JuridicTermsModal({ dictionary }: { dictionary?: any }) {
             <DialogTrigger asChild>
                 <Button variant="outline" className="w-full justify-start mt-2">
                     <FileText className="mr-2 h-4 w-4" />
-                    {dictionary?.settings?.juridicTermsEditButton || 'Manage Invoice Terms'}
+                    {dictionary?.settings?.juridicTermsModalTitle || 'Edit Juridic Terms'}
                 </Button>
             </DialogTrigger>
             <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[600px] max-h-[85vh] overflow-y-auto p-4 sm:p-6">
                 <DialogHeader>
-                    <DialogTitle>{dictionary?.settings?.juridicTermsTitle || 'Payment & Legal Terms'}</DialogTitle>
+                    <DialogTitle>{dictionary?.settings?.juridicTermsModalTitle || 'Edit Juridic Terms'}</DialogTitle>
                     <DialogDescription>
-                        {dictionary?.settings?.juridicTermsDescription || 'Ad-hoc terms for "Facture à termes" invoices. Enter in Arabic or French.'}
+                        {dictionary?.settings?.juridicTermsModalDescription || 'Define the legal terms and conditions that will appear on your term invoices.'}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -137,11 +137,11 @@ export function JuridicTermsModal({ dictionary }: { dictionary?: any }) {
                             name="juridicTerms"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>{dictionary?.settings?.termsLabel || 'Terms & Conditions'}</FormLabel>
+                                    <FormLabel>{dictionary?.settings?.juridicTermsLabel || 'Juridic Terms'}</FormLabel>
                                     <FormControl>
                                         <Textarea
                                             {...field}
-                                            placeholder="Enter legal terms here (e.g., Payment due in 30 days...)"
+                                            placeholder={dictionary?.settings?.juridicTermsPlaceholder || "Enter terms here..."}
                                             className="min-h-[200px] font-mono text-sm"
                                             disabled={isLoading || isEnhancing}
                                         />
@@ -160,7 +160,7 @@ export function JuridicTermsModal({ dictionary }: { dictionary?: any }) {
                                 className="gap-2"
                             >
                                 {isEnhancing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-purple-600" />}
-                                Enhance & Translate (AI)
+                                {dictionary?.settings?.enhanceAI || 'Enhance & Translate (AI)'}
                             </Button>
                         </div>
 
@@ -177,7 +177,7 @@ export function JuridicTermsModal({ dictionary }: { dictionary?: any }) {
                                 ) : (
                                     <>
                                         <Save className="mr-2 h-4 w-4" />
-                                        {dictionary?.settings?.saveButton || 'Save Terms'}
+                                        {dictionary?.settings?.saveTerms || 'Save Terms'}
                                     </>
                                 )}
                             </Button>

@@ -184,7 +184,7 @@ export function EditCustomerDialog({ customer, open, onOpenChange, onCustomerUpd
                 <FormItem>
                   <FormLabel>{dictionary?.editCustomerDialog?.customerName || 'Customer Name*'}</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder={dictionary?.addCustomerDialog?.customerNamePlaceholder || 'e.g., ABC Company'} disabled={isLoading} />
+                    <Input {...field} placeholder={dictionary?.editCustomerDialog?.customerNamePlaceholder || 'e.g., ABC Company'} disabled={isLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -23,12 +23,14 @@ interface EditProductDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onProductUpdated: () => void;
+    dictionary?: any;
 }
 
-export function EditProductDialog({ product, open, onOpenChange, onProductUpdated }: EditProductDialogProps) {
+export function EditProductDialog({ product, open, onOpenChange, onProductUpdated, dictionary }: EditProductDialogProps) {
     const { user, firestore } = useFirebase();
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
+    const d = dictionary?.editProductDialog;
 
     const [formData, setFormData] = useState({
         name: '',
@@ -71,8 +73,8 @@ export function EditProductDialog({ product, open, onOpenChange, onProductUpdate
             });
 
             toast({
-                title: 'Success',
-                description: 'Product updated successfully.',
+                title: dictionary?.common?.success || 'Success',
+                description: d?.updateSuccess || 'Product updated successfully.',
             });
 
             onProductUpdated();
@@ -80,8 +82,8 @@ export function EditProductDialog({ product, open, onOpenChange, onProductUpdate
         } catch (error: any) {
             console.error('Error updating product:', error);
             toast({
-                title: 'Error',
-                description: 'Failed to update product.',
+                title: dictionary?.common?.error || 'Error',
+                description: d?.updateError || 'Failed to update product.',
                 variant: 'destructive',
             });
         } finally {
@@ -93,15 +95,15 @@ export function EditProductDialog({ product, open, onOpenChange, onProductUpdate
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Edit Product</DialogTitle>
+                    <DialogTitle>{d?.title || 'Edit Product'}</DialogTitle>
                     <DialogDescription>
-                        Make changes to the product details here. Click save when you're done.
+                        {d?.description || "Make changes to the product details here. Click save when you're done."}
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="name" className="text-right">
-                            Name
+                            {d?.name || 'Name'}
                         </Label>
                         <Input
                             id="name"
@@ -113,7 +115,7 @@ export function EditProductDialog({ product, open, onOpenChange, onProductUpdate
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="reference" className="text-right">
-                            Reference
+                            {d?.reference || 'Reference'}
                         </Label>
                         <Input
                             id="reference"
@@ -124,7 +126,7 @@ export function EditProductDialog({ product, open, onOpenChange, onProductUpdate
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="brand" className="text-right">
-                            Brand
+                            {d?.brand || 'Brand'}
                         </Label>
                         <Input
                             id="brand"
@@ -135,7 +137,7 @@ export function EditProductDialog({ product, open, onOpenChange, onProductUpdate
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="stock" className="text-right">
-                            Stock
+                            {d?.stock || 'Stock'}
                         </Label>
                         <Input
                             id="stock"
@@ -148,7 +150,7 @@ export function EditProductDialog({ product, open, onOpenChange, onProductUpdate
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="purchasePrice" className="text-right">
-                            Buy Price
+                            {d?.purchasePrice || 'Buy Price'}
                         </Label>
                         <Input
                             id="purchasePrice"
@@ -162,7 +164,7 @@ export function EditProductDialog({ product, open, onOpenChange, onProductUpdate
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="price" className="text-right">
-                            Sell Price
+                            {d?.price || 'Sell Price'}
                         </Label>
                         <Input
                             id="price"
@@ -177,7 +179,7 @@ export function EditProductDialog({ product, open, onOpenChange, onProductUpdate
                     <DialogFooter>
                         <Button type="submit" disabled={isLoading}>
                             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Save changes
+                            {d?.submit || 'Save changes'}
                         </Button>
                     </DialogFooter>
                 </form>

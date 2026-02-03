@@ -288,6 +288,7 @@ export default function CustomersPage({
             };
             refreshCustomers();
           }}
+          dictionary={dictionary}
         />
       )}
     </div>

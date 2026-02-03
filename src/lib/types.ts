@@ -42,7 +42,7 @@ export type Supplier = {
 };
 
 export type Customer = {
-  id:string;
+  id: string;
   name: string;
   phone: string;
   email: string;
@@ -83,4 +83,6 @@ export type Sale = {
   items: OrderItem[];
   total: number;
 };
+
+export type DocumentType = 'INVOICE' | 'TERM_INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT';
 

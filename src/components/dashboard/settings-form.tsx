@@ -56,8 +56,9 @@ export function SettingsForm({ dictionary }: { dictionary?: any }) {
                                 </p>
                                 <BusinessRulesModal dictionary={dictionary} />
                                 <div className="pt-4 border-t">
+                                    <h3 className="text-sm font-medium mb-1">{dictionary?.settings?.juridicTermsTitle || 'Payment & Legal Terms'}</h3>
                                     <p className="text-sm text-muted-foreground mb-4">
-                                        Configure terms for "Facture à termes" invoices.
+                                        {dictionary?.settings?.juridicTermsDescription || 'Configure terms for "Facture à termes" invoices.'}
                                     </p>
                                     <JuridicTermsModal dictionary={dictionary} />
                                 </div>

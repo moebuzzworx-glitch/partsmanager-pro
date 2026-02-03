@@ -482,6 +482,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
           onProductUpdated={() => {
             fetchProducts();
           }}
+          dictionary={dictionary}
         />
       )}
     </div>
