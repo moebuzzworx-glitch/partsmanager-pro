@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,9 +23,12 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/firebase/provider';
 import { getUserSettings, saveUserSettings } from '@/lib/settings-utils';
+import { recalculateAllProductPrices } from '@/lib/recalculate-prices';
 import { Save, Edit, Percent, Loader2 } from 'lucide-react';
 
 const getBusinessRulesSchema = (dictionary?: any) => z.object({
@@ -38,6 +41,8 @@ export type BusinessRulesData = z.infer<ReturnType<typeof getBusinessRulesSchema
 export function BusinessRulesModal({ dictionary }: { dictionary?: any }) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [applyToExisting, setApplyToExisting] = useState(false);
+  const [recalculateProgress, setRecalculateProgress] = useState<string | null>(null);
   const { toast } = useToast();
 
   const { firestore, user, isUserLoading } = useFirebase();
@@ -81,6 +86,7 @@ export function BusinessRulesModal({ dictionary }: { dictionary?: any }) {
 
   async function onSubmit(values: BusinessRulesData) {
     setIsLoading(true);
+    setRecalculateProgress(null);
     try {
       localStorage.setItem('profitMargin', values.profitMargin.toString());
       localStorage.setItem('defaultVat', values.defaultVat.toString());
@@ -94,10 +100,33 @@ export function BusinessRulesModal({ dictionary }: { dictionary?: any }) {
         } as any);
       }
 
-      toast({
-        title: dictionary?.settings?.businessRulesSaveSuccess || 'Business Rules Saved',
-        description: `${dictionary?.settings?.profitMargin || 'Profit margin'} set to ${values.profitMargin}% and ${dictionary?.settings?.defaultVAT || 'VAT'} to ${values.defaultVat}%.`,
-      });
+      // If user wants to apply to existing products, recalculate all prices
+      if (applyToExisting && user) {
+        setRecalculateProgress(dictionary?.settings?.recalculatingPrices || 'Recalculating prices...');
+
+        const result = await recalculateAllProductPrices(
+          user,
+          firestore,
+          values.profitMargin,
+          (progress, message) => {
+            setRecalculateProgress(message);
+          }
+        );
+
+        toast({
+          title: dictionary?.settings?.pricesUpdatedSuccess || 'Prices Updated',
+          description: (dictionary?.settings?.pricesUpdatedDescription || 'Updated {count} product prices with {margin}% margin.')
+            .replace('{count}', result.updated.toString())
+            .replace('{margin}', values.profitMargin.toString()),
+        });
+      } else {
+        toast({
+          title: dictionary?.settings?.businessRulesSaveSuccess || 'Business Rules Saved',
+          description: `${dictionary?.settings?.profitMargin || 'Profit margin'} set to ${values.profitMargin}% and ${dictionary?.settings?.defaultVAT || 'VAT'} to ${values.defaultVat}%.`,
+        });
+      }
+
+      setApplyToExisting(false);
       setOpen(false);
     } catch (error) {
       console.error('Failed to save business rules:', error);
@@ -108,6 +137,7 @@ export function BusinessRulesModal({ dictionary }: { dictionary?: any }) {
       });
     } finally {
       setIsLoading(false);
+      setRecalculateProgress(null);
     }
   }
 
@@ -137,13 +167,13 @@ export function BusinessRulesModal({ dictionary }: { dictionary?: any }) {
                   <FormLabel>{dictionary?.settings?.profitMargin || 'Default Profit Margin'} (%)</FormLabel>
                   <div className="relative">
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        step="0.1" 
-                        {...field} 
+                      <Input
+                        type="number"
+                        step="0.1"
+                        {...field}
                         placeholder="25"
-                        className="pl-8" 
-                        disabled={isLoading} 
+                        className="pl-8"
+                        disabled={isLoading}
                       />
                     </FormControl>
                     <Percent className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -161,13 +191,13 @@ export function BusinessRulesModal({ dictionary }: { dictionary?: any }) {
                   <FormLabel>{dictionary?.settings?.defaultVAT || 'Default VAT'} (%)</FormLabel>
                   <div className="relative">
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        step="0.1" 
-                        {...field} 
+                      <Input
+                        type="number"
+                        step="0.1"
+                        {...field}
                         placeholder="19"
-                        className="pl-8" 
-                        disabled={isLoading} 
+                        className="pl-8"
+                        disabled={isLoading}
                       />
                     </FormControl>
                     <Percent className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -176,6 +206,33 @@ export function BusinessRulesModal({ dictionary }: { dictionary?: any }) {
                 </FormItem>
               )}
             />
+
+            {/* Apply to existing products checkbox */}
+            <div className="flex flex-col gap-3 p-4 border border-dashed border-primary/30 rounded-md bg-primary/5">
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="apply-to-existing"
+                  checked={applyToExisting}
+                  onCheckedChange={(checked) => setApplyToExisting(checked === true)}
+                  disabled={isLoading}
+                />
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="apply-to-existing" className="text-sm font-medium cursor-pointer">
+                    {dictionary?.settings?.applyToExisting || 'Apply to existing products'}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {dictionary?.settings?.applyToExistingDescription || 'Recalculate selling prices for all existing products using the new profit margin.'}
+                  </p>
+                </div>
+              </div>
+
+              {recalculateProgress && (
+                <div className="flex items-center gap-2 text-sm text-primary">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>{recalculateProgress}</span>
+                </div>
+              )}
+            </div>
 
             <DialogFooter className="mt-6">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
