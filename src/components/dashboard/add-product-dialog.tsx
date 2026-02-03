@@ -207,7 +207,7 @@ export function AddProductDialog({ dictionary, onProductAdded, products = [] }: 
         purchasePrice: '0',
       });
       setOpen(false);
-      
+
       // Call the callback if provided
       if (onProductAdded) {
         onProductAdded();
@@ -253,20 +253,20 @@ export function AddProductDialog({ dictionary, onProductAdded, products = [] }: 
       // Get all possible column names for this field (all languages + synonyms)
       const possibleNames = Object.values(COLUMN_HEADERS_MAP[fieldName]).flat();
       const normalizedPossibleNames = possibleNames.map(normalizeHeaderText);
-      
+
       // Try to find matching key in row using fuzzy matching (case-insensitive, ignore special chars)
       const key = Object.keys(row).find(k => {
         const normalized = normalizeHeaderText(k);
         return normalizedPossibleNames.includes(normalized);
       });
-      
+
       if (!key) {
         console.warn(`[Header Mapping] Could not find column for '${fieldName}'`);
         console.warn(`[Header Mapping] Available row keys:`, Object.keys(row));
         console.warn(`[Header Mapping] Expected one of:`, possibleNames);
         return '';
       }
-      
+
       return key ? String(row[key] || '').trim() : '';
     };
 
@@ -275,25 +275,25 @@ export function AddProductDialog({ dictionary, onProductAdded, products = [] }: 
       // Get all possible column names for this field (all languages + synonyms)
       const possibleNames = Object.values(COLUMN_HEADERS_MAP[fieldName]).flat();
       const normalizedPossibleNames = possibleNames.map(normalizeHeaderText);
-      
+
       // Try to find matching key in row using fuzzy matching
       const key = Object.keys(row).find(k => {
         const normalized = normalizeHeaderText(k);
         return normalizedPossibleNames.includes(normalized);
       });
-      
+
       if (!key) {
         console.warn(`[Header Mapping] Could not find column for '${fieldName}' in row keys:`, Object.keys(row));
         console.warn(`[Header Mapping] Expected one of:`, possibleNames);
         return 0;
       }
       const value = row[key];
-      
+
       // Handle both string and number types
       if (typeof value === 'number') {
         return isNaN(value) ? 0 : value;
       }
-      
+
       const parsed = parseFloat(String(value || '').trim());
       return isNaN(parsed) ? 0 : parsed;
     };
@@ -373,7 +373,7 @@ export function AddProductDialog({ dictionary, onProductAdded, products = [] }: 
         // purchasePrice is already numeric from parsedRows
         const purchasePrice = parseFloat(row.purchasePrice) || 0;
         const price = purchasePrice > 0 ? purchasePrice * (1 + profitMargin / 100) : 0;
-        
+
         // Log first 3 rows for debugging
         if (index < 3) {
           console.log(`[Import Debug] Row ${index}:`, {
@@ -385,7 +385,7 @@ export function AddProductDialog({ dictionary, onProductAdded, products = [] }: 
             fullRow: row,
           });
         }
-        
+
         return {
           name: row.designation,
           reference: row.reference,
@@ -402,7 +402,7 @@ export function AddProductDialog({ dictionary, onProductAdded, products = [] }: 
         setLocalMessage('Saving to your inventory...');
         setFirebaseMessage('Ready to sync...');
         setFirebaseSyncComplete(false);
-        
+
         const result = await hybridImportProducts(
           user,
           productsToImport,
@@ -415,7 +415,7 @@ export function AddProductDialog({ dictionary, onProductAdded, products = [] }: 
             // Firebase progress - tracked but not shown (happens in background)
             setFirebaseProgress(progress);
             setFirebaseMessage(message);
-            
+
             // When Firebase sync reaches 100%, show a toast
             if (progress === 100 && !firebaseSyncComplete) {
               setFirebaseSyncComplete(true);
@@ -426,21 +426,22 @@ export function AddProductDialog({ dictionary, onProductAdded, products = [] }: 
                 });
               }, 1000);
             }
-          }
+          },
+          products // Pass current products list to ensure accumulation logic works
         );
 
         successCount = result.localSaved;
-        
+
         // Close dialog immediately after local save completes
         setImportStatus('success');
         setLocalMessage(`✅ ${result.localSaved} products saved!`);
-        
+
         // Show immediate toast that products are in inventory
         toast({
           title: '✅ Products Added to Inventory',
           description: `${result.localSaved} products are now visible in your stock. Cloud backup is syncing in the background.`,
         });
-        
+
         // Close dialog after a brief moment to let user see the success message
         setTimeout(() => {
           setOpen(false);
@@ -448,7 +449,7 @@ export function AddProductDialog({ dictionary, onProductAdded, products = [] }: 
             onProductAdded();
           }
         }, 500);
-        
+
         // Firebase sync continues in background, users don't wait for it
       } catch (error: any) {
         console.error('Import error:', error);
@@ -468,7 +469,7 @@ export function AddProductDialog({ dictionary, onProductAdded, products = [] }: 
 
     // Check if file is Excel or CSV
     const isExcelFile = file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.type.includes('spreadsheet');
-    
+
     if (isExcelFile) {
       // Handle Excel files
       const reader = new FileReader();
@@ -476,17 +477,17 @@ export function AddProductDialog({ dictionary, onProductAdded, products = [] }: 
         try {
           const data = e.target?.result as ArrayBuffer;
           const workbook = XLSX.read(data, { type: 'array' });
-          
+
           // Get first sheet
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
-          
+
           // Convert to JSON
           const jsonData = XLSX.utils.sheet_to_json(worksheet) as ProductRow[];
-          
+
           console.log('Excel Column Headers:', jsonData.length > 0 ? Object.keys(jsonData[0]) : []);
           console.log('First row data:', jsonData[0]);
-          
+
           await processProducts(jsonData);
         } catch (error: any) {
           setImportStatus('error');
@@ -506,117 +507,117 @@ export function AddProductDialog({ dictionary, onProductAdded, products = [] }: 
         skipEmptyLines: true,
         dynamicTyping: false,
         complete: async (results) => {
-        try {
-          let products = results.data as ProductRow[];
-          
-          if (products.length === 0) {
+          try {
+            let products = results.data as ProductRow[];
+
+            if (products.length === 0) {
+              setImportStatus('error');
+              setImportMessage('No products found in file.');
+              toast({
+                title: 'Error',
+                description: 'File is empty',
+                variant: 'destructive',
+              });
+              return;
+            }
+
+            // Log column headers for debugging
+            console.log('CSV Column Headers:', Object.keys(products[0]));
+            console.log('First row data:', products[0]);
+
+            // Debug: Show which headers would match each field
+            const debugHeaderMapping = {
+              designation: getColumnValue(products[0], 'designation'),
+              reference: getColumnValue(products[0], 'reference'),
+              brand: getColumnValue(products[0], 'brand'),
+              stock: getNumericValue(products[0], 'stock'),
+              purchasePrice: getNumericValue(products[0], 'purchasePrice'),
+            };
+            console.log('Detected field values:', debugHeaderMapping);
+
+            // If first row appears to be data (not headers), try parsing without headers
+            const firstRowKeys = Object.keys(products[0]);
+            const hasProperHeaders = firstRowKeys.some(key =>
+              key.toLowerCase().includes('designation') ||
+              key.toLowerCase().includes('reference') ||
+              key.toLowerCase().includes('brand') ||
+              key.toLowerCase().includes('stock') ||
+              key.toLowerCase().includes('price')
+            );
+
+            // If headers don't look right, reparse without header detection
+            if (!hasProperHeaders && firstRowKeys.some(k => k.includes('field') || /^\d+$/.test(k))) {
+              console.log('Headers appear malformed, reparsing without header detection...');
+
+              // Reparse without header option
+              return new Promise<void>((resolve) => {
+                Papa.parse(file, {
+                  header: false,
+                  skipEmptyLines: true,
+                  dynamicTyping: false,
+                  complete: async (resultsNoHeader) => {
+                    try {
+                      const rows = resultsNoHeader.data as any[];
+
+                      if (rows.length === 0) {
+                        setImportStatus('error');
+                        setImportMessage('No data found in file.');
+                        resolve();
+                        return;
+                      }
+
+                      // Convert array-based rows to object-based using first row as headers
+                      const headerRow = rows[0];
+                      const dataProducts = rows.slice(1).map((row: any[]) => {
+                        const obj: ProductRow = {};
+                        headerRow.forEach((header: any, index: number) => {
+                          obj[header || `column_${index}`] = row[index];
+                        });
+                        return obj;
+                      });
+
+                      products = dataProducts;
+                      console.log('Reparsed CSV Column Headers:', headerRow);
+                      console.log('First data row:', products[0]);
+
+                      await processProducts(products);
+                      resolve();
+                    } catch (error) {
+                      console.error('Error in reparse:', error);
+                      setImportStatus('error');
+                      setImportMessage('Error processing file.');
+                      resolve();
+                    }
+                  },
+                  error: (error: any) => {
+                    setImportStatus('error');
+                    setImportMessage(`Error reading file: ${error.message}`);
+                    resolve();
+                  },
+                });
+              });
+            }
+
+            await processProducts(products);
+          } catch (error: any) {
             setImportStatus('error');
-            setImportMessage('No products found in file.');
+            setImportMessage(`Error processing file: ${error.message}`);
             toast({
               title: 'Error',
-              description: 'File is empty',
+              description: 'Failed to process file',
               variant: 'destructive',
             });
-            return;
           }
-
-          // Log column headers for debugging
-          console.log('CSV Column Headers:', Object.keys(products[0]));
-          console.log('First row data:', products[0]);
-          
-          // Debug: Show which headers would match each field
-          const debugHeaderMapping = {
-            designation: getColumnValue(products[0], 'designation'),
-            reference: getColumnValue(products[0], 'reference'),
-            brand: getColumnValue(products[0], 'brand'),
-            stock: getNumericValue(products[0], 'stock'),
-            purchasePrice: getNumericValue(products[0], 'purchasePrice'),
-          };
-          console.log('Detected field values:', debugHeaderMapping);
-          
-          // If first row appears to be data (not headers), try parsing without headers
-          const firstRowKeys = Object.keys(products[0]);
-          const hasProperHeaders = firstRowKeys.some(key => 
-            key.toLowerCase().includes('designation') || 
-            key.toLowerCase().includes('reference') ||
-            key.toLowerCase().includes('brand') ||
-            key.toLowerCase().includes('stock') ||
-            key.toLowerCase().includes('price')
-          );
-          
-          // If headers don't look right, reparse without header detection
-          if (!hasProperHeaders && firstRowKeys.some(k => k.includes('field') || /^\d+$/.test(k))) {
-            console.log('Headers appear malformed, reparsing without header detection...');
-            
-            // Reparse without header option
-            return new Promise<void>((resolve) => {
-              Papa.parse(file, {
-                header: false,
-                skipEmptyLines: true,
-                dynamicTyping: false,
-                complete: async (resultsNoHeader) => {
-                  try {
-                    const rows = resultsNoHeader.data as any[];
-                    
-                    if (rows.length === 0) {
-                      setImportStatus('error');
-                      setImportMessage('No data found in file.');
-                      resolve();
-                      return;
-                    }
-                    
-                    // Convert array-based rows to object-based using first row as headers
-                    const headerRow = rows[0];
-                    const dataProducts = rows.slice(1).map((row: any[]) => {
-                      const obj: ProductRow = {};
-                      headerRow.forEach((header: any, index: number) => {
-                        obj[header || `column_${index}`] = row[index];
-                      });
-                      return obj;
-                    });
-                    
-                    products = dataProducts;
-                    console.log('Reparsed CSV Column Headers:', headerRow);
-                    console.log('First data row:', products[0]);
-                    
-                    await processProducts(products);
-                    resolve();
-                  } catch (error) {
-                    console.error('Error in reparse:', error);
-                    setImportStatus('error');
-                    setImportMessage('Error processing file.');
-                    resolve();
-                  }
-                },
-                error: (error: any) => {
-                  setImportStatus('error');
-                  setImportMessage(`Error reading file: ${error.message}`);
-                  resolve();
-                },
-              });
-            });
-          }
-          
-          await processProducts(products);
-        } catch (error: any) {
+        },
+        error: (error: any) => {
           setImportStatus('error');
-          setImportMessage(`Error processing file: ${error.message}`);
+          setImportMessage(`Error reading file: ${error.message}`);
           toast({
             title: 'Error',
-            description: 'Failed to process file',
+            description: 'Failed to read file',
             variant: 'destructive',
           });
-        }
-      },
-      error: (error: any) => {
-        setImportStatus('error');
-        setImportMessage(`Error reading file: ${error.message}`);
-        toast({
-          title: 'Error',
-          description: 'Failed to read file',
-          variant: 'destructive',
-        });
-      },
+        },
       });
     }
   };
@@ -660,198 +661,198 @@ export function AddProductDialog({ dictionary, onProductAdded, products = [] }: 
       />
       <TrialButtonLock user={user}>
         <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button>
-            <PlusCircle className="mr-2" />
-            {dictionary.dashboard.addProduct}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{d.title}</DialogTitle>
-          <DialogDescription>{d.description}</DialogDescription>
-        </DialogHeader>
-        <Tabs defaultValue="manual">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="manual">{d.manualEntry}</TabsTrigger>
-            <TabsTrigger value="batchImport">{d.batchImport}</TabsTrigger>
-          </TabsList>
-          <TabsContent value="manual">
-            <form onSubmit={handleSubmit} className="space-y-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="designation">{d.designation}</Label>
-                <Input
-                  id="designation"
-                  placeholder={d.designationPlaceholder}
-                  value={formData.designation}
-                  onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-                  disabled={isLoading}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="reference">{d.reference}</Label>
-                <Input
-                  id="reference"
-                  placeholder={d.referencePlaceholder}
-                  value={formData.reference}
-                  onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="brand">{d.brand}</Label>
-                <Input
-                  id="brand"
-                  placeholder={d.brandPlaceholder}
-                  value={formData.brand}
-                  onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                <div className="grid gap-2">
-                  <Label htmlFor="quantity">{d.quantity}</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    value={formData.quantity}
-                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                    disabled={isLoading}
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="purchase-price">{d.purchasePrice}</Label>
-                  <Input
-                    id="purchase-price"
-                    type="number"
-                    value={formData.purchasePrice}
-                    onChange={(e) => setFormData({ ...formData, purchasePrice: e.target.value })}
-                    disabled={isLoading}
-                    required
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {d.submit}
-                </Button>
-              </DialogFooter>
-            </form>
-          </TabsContent>
-          <TabsContent value="batchImport">
-            <div className="space-y-4 py-4">
-              {importStatus === 'idle' && (
-                <>
-                  <div className="flex flex-col items-center justify-center space-y-4 py-8 border-2 border-dashed rounded-lg p-6 cursor-pointer hover:bg-muted/50 transition"
-                    onClick={() => document.getElementById('file-input')?.click()}>
-                    <Upload className="h-12 w-12 text-muted-foreground" />
-                    <p className="text-center text-muted-foreground text-sm">{d.batchDescription}</p>
-                    <input
-                      id="file-input"
-                      type="file"
-                      accept=".csv,.xlsx,.xls"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                      disabled={importStatus !== 'idle'}
+          <DialogTrigger asChild>
+            <Button>
+              <PlusCircle className="mr-2" />
+              {dictionary.dashboard.addProduct}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{d.title}</DialogTitle>
+              <DialogDescription>{d.description}</DialogDescription>
+            </DialogHeader>
+            <Tabs defaultValue="manual">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="manual">{d.manualEntry}</TabsTrigger>
+                <TabsTrigger value="batchImport">{d.batchImport}</TabsTrigger>
+              </TabsList>
+              <TabsContent value="manual">
+                <form onSubmit={handleSubmit} className="space-y-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="designation">{d.designation}</Label>
+                    <Input
+                      id="designation"
+                      placeholder={d.designationPlaceholder}
+                      value={formData.designation}
+                      onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                      disabled={isLoading}
+                      required
                     />
                   </div>
-                  <Button variant="outline" className="w-full" onClick={downloadTemplate}>
-                    {d.downloadTemplate}
-                  </Button>
-                </>
-              )}
-              
-              {importStatus === 'processing' && (
-                <div className="space-y-4 py-8">
-                  {/* Local Storage Progress */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Local Storage</span>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">{localProgress}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${localProgress}%` }}
+                  <div className="grid gap-2">
+                    <Label htmlFor="reference">{d.reference}</Label>
+                    <Input
+                      id="reference"
+                      placeholder={d.referencePlaceholder}
+                      value={formData.reference}
+                      onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="brand">{d.brand}</Label>
+                    <Input
+                      id="brand"
+                      placeholder={d.brandPlaceholder}
+                      value={formData.brand}
+                      onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                    <div className="grid gap-2">
+                      <Label htmlFor="quantity">{d.quantity}</Label>
+                      <Input
+                        id="quantity"
+                        type="number"
+                        value={formData.quantity}
+                        onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                        disabled={isLoading}
+                        required
                       />
                     </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">{localMessage}</p>
+                    <div className="grid gap-2">
+                      <Label htmlFor="purchase-price">{d.purchasePrice}</Label>
+                      <Input
+                        id="purchase-price"
+                        type="number"
+                        value={formData.purchasePrice}
+                        onChange={(e) => setFormData({ ...formData, purchasePrice: e.target.value })}
+                        disabled={isLoading}
+                        required
+                      />
+                    </div>
                   </div>
-
-                  {/* Firebase Sync Progress */}
-                  {firebaseProgress > 0 && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Firebase Sync</span>
-                        <span className="text-sm text-gray-600 dark:text-gray-400">{firebaseProgress}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                        <div
-                          className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${firebaseProgress}%` }}
+                  <DialogFooter>
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                      {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {d.submit}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </TabsContent>
+              <TabsContent value="batchImport">
+                <div className="space-y-4 py-4">
+                  {importStatus === 'idle' && (
+                    <>
+                      <div className="flex flex-col items-center justify-center space-y-4 py-8 border-2 border-dashed rounded-lg p-6 cursor-pointer hover:bg-muted/50 transition"
+                        onClick={() => document.getElementById('file-input')?.click()}>
+                        <Upload className="h-12 w-12 text-muted-foreground" />
+                        <p className="text-center text-muted-foreground text-sm">{d.batchDescription}</p>
+                        <input
+                          id="file-input"
+                          type="file"
+                          accept=".csv,.xlsx,.xls"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                          disabled={importStatus !== 'idle'}
                         />
                       </div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">{firebaseMessage}</p>
+                      <Button variant="outline" className="w-full" onClick={downloadTemplate}>
+                        {d.downloadTemplate}
+                      </Button>
+                    </>
+                  )}
+
+                  {importStatus === 'processing' && (
+                    <div className="space-y-4 py-8">
+                      {/* Local Storage Progress */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Local Storage</span>
+                          <span className="text-sm text-gray-600 dark:text-gray-400">{localProgress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                          <div
+                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${localProgress}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">{localMessage}</p>
+                      </div>
+
+                      {/* Firebase Sync Progress */}
+                      {firebaseProgress > 0 && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">Firebase Sync</span>
+                            <span className="text-sm text-gray-600 dark:text-gray-400">{firebaseProgress}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div
+                              className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${firebaseProgress}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">{firebaseMessage}</p>
+                        </div>
+                      )}
+
+                      {/* Overall Progress */}
+                      <div className="space-y-2 pt-2 border-t dark:border-gray-700">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Overall Progress</span>
+                          <span className="text-sm text-gray-600 dark:text-gray-400">{importProgress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                          <div
+                            className="bg-purple-600 h-2.5 rounded-full transition-all duration-300"
+                            style={{ width: `${importProgress}%` }}
+                          />
+                        </div>
+                      </div>
                     </div>
                   )}
 
-                  {/* Overall Progress */}
-                  <div className="space-y-2 pt-2 border-t dark:border-gray-700">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Overall Progress</span>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">{importProgress}%</span>
+                  {importStatus === 'success' && (
+                    <div className="flex items-start space-x-3 p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+                      <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-green-900 dark:text-green-100">{importMessage}</p>
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                      <div
-                        className="bg-purple-600 h-2.5 rounded-full transition-all duration-300"
-                        style={{ width: `${importProgress}%` }}
-                      />
+                  )}
+
+                  {importStatus === 'error' && (
+                    <div className="flex items-start space-x-3 p-4 bg-red-50 dark:bg-red-950 rounded-lg">
+                      <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-red-900 dark:text-red-100">{importMessage}</p>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )}
+                  )}
 
-              {importStatus === 'success' && (
-                <div className="flex items-start space-x-3 p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-green-900 dark:text-green-100">{importMessage}</p>
-                  </div>
+                  <DialogFooter>
+                    {importStatus !== 'processing' && (
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          setImportStatus('idle');
+                          setImportMessage('');
+                          if (importStatus === 'success') setOpen(false);
+                        }}
+                      >
+                        {importStatus === 'success' ? 'Close' : 'Cancel'}
+                      </Button>
+                    )}
+                  </DialogFooter>
                 </div>
-              )}
-
-              {importStatus === 'error' && (
-                <div className="flex items-start space-x-3 p-4 bg-red-50 dark:bg-red-950 rounded-lg">
-                  <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-red-900 dark:text-red-100">{importMessage}</p>
-                  </div>
-                </div>
-              )}
-
-              <DialogFooter>
-                {importStatus !== 'processing' && (
-                  <Button 
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      setImportStatus('idle');
-                      setImportMessage('');
-                      if (importStatus === 'success') setOpen(false);
-                    }}
-                  >
-                    {importStatus === 'success' ? 'Close' : 'Cancel'}
-                  </Button>
-                )}
-              </DialogFooter>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+              </TabsContent>
+            </Tabs>
+          </DialogContent>
+        </Dialog>
       </TrialButtonLock>
     </>
   );

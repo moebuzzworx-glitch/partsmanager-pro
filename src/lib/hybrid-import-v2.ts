@@ -23,7 +23,9 @@ export interface ImportResult {
 export async function hybridImportProducts(
   user: User | null,
   products: any[],
-  onLocalProgress?: (progress: number, message: string) => void
+  onLocalProgress?: (progress: number, message: string) => void,
+  onFirebaseProgress?: (progress: number, message: string) => void,
+  currentProducts: any[] = []
 ): Promise<ImportResult> {
   if (!user) {
     throw new Error('User not authenticated');
@@ -55,7 +57,13 @@ export async function hybridImportProducts(
       // Check if product with same reference already exists
       let existingProduct = null;
       if (product.reference) {
-        existingProduct = await getProductByReference(product.reference, user.uid);
+        // 1. Check in-memory products (most up-to-date from UI)
+        existingProduct = currentProducts.find(p => p.reference === product.reference) || null;
+
+        // 2. Fallback to IndexedDB check
+        if (!existingProduct) {
+          existingProduct = await getProductByReference(product.reference, user.uid);
+        }
       }
 
       if (existingProduct) {
