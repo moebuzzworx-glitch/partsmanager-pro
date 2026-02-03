@@ -46,8 +46,35 @@ export async function recalculateAllProductPrices(
         // Initialize IndexedDB
         await initDB();
 
-        // Get all products from IndexedDB
-        const products = await getProductsByUser(user.uid);
+        // Try to get products from Firebase first (most reliable source)
+        let products: any[] = [];
+
+        if (firestore) {
+            try {
+                console.log('[RecalculatePrices] Fetching products from Firebase...');
+                const productsRef = collection(firestore, 'products');
+                const q = query(productsRef, where('userId', '==', user.uid));
+                const querySnapshot = await getDocs(q);
+
+                products = querySnapshot.docs
+                    .map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }))
+                    .filter((p: any) => p.isDeleted !== true);
+                console.log('[RecalculatePrices] Fetched', products.length, 'products from Firebase');
+            } catch (fbErr) {
+                console.warn('[RecalculatePrices] Failed to fetch from Firebase, falling back to IndexedDB:', fbErr);
+            }
+        }
+
+        // Fallback to IndexedDB if Firebase fetch failed or returned empty
+        if (products.length === 0) {
+            console.log('[RecalculatePrices] Fetching products from IndexedDB...');
+            products = await getProductsByUser(user.uid);
+            console.log('[RecalculatePrices] Fetched', products.length, 'products from IndexedDB');
+        }
+
         result.total = products.length;
 
         if (products.length === 0) {
@@ -58,10 +85,15 @@ export async function recalculateAllProductPrices(
         console.log('[RecalculatePrices] Found', products.length, 'products to update');
         onProgress?.(10, `Found ${products.length} products...`);
 
-        // Process products in batches
+        // Process products - update both IndexedDB and Firebase
         const batchSize = 50;
+
         for (let i = 0; i < products.length; i += batchSize) {
             const batch = products.slice(i, i + batchSize);
+
+            // Create Firebase batch for this chunk
+            let firebaseBatch = firestore ? writeBatch(firestore) : null;
+            let batchCount = 0;
 
             for (const product of batch) {
                 try {
@@ -76,12 +108,12 @@ export async function recalculateAllProductPrices(
                     // Calculate new selling price
                     const newPrice = purchasePrice * (1 + profitMargin / 100);
 
-                    // Only update if price changed
+                    // Only update if price changed significantly
                     if (Math.abs(newPrice - (product.price || 0)) < 0.01) {
                         continue; // Skip if price is essentially the same
                     }
 
-                    // Update in IndexedDB
+                    // Prepare updated product data
                     const updatedProduct = {
                         ...product,
                         price: newPrice,
@@ -89,10 +121,26 @@ export async function recalculateAllProductPrices(
                         updatedAt: Date.now(),
                     };
 
+                    // Update in IndexedDB (local-first)
                     await saveProduct(updatedProduct, user.uid);
 
-                    // Queue for Firebase sync
-                    await queueCommit('update', 'products', product.id, updatedProduct, user.uid);
+                    // Update in Firebase directly (for immediate persistence)
+                    if (firestore && firebaseBatch) {
+                        const productRef = doc(firestore, 'products', product.id);
+                        firebaseBatch.update(productRef, {
+                            price: newPrice,
+                            updatedAt: new Date(),
+                        });
+                        batchCount++;
+
+                        // Firestore batches have a limit of 500 operations
+                        if (batchCount >= 450) {
+                            await firebaseBatch.commit();
+                            console.log('[RecalculatePrices] Committed Firebase batch of', batchCount, 'updates');
+                            firebaseBatch = writeBatch(firestore);
+                            batchCount = 0;
+                        }
+                    }
 
                     result.updated++;
                 } catch (err) {
@@ -101,14 +149,20 @@ export async function recalculateAllProductPrices(
                 }
             }
 
+            // Commit remaining Firebase batch
+            if (firestore && firebaseBatch && batchCount > 0) {
+                try {
+                    await firebaseBatch.commit();
+                    console.log('[RecalculatePrices] Committed final Firebase batch of', batchCount, 'updates');
+                } catch (commitErr) {
+                    console.error('[RecalculatePrices] Firebase batch commit failed:', commitErr);
+                    result.errors.push(`Firebase batch commit failed: ${commitErr}`);
+                }
+            }
+
             const progressPercent = Math.round(((i + batch.length) / products.length) * 90) + 10;
             onProgress?.(progressPercent, `Updated ${result.updated} of ${products.length} products...`);
         }
-
-        // Trigger background sync
-        triggerImmediateSync().catch(err => {
-            console.error('[RecalculatePrices] Background sync error:', err);
-        });
 
         onProgress?.(100, `✅ Updated ${result.updated} product prices!`);
         console.log('[RecalculatePrices] Complete. Updated:', result.updated, '/', result.total);
