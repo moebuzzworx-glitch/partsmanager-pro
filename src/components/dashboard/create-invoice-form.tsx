@@ -735,7 +735,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
               />
 
               <div className="flex flex-col gap-4 p-4 border border-dashed border-primary/30 rounded-md bg-primary/5">
-                {documentType === 'INVOICE' && (
+                {(documentType === 'INVOICE' || documentType === 'TERM_INVOICE') && (
                   <FormField
                     control={form.control}
                     name="isProforma"

@@ -458,8 +458,11 @@ export async function generateDocumentPdf(
         doc.setFont('helvetica', 'bold');
         doc.text(capWords, 14, textY + 6);
 
-        // --- JURIDIC TERMS (Facture à Terme) ---
-        if (type === 'TERM_INVOICE' && resolvedCompanyInfo.juridicTerms) {
+        // --- JURIDIC TERMS (Facture à Terme or Checked) ---
+        // Check if explicitly included via form (priority) or fallback to type-based default if property is missing (backward compat)
+        const showJuridicTerms = (data as any).includeJuridicTerms;
+
+        if (showJuridicTerms && resolvedCompanyInfo.juridicTerms) {
             let termsY = textY + 16;
             // Check space
             if (termsY + 20 > 280) {
@@ -469,7 +472,8 @@ export async function generateDocumentPdf(
 
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(10);
-            doc.text('Conditions de Vente / Termes :', 14, termsY);
+            const title = (companyInfo as any)?.juridicTermsTitle || 'Conditions de Vente / Termes :';
+            doc.text(title, 14, termsY);
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(8);
