@@ -11,7 +11,12 @@ export interface AppSettings {
   rib: string;
   logoUrl?: string;
   profitMargin: number;
+  juridicTerms?: string;
   lastInvoiceNumber: {
+    year: number;
+    number: number;
+  };
+  lastTermInvoiceNumber?: {
     year: number;
     number: number;
   };
@@ -40,7 +45,12 @@ const DEFAULT_SETTINGS: AppSettings = {
   rib: '',
   logoUrl: '',
   profitMargin: 25,
+  juridicTerms: '',
   lastInvoiceNumber: {
+    year: new Date().getFullYear(),
+    number: 0,
+  },
+  lastTermInvoiceNumber: {
     year: new Date().getFullYear(),
     number: 0,
   },
@@ -140,13 +150,17 @@ export async function updateLastInvoiceNumber(
 /**
  * Get the next document number based on type
  */
-export function getNextDocumentNumber(settings: AppSettings, type: 'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT'): string {
+export function getNextDocumentNumber(settings: AppSettings, type: 'INVOICE' | 'TERM_INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT'): string {
   const currentYear = new Date().getFullYear();
   let nextNumber = 1;
   let prefix = 'FAC';
   let lastInfo = settings.lastInvoiceNumber;
 
   switch (type) {
+    case 'TERM_INVOICE':
+      prefix = 'FAT';
+      lastInfo = settings.lastTermInvoiceNumber || { year: currentYear, number: 0 };
+      break;
     case 'PURCHASE_ORDER':
       prefix = 'BC';
       lastInfo = settings.lastPurchaseOrderNumber || { year: currentYear, number: 0 };
@@ -179,13 +193,17 @@ export async function updateLastDocumentNumber(
   firestore: Firestore,
   userId: string,
   settings: AppSettings,
-  type: 'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT'
+  type: 'INVOICE' | 'TERM_INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT'
 ): Promise<void> {
   const currentYear = new Date().getFullYear();
   let lastInfo = settings.lastInvoiceNumber;
   let field = 'lastInvoiceNumber';
 
   switch (type) {
+    case 'TERM_INVOICE':
+      lastInfo = settings.lastTermInvoiceNumber || { year: currentYear, number: 0 };
+      field = 'lastTermInvoiceNumber';
+      break;
     case 'PURCHASE_ORDER':
       lastInfo = settings.lastPurchaseOrderNumber || { year: currentYear, number: 0 };
       field = 'lastPurchaseOrderNumber';

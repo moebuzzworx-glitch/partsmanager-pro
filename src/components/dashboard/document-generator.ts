@@ -8,7 +8,7 @@ import { User as AppUser } from '@/lib/types';
 import { canExport } from '@/lib/trial-utils';
 
 // Define supported document types
-export type DocumentType = 'INVOICE' | 'DELIVERY_NOTE' | 'PURCHASE_ORDER' | 'SALES_RECEIPT';
+export type DocumentType = 'INVOICE' | 'DELIVERY_NOTE' | 'PURCHASE_ORDER' | 'SALES_RECEIPT' | 'TERM_INVOICE';
 
 export interface CompanyInfo {
     companyName: string;
@@ -20,13 +20,15 @@ export interface CompanyInfo {
     nis?: string;
     rib?: string;
     logoUrl?: string;
+    juridicTerms?: string;
 }
 
 // Helper: Convert DocumentType to display title
 function getDocumentTitle(type: DocumentType, isProforma: boolean): string {
-    if (isProforma && type === 'INVOICE') return 'Facture Proforma';
+    if (isProforma && (type === 'INVOICE' || type === 'TERM_INVOICE')) return 'Facture Proforma';
     switch (type) {
         case 'INVOICE': return 'Facture';
+        case 'TERM_INVOICE': return 'Facture à Terme';
         case 'DELIVERY_NOTE': return 'Bon de Livraison';
         case 'PURCHASE_ORDER': return 'Bon de Commande';
         case 'SALES_RECEIPT': return 'Bon de Vente';
@@ -455,6 +457,27 @@ export async function generateDocumentPdf(
         doc.text('Arrêter la présente facture à la somme de :', 14, textY);
         doc.setFont('helvetica', 'bold');
         doc.text(capWords, 14, textY + 6);
+
+        // --- JURIDIC TERMS (Facture à Terme) ---
+        if (type === 'TERM_INVOICE' && resolvedCompanyInfo.juridicTerms) {
+            let termsY = textY + 16;
+            // Check space
+            if (termsY + 20 > 280) {
+                doc.addPage();
+                termsY = 20;
+            }
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.text('Conditions de Vente / Termes :', 14, termsY);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+
+            // Split terms
+            const termsLines = doc.splitTextToSize(resolvedCompanyInfo.juridicTerms, 180);
+            doc.text(termsLines, 14, termsY + 6);
+        }
     }
 
     // Add Page Numbers

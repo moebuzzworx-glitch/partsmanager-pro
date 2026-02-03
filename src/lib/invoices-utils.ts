@@ -7,7 +7,7 @@ export interface StoredInvoice {
   userId: string;
   invoiceNumber: string;
   invoiceDate: string;
-  documentType?: 'INVOICE' | 'DELIVERY_NOTE' | 'PURCHASE_ORDER' | 'SALES_RECEIPT';
+  documentType?: 'INVOICE' | 'DELIVERY_NOTE' | 'PURCHASE_ORDER' | 'SALES_RECEIPT' | 'TERM_INVOICE';
   isProforma: boolean;
   clientName: string;
   clientAddress?: string;
@@ -50,7 +50,7 @@ export async function saveInvoiceData(
   total?: number,
   subtotal?: number,
   vatAmount?: number,
-  documentType: 'INVOICE' | 'DELIVERY_NOTE' | 'PURCHASE_ORDER' | 'SALES_RECEIPT' = 'INVOICE',
+  documentType: 'INVOICE' | 'DELIVERY_NOTE' | 'PURCHASE_ORDER' | 'SALES_RECEIPT' | 'TERM_INVOICE' = 'INVOICE',
   paid: boolean = false
 ): Promise<string> {
   try {
@@ -298,7 +298,7 @@ export async function recordSalesFromInvoice(
   invoice: StoredInvoice
 ): Promise<boolean> {
   try {
-    if (invoice.documentType !== 'SALES_RECEIPT' && invoice.documentType !== 'INVOICE') {
+    if (invoice.documentType !== 'SALES_RECEIPT' && invoice.documentType !== 'INVOICE' && invoice.documentType !== 'TERM_INVOICE') {
       return true; // only record sales for relevant types
     }
     if (invoice.isProforma) return true;

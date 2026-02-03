@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CompanyInfoModal } from '@/app/[locale]/settings/company-info-modal';
 import { BusinessRulesModal } from '@/app/[locale]/settings/business-rules-modal';
+import { JuridicTermsModal } from '@/app/[locale]/settings/juridic-terms-modal';
 import { BillingPanel } from './billing-panel';
 import { NotificationSoundSettings } from '@/components/notification-sound-settings';
 import { SecuritySettings } from './security-settings';
@@ -54,6 +55,12 @@ export function SettingsForm({ dictionary }: { dictionary?: any }) {
                                     {dictionary?.settings?.businessSubtext || 'Configure default profit margins and VAT settings for your business.'}
                                 </p>
                                 <BusinessRulesModal dictionary={dictionary} />
+                                <div className="pt-4 border-t">
+                                    <p className="text-sm text-muted-foreground mb-4">
+                                        Configure terms for "Facture à termes" invoices.
+                                    </p>
+                                    <JuridicTermsModal dictionary={dictionary} />
+                                </div>
                             </div>
                         </CardContent>
                     </Card>

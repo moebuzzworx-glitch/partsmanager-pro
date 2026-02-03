@@ -64,7 +64,7 @@ export type InvoiceFormData = z.infer<typeof formSchema>;
 interface CreateInvoiceFormProps {
   locale: Locale;
   onSuccess: () => void;
-  defaultType?: 'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT';
+  defaultType?: 'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT' | 'TERM_INVOICE';
   hideTypeSelector?: boolean;
   onLoadingChange?: (loading: boolean) => void;
 }
@@ -76,7 +76,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
     const { user, firestore } = useFirebase();
     const [userDoc, setUserDoc] = React.useState<AppUser | null>(null);
     const [isLoading, setIsLoading] = React.useState(false);
-    const [documentType, setDocumentType] = React.useState<'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT'>(defaultType || 'INVOICE');
+    const [documentType, setDocumentType] = React.useState<'INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT' | 'TERM_INVOICE'>(defaultType || 'INVOICE');
     const [nextDocNumber, setNextDocNumber] = React.useState('');
     const [settingsState, setSettingsState] = React.useState<AppSettings | null>(null);
     const [customers, setCustomers] = React.useState<ClientAutoComplete[]>([]);
@@ -231,7 +231,8 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
           address: settings.address,
           phone: settings.phone,
           rc: settings.rc, nif: settings.nif, art: settings.art, nis: settings.nis, rib: settings.rib,
-          logoUrl: (settings as any).logoUrl
+          logoUrl: (settings as any).logoUrl,
+          juridicTerms: settings.juridicTerms
         };
         const defaultVat = (settings as any).defaultVat ?? 0;
 
@@ -358,6 +359,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, CreateInvoice
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="INVOICE">Facture</SelectItem>
+                          <SelectItem value="TERM_INVOICE">Facture à termes</SelectItem>
                           <SelectItem value="PURCHASE_ORDER">Bon de Commande</SelectItem>
                           <SelectItem value="DELIVERY_NOTE">Bon de Livraison</SelectItem>
                           <SelectItem value="SALES_RECEIPT">Bon de Vente</SelectItem>
