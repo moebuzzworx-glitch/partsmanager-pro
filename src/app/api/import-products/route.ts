@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 
 // Initialize Firebase Admin SDK (only once)
@@ -16,7 +16,7 @@ function getAdminApp() {
   }
 
   const serviceAccount = JSON.parse(serviceAccountJson);
-  
+
   if (!serviceAccount.project_id) {
     throw new Error('FIREBASE_SERVICE_ACCOUNT is missing project_id');
   }
@@ -63,11 +63,11 @@ export async function POST(req: NextRequest) {
     // STEP 1: Query for existing products by reference and name
     const existingProductsMap = new Map<string, string>();
     const productsRef = db.collection('products');
-    
+
     const references = products
       .map((p: any) => p.reference)
       .filter((r: string) => r && r.length > 0);
-    
+
     const names = products
       .map((p: any) => p.name)
       .filter((n: string) => n && n.length > 0);
@@ -78,13 +78,13 @@ export async function POST(req: NextRequest) {
       for (let i = 0; i < references.length; i += 10) {
         chunks.push(references.slice(i, i + 10));
       }
-      
+
       for (const chunk of chunks) {
         const snapshot = await productsRef
           .where('reference', 'in', chunk)
           .where('userId', '==', userId)
           .get();
-        
+
         snapshot.forEach((doc) => {
           const ref = doc.data().reference;
           if (ref) {
@@ -100,13 +100,13 @@ export async function POST(req: NextRequest) {
       for (let i = 0; i < names.length; i += 10) {
         chunks.push(names.slice(i, i + 10));
       }
-      
+
       for (const chunk of chunks) {
         const snapshot = await productsRef
           .where('name', 'in', chunk)
           .where('userId', '==', userId)
           .get();
-        
+
         snapshot.forEach((doc) => {
           const name = doc.data().name;
           if (name) {
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
             name: product.name,
             reference: product.reference,
             brand: product.brand || null,
-            stock: Number(product.stock) || 0,
+            stock: FieldValue.increment(Number(product.stock) || 0),
             purchasePrice: Number(product.purchasePrice) || 0,
             price: Number(product.price) || 0,
             updatedAt: new Date(),

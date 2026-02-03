@@ -60,10 +60,17 @@ export async function hybridImportProducts(
 
       if (existingProduct) {
         // UPDATE existing product (prevent duplicates)
-        console.log('[HybridImport] Found existing product with reference:', product.reference, '- will UPDATE');
+        // ACCUMULATE STOCK: existing + new
+        const existingStock = Number(existingProduct.stock) || 0;
+        const incomingStock = Number(product.stock) || 0;
+        const newStock = existingStock + incomingStock;
+
+        console.log('[HybridImport] Found existing product with reference:', product.reference, '- will UPDATE. Stock:', existingStock, '+', incomingStock, '=', newStock);
+
         productsWithIds.push({
           ...existingProduct, // Keep existing data
           ...product, // Apply new data on top
+          stock: newStock, // Override stock with accumulated value
           id: existingProduct.id, // Keep original ID
           version: (existingProduct.version || 0) + 1,
           updatedAt: Date.now(),
