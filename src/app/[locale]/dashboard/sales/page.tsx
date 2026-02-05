@@ -267,6 +267,7 @@ export default function SalesPage({
         title={dictionary?.stockPage?.deleteTitle || "Delete Sale?"}
         description={dictionary?.stockPage?.deleteConfirmMessageSingle || "This action cannot be undone."}
         resourceName={sales.find(s => s.id === saleToDelete)?.product}
+        dictionary={dictionary}
       />
       <div>
         <h1 className="text-3xl font-headline font-bold">

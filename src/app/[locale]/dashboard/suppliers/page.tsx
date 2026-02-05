@@ -149,6 +149,7 @@ export default function SuppliersPage({ params }: { params: Promise<{ locale: Lo
         title={dictionary.suppliers?.deleteTitle || "Delete Supplier?"}
         description={dictionary.suppliers?.deleteConfirmMessage || "This requires your deletion password."}
         resourceName={suppliers.find(s => s.id === supplierToDelete)?.name}
+        dictionary={dictionary}
       />
       <div>
         <h1 className="text-3xl font-headline font-bold">{dictionary.dashboard.suppliers}</h1>

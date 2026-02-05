@@ -143,6 +143,7 @@ export default function PurchasesPage({
         title={dictionary?.purchases?.deletePurchaseAction || "Delete Purchase?"}
         description={dictionary?.purchases?.deleteConfirmMessage || "This action cannot be undone."}
         resourceName={purchases.find(p => p.id === purchaseToDelete)?.supplier}
+        dictionary={dictionary}
       />
       <div>
         <h1 className="text-3xl font-headline font-bold">

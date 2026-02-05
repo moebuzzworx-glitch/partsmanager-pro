@@ -27,6 +27,7 @@ interface ProtectedActionDialogProps {
     title?: string;
     description?: string;
     resourceName?: string;
+    dictionary?: any;
 }
 
 export function ProtectedActionDialog({
@@ -35,7 +36,8 @@ export function ProtectedActionDialog({
     onConfirm,
     title = "Are you absolutely sure?",
     description = "This action cannot be undone.",
-    resourceName
+    resourceName,
+    dictionary
 }: ProtectedActionDialogProps) {
     const { user, firestore } = useFirebase();
     const [password, setPassword] = useState('');
@@ -94,7 +96,7 @@ export function ProtectedActionDialog({
             if (storedHash) {
                 const isValid = await compare(password, storedHash);
                 if (!isValid) {
-                    setError('Incorrect deletion password');
+                    setError(dictionary?.settings?.incorrectPassword || 'Incorrect deletion password');
                     setLoading(false);
                     return;
                 }
@@ -119,14 +121,6 @@ export function ProtectedActionDialog({
     const handleGoToSettings = () => {
         onOpenChange(false);
         router.push('/dashboard/settings?tab=security');
-        // Assuming URL param tab support, or user navigates
-        // The settings component uses Tabs, checks defaultValue. 
-        // URL param support might need to be added to settings page, 
-        // but simpler to just go to settings and user clicks tab.
-        // Or I can update settings page to check query param.
-        // For now, simple redirect.
-        // Update: SettingsForm uses client-side Tabs state. Won't auto-switch unless I implement it.
-        // But redirecting is the request.
     };
 
     return (
@@ -143,21 +137,21 @@ export function ProtectedActionDialog({
                         <AlertDialogHeader>
                             <AlertDialogTitle className="flex items-center gap-2">
                                 <ShieldAlert className="h-5 w-5 text-amber-500" />
-                                Deletion Password Required
+                                {dictionary?.settings?.deletionPasswordRequired || 'Deletion Password Required'}
                             </AlertDialogTitle>
                             <AlertDialogDescription>
-                                To ensure security, you must set a deletion password before you can delete items.
+                                {dictionary?.settings?.deletionPasswordRequiredDesc || 'To ensure security, you must set a deletion password before you can delete items.'}
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <div className="py-4">
                             <p className="text-sm text-muted-foreground">
-                                Please go to the Security Settings page to configure your password.
+                                {dictionary?.settings?.deletionPasswordGoToSettings || 'Please go to the Security Settings page to configure your password.'}
                             </p>
                         </div>
                         <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel>{dictionary?.common?.cancel || 'Cancel'}</AlertDialogCancel>
                             <Button onClick={handleGoToSettings}>
-                                Go to Settings
+                                {dictionary?.settings?.goToSettings || 'Go to Settings'}
                             </Button>
                         </AlertDialogFooter>
                     </>
@@ -177,13 +171,13 @@ export function ProtectedActionDialog({
 
                         <form onSubmit={handleConfirm} className="py-4 space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="deletion-password">Enter Deletion Password</Label>
+                                <Label htmlFor="deletion-password">{dictionary?.settings?.enterDeletionPassword || 'Enter Deletion Password'}</Label>
                                 <Input
                                     id="deletion-password"
                                     type="password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="Required to confirm deletion"
+                                    placeholder={dictionary?.settings?.deletionPasswordPlaceholder || "Required to confirm deletion"}
                                     autoFocus
                                 />
                                 {error && <p className="text-sm text-destructive">{error}</p>}
@@ -193,10 +187,10 @@ export function ProtectedActionDialog({
                                 <AlertDialogCancel disabled={loading} onClick={() => {
                                     setPassword('');
                                     setError('');
-                                }}>Cancel</AlertDialogCancel>
+                                }}>{dictionary?.common?.cancel || 'Cancel'}</AlertDialogCancel>
                                 <Button type="submit" variant="destructive" disabled={loading || !password}>
                                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Confirm Delete
+                                    {dictionary?.settings?.confirmDelete || 'Confirm Delete'}
                                 </Button>
                             </AlertDialogFooter>
                         </form>

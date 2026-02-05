@@ -296,6 +296,7 @@ export default function InvoicesPage({
         title={dictionary?.invoices?.deleteTitle || "Delete Invoice?"}
         description={dictionary?.invoices?.deleteConfirm || "This action cannot be undone. This requires your deletion password."}
         resourceName={invoices.find(inv => inv.id === invoiceToDelete)?.invoiceNumber}
+        dictionary={dictionary}
       />
 
       {/* Duplicate Invoice Dialog */}

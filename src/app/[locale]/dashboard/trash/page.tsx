@@ -390,6 +390,7 @@ export default function TrashPage({
         title={isBatchDelete ? (dictionary?.trash?.deleteSelectedPermanently || "Delete Selected Permanently?") : (dictionary?.trash?.deletePermanently || "Delete Permanently?")}
         description={dictionary?.trash?.deleteConfirmMessage || "This cannot be undone. Password required."}
         resourceName={deleteId ? allDeletedItems.find(i => i.id === deleteId)?.name : (isBatchDelete ? `${selectedItems.size} items` : undefined)}
+        dictionary={dictionary}
       />
       <ProgressModal
         isOpen={isActioning}

@@ -317,6 +317,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
         title={dictionary?.stockPage?.deleteTitle || "Delete Product?"}
         description={dictionary?.stockPage?.deleteConfirmMessageSingle || "This requires your deletion password."}
         resourceName={products.find(p => p.id === productToDelete)?.name}
+        dictionary={dictionary}
       />
 
       <ProtectedActionDialog
@@ -326,6 +327,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
         title={d.deleteMultipleTitle || "Delete Multiple Products?"}
         description={(d.deleteMultipleDescription || "This will delete {count} products. This requires your deletion password.")
           .replace('{count}', selectedProducts.size.toString())}
+        dictionary={dictionary}
       />
 
       <ProgressModal

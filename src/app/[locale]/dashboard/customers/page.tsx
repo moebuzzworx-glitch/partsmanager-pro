@@ -146,6 +146,7 @@ export default function CustomersPage({
         title={dictionary.customers?.deleteTitle || "Delete Customer?"}
         description={dictionary.customers?.deleteConfirmMessage || "This requires your deletion password."}
         resourceName={customers.find(c => c.id === customerToDelete)?.name}
+        dictionary={dictionary}
       />
       <div>
         <h1 className="text-3xl font-headline font-bold">
@@ -262,7 +263,7 @@ export default function CustomersPage({
             setEditingCustomer(null);
             // Refresh customers
             const refreshCustomers = async () => {
-              if (!firestore) return;
+              if (!firestore || !user?.uid) return;
               try {
                 const customersRef = collection(firestore, 'customers');
                 const q = query(customersRef, where('userId', '==', user.uid));

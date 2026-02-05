@@ -432,7 +432,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
                 name="invoiceNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Numéro du Document</FormLabel>
+                    <FormLabel>{dictionary?.createInvoiceForm?.documentNumber || 'Document Number'}</FormLabel>
                     <FormControl>
                       <Input {...field} readOnly className="bg-muted font-mono" />
                     </FormControl>
@@ -446,7 +446,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
                 name="invoiceDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Date du Document</FormLabel>
+                    <FormLabel>{dictionary?.createInvoiceForm?.documentDate || 'Document Date'}</FormLabel>
                     <FormControl>
                       <Input {...field} type="date" />
                     </FormControl>
@@ -725,7 +725,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
                     render={({ field }) => (
                       <FormItem className="col-span-2">
                         <FormLabel>
-                          {documentType === 'DELIVERY_NOTE' ? 'Qté Livrée' : (dictionary?.createInvoiceForm?.quantity || 'Qté')}
+                          {documentType === 'DELIVERY_NOTE' ? (dictionary?.createInvoiceForm?.quantityDelivered || 'Qté Livrée') : (dictionary?.createInvoiceForm?.quantity || 'Qté')}
                         </FormLabel>
                         <FormControl>
                           <Input {...field} type="number" placeholder="1" />
@@ -741,8 +741,8 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
                     render={({ field }) => (
                       <FormItem className="col-span-3">
                         <FormLabel>
-                          {documentType === 'PURCHASE_ORDER' ? 'Prix d\'achat' :
-                            documentType === 'DELIVERY_NOTE' ? 'Prix (Facultatif)' :
+                          {documentType === 'PURCHASE_ORDER' ? (dictionary?.createInvoiceForm?.purchasePrice || 'Prix d\'achat') :
+                            documentType === 'DELIVERY_NOTE' ? (dictionary?.createInvoiceForm?.priceOptional || 'Prix (Facultatif)') :
                               (dictionary?.createInvoiceForm?.price || 'Prix de vente')}
                         </FormLabel>
                         <FormControl>
