@@ -169,7 +169,10 @@ export default function InvoicesPage({
         type,
         companyInfo,
         invoice.defaultVat || 0,
-        invoice.applyVatToAll
+        invoice.applyVatToAll,
+        (invoice as any).timbreRate || 0,
+        (invoice as any).applyTimbre || false,
+        dictionary
       );
 
       toast({
@@ -478,11 +481,11 @@ export default function InvoicesPage({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
                               <DropdownMenuItem onClick={() => handleDownloadDocument(invoice, activeTab as any)}>
-                                {activeTab === 'INVOICE' ? (dictionary.invoices?.docInvoice || 'Facture') : activeTab === 'PURCHASE_ORDER' ? (dictionary.invoices?.docPurchaseOrder || 'Bon de Commande') : (dictionary.invoices?.docDeliveryNote || 'Bon de Livraison')}
+                                {activeTab === 'INVOICE' ? (dictionary.invoices?.docInvoice || 'Invoice') : activeTab === 'PURCHASE_ORDER' ? (dictionary.invoices?.docPurchaseOrder || 'Purchase Order') : (dictionary.invoices?.docDeliveryNote || 'Delivery Note')}
                               </DropdownMenuItem>
                               {activeTab === 'INVOICE' && (
                                 <DropdownMenuItem onClick={() => handleDownloadDocument(invoice, 'DELIVERY_NOTE')}>
-                                  {dictionary.invoices?.docDeliveryNote || 'Bon de Livraison'}
+                                  {dictionary.invoices?.docDeliveryNote || 'Delivery Note'}
                                 </DropdownMenuItem>
                               )}
                             </DropdownMenuContent>

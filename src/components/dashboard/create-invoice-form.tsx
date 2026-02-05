@@ -305,7 +305,8 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
         defaultVat,
         values.applyVatToAll,
         defaultTimbre,
-        values.applyTimbre
+        values.applyTimbre,
+        dictionary
       );
 
       const isPaid = documentType === 'SALES_RECEIPT';
@@ -459,7 +460,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
             <Separator />
 
             <h3 className="font-semibold text-lg border-b pb-1">
-              {documentType === 'PURCHASE_ORDER' ? 'Renseignements Fournisseur' : (dictionary?.createInvoiceForm?.clientInformation || 'Renseignements Client')}
+              {documentType === 'PURCHASE_ORDER' ? (dictionary?.createInvoiceForm?.supplierInformation || 'Supplier Information') : (dictionary?.createInvoiceForm?.clientInformation || 'Client Information')}
             </h3>
             <FormField
               control={form.control}
@@ -472,12 +473,12 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
                 return (
                   <FormItem className="relative">
                     <FormLabel>
-                      {documentType === 'PURCHASE_ORDER' ? 'Nom du Fournisseur' : (dictionary?.createInvoiceForm?.clientName || 'Nom du Client')}
+                      {documentType === 'PURCHASE_ORDER' ? (dictionary?.createInvoiceForm?.supplierName || 'Supplier Name') : (dictionary?.createInvoiceForm?.clientName || 'Client Name')}
                     </FormLabel>
                     <FormControl>
                       <Input
                         {...field}
-                        placeholder={documentType === 'PURCHASE_ORDER' ? 'Nom du fournisseur ou entreprise' : (dictionary?.createInvoiceForm?.clientNamePlaceholder || 'Nom du client ou entreprise')}
+                        placeholder={documentType === 'PURCHASE_ORDER' ? (dictionary?.createInvoiceForm?.supplierNamePlaceholder || 'Supplier or company name') : (dictionary?.createInvoiceForm?.clientNamePlaceholder || 'Client or company name')}
                         onFocus={() => setClientSearchOpen(true)}
                         onBlur={() => setTimeout(() => setClientSearchOpen(false), 200)}
                         autoComplete="off"
@@ -741,9 +742,9 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
                     render={({ field }) => (
                       <FormItem className="col-span-3">
                         <FormLabel>
-                          {documentType === 'PURCHASE_ORDER' ? (dictionary?.createInvoiceForm?.purchasePrice || 'Prix d\'achat') :
-                            documentType === 'DELIVERY_NOTE' ? (dictionary?.createInvoiceForm?.priceOptional || 'Prix (Facultatif)') :
-                              (dictionary?.createInvoiceForm?.price || 'Prix de vente')}
+                          {documentType === 'PURCHASE_ORDER' ? (dictionary?.createInvoiceForm?.purchasePrice || 'Purchase Price') :
+                            documentType === 'DELIVERY_NOTE' ? (dictionary?.createInvoiceForm?.priceOptional || 'Price (Optional)') :
+                              (dictionary?.createInvoiceForm?.price || 'Sale Price')}
                         </FormLabel>
                         <FormControl>
                           <Input {...field} type="number" placeholder="0" />

@@ -227,7 +227,7 @@ export default function SalesPage({
       // Update the sequence number
       await updateLastDocumentNumber(firestore, user.uid, settings, 'SALES_RECEIPT');
 
-      await generateDocumentPdf(receiptData as any, 'SALES_RECEIPT', companyInfo as any);
+      await generateDocumentPdf(receiptData as any, 'SALES_RECEIPT', companyInfo as any, 0, false, 0, false, dictionary);
       toast({ title: dictionary?.common?.success || "Success", description: dictionary?.sales?.receiptSuccess || "Receipt generated successfully." });
       setSelectedSales(new Set()); // Clear selection
     } catch (e) {

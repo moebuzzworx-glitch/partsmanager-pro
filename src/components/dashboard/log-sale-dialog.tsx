@@ -246,7 +246,7 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
       } : undefined;
 
       const handlePrintReceipt = () => {
-        generateDocumentPdf(receiptData as any, 'SALES_RECEIPT', companyInfo as any);
+        generateDocumentPdf(receiptData as any, 'SALES_RECEIPT', companyInfo as any, 0, false, 0, false, dictionary);
       };
 
       if (autoPrint) {

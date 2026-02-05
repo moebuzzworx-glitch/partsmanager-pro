@@ -24,7 +24,8 @@ export interface CompanyInfo {
 }
 
 // Helper: Convert DocumentType to display title
-function getDocumentTitle(type: DocumentType, isProforma: boolean): string {
+// Helper: Convert DocumentType to display title
+function getDocumentTitle(type: DocumentType, isProforma: boolean, dictionary?: any): string {
     if (isProforma && (type === 'INVOICE' || type === 'TERM_INVOICE')) return 'Facture Proforma';
     switch (type) {
         case 'INVOICE': return 'Facture';
@@ -165,7 +166,8 @@ export async function generateDocumentPdf(
     defaultVat: number = 0,
     applyVat: boolean = false,
     timbreRate: number = 0,
-    applyTimbre: boolean = false
+    applyTimbre: boolean = false,
+    dictionary?: any
 ) {
     const doc = new jsPDF();
     const resolvedCompanyInfo = companyInfo ?? getCompanyInfo();
@@ -239,7 +241,7 @@ export async function generateDocumentPdf(
     const headerEndY = headerStartY + 18;
     const boxSpacingY = headerEndY + 4;
 
-    const titleStr = getDocumentTitle(type, data.isProforma);
+    const titleStr = getDocumentTitle(type, data.isProforma, dictionary);
     const dateStr = `Le : ${new Date(data.invoiceDate).toLocaleDateString('fr-FR')}`;
     // Use "N°" only if formatted number exists
     const fullTitle = `${titleStr} N° : ${data.invoiceNumber}     ${dateStr}`;
@@ -491,7 +493,7 @@ export async function generateDocumentPdf(
     addNums();
 
     // Save
-    const safeTitle = getDocumentTitle(type, data.isProforma).replace(/\s+/g, '-');
+    const safeTitle = getDocumentTitle(type, data.isProforma, dictionary).replace(/\s+/g, '-');
     const fileName = `${safeTitle}-${data.invoiceNumber || 'doc'}.pdf`;
     doc.save(fileName);
 }
