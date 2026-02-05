@@ -419,7 +419,7 @@ export default function InvoicesPage({
                 <TableHeader>
                   <TableRow>
                     <TableHead>{dictionary.table?.invoiceNumber || 'Number'}</TableHead>
-                    <TableHead>{activeTab === 'PURCHASE_ORDER' ? (dictionary.invoices?.supplier || 'Fournisseur') : (dictionary.table?.client || 'Client')}</TableHead>
+                    <TableHead>{activeTab === 'PURCHASE_ORDER' ? (dictionary.invoices?.supplier || 'Supplier') : (dictionary.table?.client || 'Client')}</TableHead>
                     <TableHead>{dictionary.table?.date || 'Date'}</TableHead>
                     <TableHead className="text-right">{dictionary.table?.amount || 'Amount'}</TableHead>
                     <TableHead>{dictionary.table?.status || 'Status'}</TableHead>

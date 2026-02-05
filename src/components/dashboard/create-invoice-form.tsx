@@ -726,7 +726,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
                     render={({ field }) => (
                       <FormItem className="col-span-2">
                         <FormLabel>
-                          {documentType === 'DELIVERY_NOTE' ? (dictionary?.createInvoiceForm?.quantityDelivered || 'Qté Livrée') : (dictionary?.createInvoiceForm?.quantity || 'Qté')}
+                          {documentType === 'DELIVERY_NOTE' ? (dictionary?.createInvoiceForm?.quantityDelivered || 'Qty Delivered') : (dictionary?.createInvoiceForm?.quantity || 'Qty')}
                         </FormLabel>
                         <FormControl>
                           <Input {...field} type="number" placeholder="1" />
