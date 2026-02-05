@@ -578,7 +578,21 @@
     "transfer": "تحويل",
     "card": "بطاقة",
     "isProforma": "هذه فاتورة استحقاق",
-    "applyVat": "تطبيق الضريبة على جميع البنود"
+    "applyVat": "تطبيق الضريبة على جميع البنود",
+    "applyTimbre": "تطبيق الطابع الجبائي",
+    "batchAddProducts": "إضافة منتجات",
+    "batchAddDialog": {
+      "title": "إضافة منتجات",
+      "description": "اختر المنتجات لإضافتها إلى فاتورتك. حدد الكميات واضغط على إضافة المحدد.",
+      "searchPlaceholder": "ابحث بالاسم أو المرجع...",
+      "selectAll": "تحديد الكل",
+      "deselectAll": "إلغاء تحديد الكل",
+      "quantity": "الكمية",
+      "noProductsFound": "لم يتم العثور على منتجات.",
+      "selectedCount": "تم تحديد {count} منتج(ات)",
+      "addSelected": "إضافة المحدد",
+      "cancel": "إلغاء"
+    }
   },
   "trash": {
     "title": "العناصر المحذوفة",
@@ -678,6 +692,7 @@
     "businessRulesDialogTitle": "تحرير قواعد الأعمال",
     "businessRulesDialogDescription": "تكوين إعدادات الأعمال والقيم الافتراضية.",
     "defaultVAT": "ضريبة القيمة المضافة الافتراضية (%)",
+    "defaultTimbre": "الطابع الجبائي الافتراضي (%)",
     "profitMargin": "هامش الربح الافتراضي (%)",
     "businessRulesSaveSuccess": "تم تحديث قواعد الأعمال",
     "businessRulesSaveError": "فشل في حفظ قواعد الأعمال"

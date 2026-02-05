@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Download, Loader2, Trash2, Edit, Check, X } from "lucide-react";
+import { Download, Loader2, Trash2, Edit, Check, X, Copy } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -72,6 +72,9 @@ export default function InvoicesPage({
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [activeTab, setActiveTab] = useState<string>('INVOICE');
   const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [invoiceToDuplicate, setInvoiceToDuplicate] = useState<StoredInvoice | null>(null);
+  const [duplicateTargetType, setDuplicateTargetType] = useState<'INVOICE' | 'TERM_INVOICE' | 'DELIVERY_NOTE' | 'SALES_RECEIPT' | 'PURCHASE_ORDER'>('INVOICE');
 
   const confirmDeleteInvoice = async () => {
     if (!firestore || !invoiceToDelete) return;
@@ -250,6 +253,13 @@ export default function InvoicesPage({
     }
   };
 
+  // Handle duplicate invoice as different document type
+  const handleDuplicateAs = (invoice: StoredInvoice, targetType: 'INVOICE' | 'TERM_INVOICE' | 'DELIVERY_NOTE' | 'SALES_RECEIPT' | 'PURCHASE_ORDER') => {
+    setInvoiceToDuplicate(invoice);
+    setDuplicateTargetType(targetType);
+    setDuplicateDialogOpen(true);
+  };
+
   // Filter and sort invoices
   const filteredAndSortedInvoices = invoices
     .filter(invoice => {
@@ -287,6 +297,39 @@ export default function InvoicesPage({
         description={dictionary?.invoices?.deleteConfirm || "This action cannot be undone. This requires your deletion password."}
         resourceName={invoices.find(inv => inv.id === invoiceToDelete)?.invoiceNumber}
       />
+
+      {/* Duplicate Invoice Dialog */}
+      {invoiceToDuplicate && (
+        <CreateInvoiceDialog
+          locale={locale}
+          dictionary={dictionary}
+          defaultType={duplicateTargetType}
+          externalOpen={duplicateDialogOpen}
+          onExternalOpenChange={(open) => {
+            setDuplicateDialogOpen(open);
+            if (!open) setInvoiceToDuplicate(null);
+          }}
+          hideTrigger={true}
+          onInvoiceCreated={() => {
+            setDuplicateDialogOpen(false);
+            setInvoiceToDuplicate(null);
+            fetchInvoicesList();
+          }}
+          initialData={{
+            clientName: invoiceToDuplicate.clientName,
+            clientAddress: invoiceToDuplicate.clientAddress || '',
+            clientNis: invoiceToDuplicate.clientNis || '',
+            clientNif: invoiceToDuplicate.clientNif || '',
+            clientRc: invoiceToDuplicate.clientRc || '',
+            clientArt: invoiceToDuplicate.clientArt || '',
+            clientRib: invoiceToDuplicate.clientRib || '',
+            lineItems: invoiceToDuplicate.lineItems,
+            paymentMethod: invoiceToDuplicate.paymentMethod || 'Espèce',
+            applyVatToAll: invoiceToDuplicate.applyVatToAll || false,
+            applyTimbre: (invoiceToDuplicate as any).applyTimbre || false,
+          }}
+        />
+      )}
       <div>
         <h1 className="text-3xl font-headline font-bold">
           {dictionary.dashboard.invoices}
@@ -443,6 +486,31 @@ export default function InvoicesPage({
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
+
+                          {/* Duplicate As Button - works for all document types */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Copy className="mr-2 h-4 w-4" />
+                                {dictionary.invoices?.duplicateAs || 'Reuse'}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem onClick={() => handleDuplicateAs(invoice, 'INVOICE')}>
+                                {dictionary.invoices?.docInvoice || 'Facture'}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDuplicateAs(invoice, 'DELIVERY_NOTE')}>
+                                {dictionary.invoices?.tabDeliveryNotes || 'Bon de Livraison'}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDuplicateAs(invoice, 'SALES_RECEIPT')}>
+                                {dictionary.invoices?.tabSalesReceipts || 'Bon de Vente'}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDuplicateAs(invoice, 'PURCHASE_ORDER')}>
+                                {dictionary.invoices?.tabPurchaseOrders || 'Bon de Commande'}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+
                           <Button
                             variant="outline"
                             size="sm"

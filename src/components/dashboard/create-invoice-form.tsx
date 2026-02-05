@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, ListPlus } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -34,6 +34,7 @@ import { getDictionary } from '@/lib/dictionaries';
 import { generateDocumentPdf } from './document-generator';
 import { getCustomersForAutoComplete, getProductsForAutoComplete, type ClientAutoComplete, type ProductAutoComplete } from '@/lib/invoice-autocomplete-utils';
 import { PaymentDialog } from './payment-dialog';
+import { BatchAddProductsDialog } from './batch-add-products-dialog';
 
 const lineItemSchema = z.object({
   reference: z.string().optional(),
@@ -57,6 +58,7 @@ const formSchema = z.object({
   lineItems: z.array(lineItemSchema).min(1, 'At least one item is required'),
   paymentMethod: z.string().optional().default('Espèce'),
   applyVatToAll: z.boolean().default(false),
+  applyTimbre: z.boolean().default(false),
   discountType: z.enum(['percentage', 'amount']).default('percentage'),
   discountValue: z.coerce.number().min(0).default(0),
   includeJuridicTerms: z.boolean().default(false),
@@ -72,7 +74,20 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
   onSuccess: () => void;
   dictionary: any;
   hideTypeSelector?: boolean;
-}>(({ documentType: initialDocumentType, onLoadingChange, onSuccess, dictionary, hideTypeSelector }, ref) => {
+  initialData?: {
+    clientName?: string;
+    clientAddress?: string;
+    clientNis?: string;
+    clientNif?: string;
+    clientRc?: string;
+    clientArt?: string;
+    clientRib?: string;
+    lineItems?: { reference?: string; designation: string; quantity: number; unitPrice: number; unit?: string }[];
+    paymentMethod?: string;
+    applyVatToAll?: boolean;
+    applyTimbre?: boolean;
+  };
+}>(({ documentType: initialDocumentType, onLoadingChange, onSuccess, dictionary, hideTypeSelector, initialData }, ref) => {
   const { user, firestore } = useFirebase();
   const { toast } = useToast();
   const [settingsState, setSettingsState] = React.useState<AppSettings | null>(null);
@@ -87,6 +102,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
   const [productSearchOpen, setProductSearchOpen] = React.useState<Record<number, boolean>>({});
   const [paymentModalOpen, setPaymentModalOpen] = React.useState(false);
   const [createdInvoiceData, setCreatedInvoiceData] = React.useState<{ amount: number, clientName: string, number: string } | null>(null);
+  const [batchDialogOpen, setBatchDialogOpen] = React.useState(false);
 
   // Initialize documentType from prop, but allow it to change
   const [documentType, setDocumentType] = React.useState(initialDocumentType);
@@ -107,6 +123,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
       lineItems: [{ designation: '', quantity: 1, unitPrice: 0, reference: '', unit: 'pcs' }],
       paymentMethod: 'Espèce',
       applyVatToAll: documentType === 'PURCHASE_ORDER',
+      applyTimbre: false,
       discountType: 'percentage',
       discountValue: 0,
       includeJuridicTerms: false,
@@ -121,6 +138,31 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
 
   const { watch, setValue } = form;
   const applyVatToAll = watch('applyVatToAll');
+
+  // Pre-fill form with initialData if provided (for reuse/duplicate feature)
+  React.useEffect(() => {
+    if (initialData) {
+      if (initialData.clientName) setValue('clientName', initialData.clientName);
+      if (initialData.clientAddress) setValue('clientAddress', initialData.clientAddress);
+      if (initialData.clientNis) setValue('clientNis', initialData.clientNis);
+      if (initialData.clientNif) setValue('clientNif', initialData.clientNif);
+      if (initialData.clientRc) setValue('clientRc', initialData.clientRc);
+      if (initialData.clientArt) setValue('clientArt', initialData.clientArt);
+      if (initialData.clientRib) setValue('clientRib', initialData.clientRib);
+      if (initialData.paymentMethod) setValue('paymentMethod', initialData.paymentMethod);
+      if (initialData.applyVatToAll !== undefined) setValue('applyVatToAll', initialData.applyVatToAll);
+      if (initialData.applyTimbre !== undefined) setValue('applyTimbre', initialData.applyTimbre);
+      if (initialData.lineItems && initialData.lineItems.length > 0) {
+        setValue('lineItems', initialData.lineItems.map(item => ({
+          reference: item.reference || '',
+          designation: item.designation,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          unit: item.unit || 'pcs',
+        })));
+      }
+    }
+  }, [initialData, setValue]);
 
   // React to document type changes to update numbering
   React.useEffect(() => {
@@ -224,6 +266,12 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
     setProductSearchOpen(prev => ({ ...prev, [index]: false }));
   };
 
+  const handleBatchAddProducts = (items: { reference: string; designation: string; quantity: number; unitPrice: number; unit: string }[]) => {
+    items.forEach(item => {
+      append(item);
+    });
+  };
+
   const onSubmit = async (values: InvoiceFormData) => {
     if (!firestore || !user) return;
     setIsLoading(true);
@@ -240,6 +288,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
         juridicTerms: values.juridicTerms ?? settings.juridicTerms
       };
       const defaultVat = (settings as any).defaultVat ?? 0;
+      const defaultTimbre = (settings as any).defaultTimbre ?? 1;
 
       const { subtotal, vatAmount, discountAmount, total } = calculateInvoiceTotals(
         values.lineItems,
@@ -254,7 +303,9 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
         documentType,
         companyInfo as any,
         defaultVat,
-        values.applyVatToAll
+        values.applyVatToAll,
+        defaultTimbre,
+        values.applyTimbre
       );
 
       const isPaid = documentType === 'SALES_RECEIPT';
@@ -542,6 +593,15 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
 
             <div className="flex justify-between items-center">
               <h3 className="font-semibold">{dictionary?.createInvoiceForm?.lineItems || 'Line Items'}</h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setBatchDialogOpen(true)}
+              >
+                <ListPlus className="mr-2 h-4 w-4" />
+                {dictionary?.createInvoiceForm?.batchAddProducts || 'Add Products'}
+              </Button>
             </div>
 
             <div className="space-y-4">
@@ -697,18 +757,14 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
               ))}
             </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() =>
-                append({ designation: '', quantity: 1, unitPrice: 0, reference: '', unit: 'pcs' })
-              }
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              {dictionary?.createInvoiceForm?.addLineItem || 'Add Line Item'}
-            </Button>
+            <BatchAddProductsDialog
+              open={batchDialogOpen}
+              onOpenChange={setBatchDialogOpen}
+              products={products}
+              documentType={documentType}
+              dictionary={dictionary}
+              onAddProducts={handleBatchAddProducts}
+            />
 
             <Separator />
 
@@ -768,6 +824,22 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
                       />
                       <Label htmlFor="applyVat-payment" className="text-sm font-normal cursor-pointer">
                         {dictionary?.createInvoiceForm?.applyVat || 'Apply VAT to all items'}
+                      </Label>
+                    </div>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="applyTimbre"
+                  render={({ field }) => (
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="applyTimbre-payment"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                      <Label htmlFor="applyTimbre-payment" className="text-sm font-normal cursor-pointer">
+                        {dictionary?.createInvoiceForm?.applyTimbre || 'Apply Timbre (Stamp Duty)'}
                       </Label>
                     </div>
                   )}

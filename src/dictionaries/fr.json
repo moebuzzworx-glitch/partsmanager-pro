@@ -569,7 +569,21 @@
     "transfer": "Virement",
     "card": "Carte",
     "isProforma": "Ceci est une Facture Proforma",
-    "applyVat": "Appliquer la TVA à tous les articles"
+    "applyVat": "Appliquer la TVA à tous les articles",
+    "applyTimbre": "Appliquer le Timbre",
+    "batchAddProducts": "Ajouter des Produits",
+    "batchAddDialog": {
+      "title": "Ajouter des Produits",
+      "description": "Sélectionnez les produits à ajouter à votre facture. Définissez les quantités et cliquez sur Ajouter.",
+      "searchPlaceholder": "Rechercher par nom ou référence...",
+      "selectAll": "Tout Sélectionner",
+      "deselectAll": "Tout Désélectionner",
+      "quantity": "Qté",
+      "noProductsFound": "Aucun produit trouvé.",
+      "selectedCount": "{count} produit(s) sélectionné(s)",
+      "addSelected": "Ajouter la Sélection",
+      "cancel": "Annuler"
+    }
   },
   "trash": {
     "title": "Éléments Supprimés",
@@ -669,6 +683,7 @@
     "businessRulesDialogTitle": "Modifier les Règles Commerciales",
     "businessRulesDialogDescription": "Configurez les paramètres commerciaux et les valeurs par défaut.",
     "defaultVAT": "TVA par Défaut (%)",
+    "defaultTimbre": "Timbre par Défaut (%)",
     "profitMargin": "Marge Bénéficiaire par Défaut (%)",
     "businessRulesSaveSuccess": "Règles commerciales mises à jour",
     "businessRulesSaveError": "Impossible d'enregistrer les règles commerciales"

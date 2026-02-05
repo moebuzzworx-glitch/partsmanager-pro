@@ -34,6 +34,7 @@ import { Save, Edit, Percent, Loader2 } from 'lucide-react';
 const getBusinessRulesSchema = (dictionary?: any) => z.object({
   profitMargin: z.coerce.number().min(0, dictionary?.settings?.profitMarginError || 'Profit margin cannot be negative.'),
   defaultVat: z.coerce.number().min(0, dictionary?.settings?.vatMinError || 'VAT cannot be negative.').max(100, dictionary?.settings?.vatMaxError || 'VAT cannot exceed 100%'),
+  defaultTimbre: z.coerce.number().min(0, dictionary?.settings?.timbreMinError || 'Timbre cannot be negative.').default(1),
 });
 
 export type BusinessRulesData = z.infer<ReturnType<typeof getBusinessRulesSchema>>;
@@ -53,6 +54,7 @@ export function BusinessRulesModal({ dictionary }: { dictionary?: any }) {
     defaultValues: {
       profitMargin: 25,
       defaultVat: 19,
+      defaultTimbre: 1,
     },
   });
 
@@ -65,16 +67,19 @@ export function BusinessRulesModal({ dictionary }: { dictionary?: any }) {
           form.reset({
             profitMargin: settings.profitMargin ?? 25,
             defaultVat: (settings as any).defaultVat ?? 19,
+            defaultTimbre: (settings as any).defaultTimbre ?? 1,
           });
           return;
         }
 
         const storedMargin = localStorage.getItem('profitMargin');
         const storedVat = localStorage.getItem('defaultVat');
+        const storedTimbre = localStorage.getItem('defaultTimbre');
         if (!cancelled) {
           form.reset({
             profitMargin: storedMargin ? parseFloat(storedMargin) : 25,
             defaultVat: storedVat ? parseFloat(storedVat) : 19,
+            defaultTimbre: storedTimbre ? parseFloat(storedTimbre) : 1,
           });
         }
       } catch (error) {
@@ -90,13 +95,14 @@ export function BusinessRulesModal({ dictionary }: { dictionary?: any }) {
     try {
       localStorage.setItem('profitMargin', values.profitMargin.toString());
       localStorage.setItem('defaultVat', values.defaultVat.toString());
+      localStorage.setItem('defaultTimbre', values.defaultTimbre.toString());
 
       // Persist to Firestore when available
       if (user && firestore) {
         await saveUserSettings(firestore, user.uid, {
           profitMargin: values.profitMargin,
-          // store defaultVat under the same shape (AppSettings doesn't have defaultVat, but it's okay to add)
           defaultVat: values.defaultVat,
+          defaultTimbre: values.defaultTimbre,
         } as any);
       }
 
@@ -196,6 +202,30 @@ export function BusinessRulesModal({ dictionary }: { dictionary?: any }) {
                         step="0.1"
                         {...field}
                         placeholder="19"
+                        className="pl-8"
+                        disabled={isLoading}
+                      />
+                    </FormControl>
+                    <Percent className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="defaultTimbre"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{dictionary?.settings?.defaultTimbre || 'Default Timbre (Stamp Duty)'} (%)</FormLabel>
+                  <div className="relative">
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        {...field}
+                        placeholder="1"
                         className="pl-8"
                         disabled={isLoading}
                       />

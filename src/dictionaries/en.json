@@ -576,7 +576,21 @@
     "transfer": "Transfer",
     "card": "Card",
     "isProforma": "This is a Proforma Invoice",
-    "applyVat": "Apply VAT to all items"
+    "applyVat": "Apply VAT to all items",
+    "applyTimbre": "Apply Timbre (Stamp Duty)",
+    "batchAddProducts": "Add Products",
+    "batchAddDialog": {
+      "title": "Add Products",
+      "description": "Select products to add to your invoice. Set quantities and click Add Selected.",
+      "searchPlaceholder": "Search by name or reference...",
+      "selectAll": "Select All",
+      "deselectAll": "Deselect All",
+      "quantity": "Qty",
+      "noProductsFound": "No products found.",
+      "selectedCount": "{count} product(s) selected",
+      "addSelected": "Add Selected",
+      "cancel": "Cancel"
+    }
   },
   "trash": {
     "title": "Deleted Items",
@@ -676,6 +690,7 @@
     "businessRulesDialogTitle": "Edit Business Rules",
     "businessRulesDialogDescription": "Configure your business settings and default values.",
     "defaultVAT": "Default VAT (%)",
+    "defaultTimbre": "Default Timbre (Stamp Duty) (%)",
     "profitMargin": "Default Profit Margin (%)",
     "businessRulesSaveSuccess": "Business rules updated",
     "businessRulesSaveError": "Failed to save business rules"

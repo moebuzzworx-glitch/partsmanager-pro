@@ -163,7 +163,9 @@ export async function generateDocumentPdf(
     type: DocumentType,
     companyInfo?: CompanyInfo,
     defaultVat: number = 0,
-    applyVat: boolean = false
+    applyVat: boolean = false,
+    timbreRate: number = 0,
+    applyTimbre: boolean = false
 ) {
     const doc = new jsPDF();
     const resolvedCompanyInfo = companyInfo ?? getCompanyInfo();
@@ -405,8 +407,8 @@ export async function generateDocumentPdf(
 
         const netHT = subtotal - discountAmount;
         const totalTVA = applyVat ? netHT * (defaultVat / 100) : 0;
-        const timbre = 0;
         const totalTTC = netHT + totalTVA;
+        const timbre = applyTimbre ? totalTTC * (timbreRate / 100) : 0;
         const netPay = totalTTC + timbre;
 
         const labels: string[] = ['Montant Brut HT :'];

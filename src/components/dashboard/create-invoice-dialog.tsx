@@ -27,10 +27,28 @@ interface CreateInvoiceDialogProps {
   dictionary: Dictionary;
   onInvoiceCreated?: () => void;
   defaultType?: 'INVOICE' | 'TERM_INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT';
+  initialData?: {
+    clientName?: string;
+    clientAddress?: string;
+    clientNis?: string;
+    clientNif?: string;
+    clientRc?: string;
+    clientArt?: string;
+    clientRib?: string;
+    lineItems?: { reference?: string; designation: string; quantity: number; unitPrice: number; unit?: string }[];
+    paymentMethod?: string;
+    applyVatToAll?: boolean;
+    applyTimbre?: boolean;
+  };
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }
 
-export function CreateInvoiceDialog({ locale, dictionary, onInvoiceCreated, defaultType }: CreateInvoiceDialogProps) {
-  const [open, setOpen] = React.useState(false);
+export function CreateInvoiceDialog({ locale, dictionary, onInvoiceCreated, defaultType, initialData, externalOpen, onExternalOpenChange, hideTrigger }: CreateInvoiceDialogProps) {
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = onExternalOpenChange || setInternalOpen;
   const formRef = React.useRef<HTMLFormElement>(null);
   const { user, firestore } = useFirebase();
   const [userDoc, setUserDoc] = React.useState<AppUser | null>(null);
@@ -71,12 +89,14 @@ export function CreateInvoiceDialog({ locale, dictionary, onInvoiceCreated, defa
   return (
     <TrialButtonLock user={user}>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            {dictionary?.invoices?.addButton || 'Create Invoice'}
-          </Button>
-        </DialogTrigger>
+        {!hideTrigger && (
+          <DialogTrigger asChild>
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              {dictionary?.invoices?.addButton || 'Create Invoice'}
+            </Button>
+          </DialogTrigger>
+        )}
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{dictionary?.invoices?.createDialogTitle || 'Create Invoice'}</DialogTitle>
@@ -91,6 +111,7 @@ export function CreateInvoiceDialog({ locale, dictionary, onInvoiceCreated, defa
             onSuccess={handleSuccess}
             hideTypeSelector={true}
             onLoadingChange={setIsLoading}
+            initialData={initialData}
           />
           <DialogFooter className="mt-6 flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
