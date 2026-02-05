@@ -49,14 +49,14 @@ export function CreateDeliveryNoteDialog({ locale, dictionary, onCreated }: Crea
                 <DialogTrigger asChild>
                     <Button>
                         <PlusCircle className="mr-2 h-4 w-4" />
-                        Nouveau Bon de Livraison
+                        {dictionary?.invoices?.createDeliveryNoteButton || 'New Delivery Note'}
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Créer un Bon de Livraison</DialogTitle>
+                        <DialogTitle>{dictionary?.invoices?.createDeliveryNoteTitle || 'Create Delivery Note'}</DialogTitle>
                         <DialogDescription>
-                            Créez un nouveau bon de livraison pour vos clients.
+                            {dictionary?.invoices?.createDeliveryNoteDescription || 'Create a new delivery note for your customers.'}
                         </DialogDescription>
                     </DialogHeader>
                     <CreateInvoiceForm
@@ -71,7 +71,7 @@ export function CreateDeliveryNoteDialog({ locale, dictionary, onCreated }: Crea
                             {(dictionary?.table as any)?.cancel || 'Annuler'}
                         </Button>
                         <Button onClick={handleSubmit} type="button">
-                            Générer Bon de Livraison
+                            {dictionary?.invoices?.generateDeliveryNoteButton || 'Generate Delivery Note'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -523,7 +523,19 @@
     "docPurchaseOrder": "Bon de Commande",
     "docDeliveryNote": "Bon de Livraison",
     "docSalesReceipt": "Bon de Vente",
-    "supplier": "Fournisseur"
+    "supplier": "Fournisseur",
+    "createPurchaseOrderButton": "Nouveau Bon de Commande",
+    "createPurchaseOrderTitle": "Créer un Bon de Commande",
+    "createPurchaseOrderDescription": "Créez un nouveau bon de commande pour vos fournisseurs.",
+    "generatePurchaseOrderButton": "Générer Bon de Commande",
+    "createDeliveryNoteButton": "Nouveau Bon de Livraison",
+    "createDeliveryNoteTitle": "Créer un Bon de Livraison",
+    "createDeliveryNoteDescription": "Créez un nouveau bon de livraison pour vos clients.",
+    "generateDeliveryNoteButton": "Générer Bon de Livraison",
+    "createSalesReceiptButton": "Nouveau Bon de Vente",
+    "createSalesReceiptTitle": "Créer un Bon de Vente",
+    "createSalesReceiptDescription": "Créez un nouveau bon de vente pour vos clients.",
+    "generateSalesReceiptButton": "Générer Bon de Vente"
   },
   "createInvoiceForm": {
     "invoiceDetails": "Détails de la Facture",

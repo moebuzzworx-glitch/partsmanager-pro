@@ -49,14 +49,14 @@ export function CreatePurchaseOrderDialog({ locale, dictionary, onCreated }: Cre
                 <DialogTrigger asChild>
                     <Button>
                         <PlusCircle className="mr-2 h-4 w-4" />
-                        Nouveau Bon de Commande
+                        {dictionary?.invoices?.createPurchaseOrderButton || 'New Purchase Order'}
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Créer un Bon de Commande</DialogTitle>
+                        <DialogTitle>{dictionary?.invoices?.createPurchaseOrderTitle || 'Create Purchase Order'}</DialogTitle>
                         <DialogDescription>
-                            Créez un nouveau bon de commande pour vos fournisseurs.
+                            {dictionary?.invoices?.createPurchaseOrderDescription || 'Create a new purchase order for your suppliers.'}
                         </DialogDescription>
                     </DialogHeader>
                     <CreateInvoiceForm
@@ -71,7 +71,7 @@ export function CreatePurchaseOrderDialog({ locale, dictionary, onCreated }: Cre
                             {(dictionary?.table as any)?.cancel || 'Annuler'}
                         </Button>
                         <Button onClick={handleSubmit} type="button">
-                            Générer Bon de Commande
+                            {dictionary?.invoices?.generatePurchaseOrderButton || 'Generate Purchase Order'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

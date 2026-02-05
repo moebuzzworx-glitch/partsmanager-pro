@@ -531,7 +531,19 @@
     "docPurchaseOrder": "طلب شراء",
     "docDeliveryNote": "سند تسليم",
     "docSalesReceipt": "إيصال بيع",
-    "supplier": "المورد"
+    "supplier": "المورد",
+    "createPurchaseOrderButton": "طلب شراء جديد",
+    "createPurchaseOrderTitle": "إنشاء طلب شراء",
+    "createPurchaseOrderDescription": "إنشاء طلب شراء جديد للموردين.",
+    "generatePurchaseOrderButton": "إنشاء طلب الشراء",
+    "createDeliveryNoteButton": "سند تسليم جديد",
+    "createDeliveryNoteTitle": "إنشاء سند تسليم",
+    "createDeliveryNoteDescription": "إنشاء سند تسليم جديد للعملاء.",
+    "generateDeliveryNoteButton": "إنشاء سند التسليم",
+    "createSalesReceiptButton": "إيصال بيع جديد",
+    "createSalesReceiptTitle": "إنشاء إيصال بيع",
+    "createSalesReceiptDescription": "إنشاء إيصال بيع فوري للعملاء.",
+    "generateSalesReceiptButton": "إنشاء إيصال البيع"
   },
   "createInvoiceForm": {
     "invoiceDetails": "تفاصيل الفاتورة",
@@ -693,7 +705,6 @@
     "incorrectPassword": "كلمة المرور الحالية غير صحيحة",
     "passwordsDoNotMatch": "كلمات المرور غير متطابقة",
     "shortPassword": "يجب أن تكون كلمة المرور 4 أحرف على الأقل",
-    "incorrectPassword": "كلمة المرور الحالية غير صحيحة",
     "passwordUpdated": "تم تحديث كلمة مرور الحذف",
     "passwordSet": "تم تعيين كلمة مرور الحذف بنجاح",
     "changeDeletionPasswordDesc": "غيّر كلمة مرور الحذف. هذه الكلمة مطلوبة لحذف العناصر.",

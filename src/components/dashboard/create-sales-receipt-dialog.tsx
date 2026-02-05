@@ -49,14 +49,14 @@ export function CreateSalesReceiptDialog({ locale, dictionary, onCreated }: Crea
                 <DialogTrigger asChild>
                     <Button>
                         <PlusCircle className="mr-2 h-4 w-4" />
-                        Nouveau Bon de Vente
+                        {dictionary?.invoices?.createSalesReceiptButton || 'New Sales Receipt'}
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Créer un Bon de Vente</DialogTitle>
+                        <DialogTitle>{dictionary?.invoices?.createSalesReceiptTitle || 'Create Sales Receipt'}</DialogTitle>
                         <DialogDescription>
-                            Créez un nouveau bon de vente (reçu) pour vos clients.
+                            {dictionary?.invoices?.createSalesReceiptDescription || 'Create a new sales receipt for your customers.'}
                         </DialogDescription>
                     </DialogHeader>
                     <CreateInvoiceForm
@@ -71,7 +71,7 @@ export function CreateSalesReceiptDialog({ locale, dictionary, onCreated }: Crea
                             {(dictionary?.table as any)?.cancel || 'Annuler'}
                         </Button>
                         <Button onClick={handleSubmit} type="button">
-                            Générer Bon de Vente
+                            {dictionary?.invoices?.generateSalesReceiptButton || 'Generate Sales Receipt'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
