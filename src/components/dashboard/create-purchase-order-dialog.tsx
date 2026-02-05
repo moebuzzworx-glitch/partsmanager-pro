@@ -61,9 +61,9 @@ export function CreatePurchaseOrderDialog({ locale, dictionary, onCreated }: Cre
                     </DialogHeader>
                     <CreateInvoiceForm
                         ref={formRef}
-                        locale={locale}
+                        dictionary={dictionary}
                         onSuccess={handleSuccess}
-                        defaultType="PURCHASE_ORDER"
+                        documentType="PURCHASE_ORDER"
                         hideTypeSelector={true}
                     />
                     <DialogFooter className="mt-6 flex justify-end gap-2">

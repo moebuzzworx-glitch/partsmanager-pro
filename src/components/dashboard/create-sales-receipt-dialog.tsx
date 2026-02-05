@@ -61,9 +61,9 @@ export function CreateSalesReceiptDialog({ locale, dictionary, onCreated }: Crea
                     </DialogHeader>
                     <CreateInvoiceForm
                         ref={formRef}
-                        locale={locale}
+                        dictionary={dictionary}
                         onSuccess={handleSuccess}
-                        defaultType="SALES_RECEIPT"
+                        documentType="SALES_RECEIPT"
                         hideTypeSelector={true}
                     />
                     <DialogFooter className="mt-6 flex justify-end gap-2">

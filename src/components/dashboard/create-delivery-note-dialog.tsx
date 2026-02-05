@@ -61,9 +61,9 @@ export function CreateDeliveryNoteDialog({ locale, dictionary, onCreated }: Crea
                     </DialogHeader>
                     <CreateInvoiceForm
                         ref={formRef}
-                        locale={locale}
+                        dictionary={dictionary}
                         onSuccess={handleSuccess}
-                        defaultType="DELIVERY_NOTE"
+                        documentType="DELIVERY_NOTE"
                         hideTypeSelector={true}
                     />
                     <DialogFooter className="mt-6 flex justify-end gap-2">
