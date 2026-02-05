@@ -158,7 +158,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
             seenIds.add(fresh.id);
           }
 
-          for (const existing of products) {
+          for (const existing of fetchedProducts) {
             if (!seenIds.has(existing.id) && existing.isDeleted !== true) {
               mergedProducts.push(existing);
             }
