@@ -593,15 +593,26 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
 
             <div className="flex justify-between items-center">
               <h3 className="font-semibold">{dictionary?.createInvoiceForm?.lineItems || 'Line Items'}</h3>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setBatchDialogOpen(true)}
-              >
-                <ListPlus className="mr-2 h-4 w-4" />
-                {dictionary?.createInvoiceForm?.batchAddProducts || 'Add Products'}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => append({ designation: '', quantity: 1, unitPrice: 0, reference: '', unit: 'pcs' })}
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  {dictionary?.createInvoiceForm?.addItem || 'Add Item'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBatchDialogOpen(true)}
+                >
+                  <ListPlus className="mr-2 h-4 w-4" />
+                  {dictionary?.createInvoiceForm?.batchAddProducts || 'Add Products'}
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-4">

@@ -79,6 +79,7 @@ export async function hybridImportProducts(
           ...existingProduct, // Keep existing data
           ...product, // Apply new data on top
           stock: newStock, // Override stock with accumulated value
+          isDeleted: false, // FORCE RESTORE: If it was in trash, bring it back
           id: existingProduct.id, // Keep original ID
           version: (existingProduct.version || 0) + 1,
           updatedAt: Date.now(),
