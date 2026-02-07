@@ -42,15 +42,22 @@ interface MobileScannerDialogProps {
 
 export function MobileScannerDialog({ open, onOpenChange, onScan, title = "Scan Product" }: MobileScannerDialogProps) {
     const scannerRef = useRef<Html5Qrcode | null>(null);
-    const isTransitioningRef = useRef<boolean>(false); // Guard against overlapping calls
+    const isTransitioningRef = useRef<boolean>(false);
     const lastScanRef = useRef<string>('');
     const lastScanTimeRef = useRef<number>(0);
+    const onScanRef = useRef(onScan); // Stable ref for callback
+
+    // Keep onScanRef up to date without triggering re-renders
+    useEffect(() => {
+        onScanRef.current = onScan;
+    }, [onScan]);
 
     const [isStarted, setIsStarted] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [lastScanned, setLastScanned] = useState<string | null>(null);
     const [scanCount, setScanCount] = useState(0);
 
+    // Stable scan handler - no dependencies that change on parent re-render
     const handleScanResult = useCallback((decodedText: string) => {
         // Debounce same code for 3 seconds
         const now = Date.now();
@@ -79,14 +86,14 @@ export function MobileScannerDialog({ open, onOpenChange, onScan, title = "Scan 
             navigator.vibrate(100);
         }
 
-        // Update UI and call callback
+        // Update UI and call callback via ref (avoids dependency)
         setLastScanned(productId);
         setScanCount(prev => prev + 1);
-        onScan(productId);
+        onScanRef.current(productId);
 
         // Clear feedback after 2 seconds
         setTimeout(() => setLastScanned(null), 2000);
-    }, [onScan]);
+    }, []); // Empty deps - uses refs for everything
 
     // Safe stop function with transition guard
     const safeStopScanner = useCallback(async () => {
@@ -94,22 +101,20 @@ export function MobileScannerDialog({ open, onOpenChange, onScan, title = "Scan 
         if (!scanner || isTransitioningRef.current) return;
 
         try {
-            // Check if actually scanning (isScanning is a getter, not a method)
             if (scanner.isScanning) {
                 isTransitioningRef.current = true;
                 await scanner.stop();
             }
         } catch (err) {
-            // Silently ignore - may already be stopped
+            // Silently ignore
         } finally {
             isTransitioningRef.current = false;
         }
     }, []);
 
-    // Start/stop scanner based on dialog open state
+    // Start/stop scanner based on dialog open state - ONLY depends on 'open'
     useEffect(() => {
         if (!open) {
-            // Cleanup when closed
             safeStopScanner();
             setIsStarted(false);
             setIsLoading(false);
@@ -117,14 +122,11 @@ export function MobileScannerDialog({ open, onOpenChange, onScan, title = "Scan 
             return;
         }
 
-        // Don't start if already transitioning
         if (isTransitioningRef.current) return;
 
-        // Start scanner when dialog opens
         setIsLoading(true);
 
         const startScanner = async () => {
-            // Double-check transition state
             if (isTransitioningRef.current) {
                 setIsLoading(false);
                 return;
@@ -135,7 +137,6 @@ export function MobileScannerDialog({ open, onOpenChange, onScan, title = "Scan 
 
                 const deviceList = await Html5Qrcode.getCameras();
 
-                // Filter to back cameras
                 const backCameras = deviceList.filter((cam) => {
                     const label = cam.label.toLowerCase();
                     return !label.includes('front') && !label.includes('user') && !label.includes('selfie');
@@ -171,14 +172,13 @@ export function MobileScannerDialog({ open, onOpenChange, onScan, title = "Scan 
             }
         };
 
-        // Small delay to let dialog render
         const timer = setTimeout(startScanner, 300);
 
         return () => {
             clearTimeout(timer);
             safeStopScanner();
         };
-    }, [open, handleScanResult, safeStopScanner]);
+    }, [open, safeStopScanner, handleScanResult]); // handleScanResult now stable
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
