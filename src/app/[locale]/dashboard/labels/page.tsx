@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useFirebase } from '@/firebase/provider';
+import { useParams } from 'next/navigation';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -23,8 +24,28 @@ interface Product {
 }
 
 export default function LabelMakerPage() {
+    const params = useParams();
+    const locale = params?.locale as string || 'en';
     const { firestore, user } = useFirebase();
     const { toast } = useToast();
+
+    // Dictionary State
+    const [dictionary, setDictionary] = useState<any>(null);
+
+    // Fetch dictionary for translations
+    useEffect(() => {
+        const loadDictionary = async () => {
+            try {
+                const dict = await import(`@/dictionaries/${locale}.json`);
+                setDictionary(dict.default);
+            } catch (e) {
+                console.error("Failed to load dictionary:", e);
+            }
+        };
+        loadDictionary();
+    }, [locale]);
+
+    const t = dictionary?.labels || {};
 
     // Data State
     const [products, setProducts] = useState<Product[]>([]);
@@ -107,12 +128,12 @@ export default function LabelMakerPage() {
             {/* Header and Controls - Hidden on Print */}
             <div className="flex justify-between items-center print:hidden">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Label Maker</h1>
-                    <p className="text-muted-foreground">Generate and print QR codes for your stock.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">{t.title || 'Label Maker'}</h1>
+                    <p className="text-muted-foreground">{t.description || 'Generate and print QR codes for your stock.'}</p>
                 </div>
                 <Button onClick={handlePrint} disabled={selectedIds.size === 0}>
                     <Printer className="mr-2 h-4 w-4" />
-                    Print {selectedIds.size} Labels
+                    {(t.printLabels || 'Print {count} Labels').replace('{count}', String(selectedIds.size))}
                 </Button>
             </div>
 
@@ -122,11 +143,11 @@ export default function LabelMakerPage() {
                 <div className="space-y-6">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Print Settings</CardTitle>
+                            <CardTitle>{t.printSettings || 'Print Settings'}</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="space-y-2">
-                                <Label>Printer Type</Label>
+                                <Label>{t.printerType || 'Printer Type'}</Label>
                                 <Select
                                     value={printerType}
                                     onValueChange={(v: any) => setPrinterType(v)}
@@ -135,8 +156,8 @@ export default function LabelMakerPage() {
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="thermal">Thermal (Roll)</SelectItem>
-                                        <SelectItem value="a4">A4 (Grid)</SelectItem>
+                                        <SelectItem value="thermal">{t.thermal || 'Thermal (Roll)'}</SelectItem>
+                                        <SelectItem value="a4">{t.a4 || 'A4 (Grid)'}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -144,7 +165,7 @@ export default function LabelMakerPage() {
                             {printerType === 'thermal' && (
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>Width (mm)</Label>
+                                        <Label>{t.widthMm || 'Width (mm)'}</Label>
                                         <Input
                                             type="number"
                                             value={labelWidth}
@@ -152,7 +173,7 @@ export default function LabelMakerPage() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Height (mm)</Label>
+                                        <Label>{t.heightMm || 'Height (mm)'}</Label>
                                         <Input
                                             type="number"
                                             value={labelHeight}
@@ -164,15 +185,15 @@ export default function LabelMakerPage() {
 
                             <div className="space-y-4 pt-4 border-t">
                                 <div className="flex items-center justify-between">
-                                    <Label>Show Price</Label>
+                                    <Label>{t.showPrice || 'Show Price'}</Label>
                                     <Switch checked={showPrice} onCheckedChange={setShowPrice} />
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <Label>Show Name</Label>
+                                    <Label>{t.showName || 'Show Name'}</Label>
                                     <Switch checked={showName} onCheckedChange={setShowName} />
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <Label>Show SKU/Ref</Label>
+                                    <Label>{t.showSku || 'Show SKU/Ref'}</Label>
                                     <Switch checked={showSku} onCheckedChange={setShowSku} />
                                 </div>
                             </div>
@@ -181,7 +202,7 @@ export default function LabelMakerPage() {
 
                     <Card className="bg-muted/50">
                         <CardHeader>
-                            <CardTitle className="text-sm">Preview (Single)</CardTitle>
+                            <CardTitle className="text-sm">{t.previewSingle || 'Preview (Single)'}</CardTitle>
                         </CardHeader>
                         <CardContent className="flex justify-center p-6">
                             {/* Live Preview of dummy or first selected */}
@@ -206,11 +227,11 @@ export default function LabelMakerPage() {
                 {/* Right: Product List */}
                 <Card className="lg:col-span-2 flex flex-col h-[700px]">
                     <CardHeader className="pb-3">
-                        <CardTitle>Select Products</CardTitle>
+                        <CardTitle>{t.selectProducts || 'Select Products'}</CardTitle>
                         <div className="relative">
                             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Search products..."
+                                placeholder={t.searchProducts || "Search products..."}
                                 className="pl-8"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
@@ -232,9 +253,9 @@ export default function LabelMakerPage() {
                                                 onCheckedChange={toggleAll}
                                             />
                                         </th>
-                                        <th className="p-3 font-medium">Product</th>
-                                        <th className="p-3 font-medium">Ref</th>
-                                        <th className="p-3 font-medium text-right">Stock</th>
+                                        <th className="p-3 font-medium">{t.product || 'Product'}</th>
+                                        <th className="p-3 font-medium">{t.ref || 'Ref'}</th>
+                                        <th className="p-3 font-medium text-right">{t.stock || 'Stock'}</th>
                                     </tr>
                                 </thead>
                                 <tbody>

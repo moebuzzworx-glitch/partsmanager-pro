@@ -839,5 +839,26 @@
     "connectMobileScanner": "Connect Mobile Scanner",
     "pairingDescription": "Scan this code with your phone (or the in-app scanner) to use it as a remote barcode reader.",
     "addItem": "Add Item"
+  },
+  "labels": {
+    "title": "Label Maker",
+    "description": "Generate and print QR codes for your stock.",
+    "printLabels": "Print {count} Labels",
+    "printSettings": "Print Settings",
+    "printerType": "Printer Type",
+    "thermal": "Thermal (Roll)",
+    "a4": "A4 (Grid)",
+    "widthMm": "Width (mm)",
+    "heightMm": "Height (mm)",
+    "showPrice": "Show Price",
+    "showName": "Show Name",
+    "showSku": "Show SKU/Ref",
+    "previewSingle": "Preview (Single)",
+    "selectProducts": "Select Products",
+    "searchProducts": "Search products...",
+    "product": "Product",
+    "ref": "Ref",
+    "stock": "Stock",
+    "cancel": "Cancel"
   }
 }

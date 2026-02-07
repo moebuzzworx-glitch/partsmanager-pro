@@ -880,5 +880,26 @@
     "connectMobileScanner": "ربط الماسح المحمول",
     "pairingDescription": "امسح هذا الرمز بهاتفك (أو الماسح المدمج) لاستخدامه كقارئ باركود عن بُعد.",
     "addItem": "إضافة عنصر"
+  },
+  "labels": {
+    "title": "صانع الملصقات",
+    "description": "إنشاء وطباعة رموز QR لمخزونك.",
+    "printLabels": "طباعة {count} ملصق",
+    "printSettings": "إعدادات الطباعة",
+    "printerType": "نوع الطابعة",
+    "thermal": "حرارية (لفة)",
+    "a4": "A4 (شبكة)",
+    "widthMm": "العرض (مم)",
+    "heightMm": "الارتفاع (مم)",
+    "showPrice": "إظهار السعر",
+    "showName": "إظهار الاسم",
+    "showSku": "إظهار SKU/المرجع",
+    "previewSingle": "معاينة (فردية)",
+    "selectProducts": "اختر المنتجات",
+    "searchProducts": "البحث عن المنتجات...",
+    "product": "المنتج",
+    "ref": "المرجع",
+    "stock": "المخزون",
+    "cancel": "إلغاء"
   }
 }

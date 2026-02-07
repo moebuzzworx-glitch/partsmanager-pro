@@ -872,5 +872,26 @@
     "connectMobileScanner": "Connecter le Scanner Mobile",
     "pairingDescription": "Scannez ce code avec votre téléphone (ou le scanner intégré) pour l'utiliser comme lecteur de codes-barres à distance.",
     "addItem": "Ajouter un article"
+  },
+  "labels": {
+    "title": "Créateur d'Étiquettes",
+    "description": "Générez et imprimez des codes QR pour votre stock.",
+    "printLabels": "Imprimer {count} Étiquettes",
+    "printSettings": "Paramètres d'Impression",
+    "printerType": "Type d'Imprimante",
+    "thermal": "Thermique (Rouleau)",
+    "a4": "A4 (Grille)",
+    "widthMm": "Largeur (mm)",
+    "heightMm": "Hauteur (mm)",
+    "showPrice": "Afficher le Prix",
+    "showName": "Afficher le Nom",
+    "showSku": "Afficher SKU/Réf",
+    "previewSingle": "Aperçu (Single)",
+    "selectProducts": "Sélectionner les Produits",
+    "searchProducts": "Rechercher des produits...",
+    "product": "Produit",
+    "ref": "Réf",
+    "stock": "Stock",
+    "cancel": "Annuler"
   }
 }
