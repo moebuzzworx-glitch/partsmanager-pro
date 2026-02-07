@@ -591,7 +591,8 @@
       "selectedCount": "{count} product(s) selected",
       "addSelected": "Add Selected",
       "cancel": "Cancel"
-    }
+    },
+    "addItem": "Add Item"
   },
   "trash": {
     "title": "Deleted Items",
@@ -832,6 +833,9 @@
     "session": "Session",
     "scannerPairingTitle": "Mobile Scanner",
     "scannerPairingDesc": "Scan this QR code with your phone to pair and start scanning products.",
-    "scannerHint": "Keep this open until paired. Scanned products will be added automatically."
+    "scannerHint": "Keep this open until paired. Scanned products will be added automatically.",
+    "connectMobileScanner": "Connect Mobile Scanner",
+    "pairingDescription": "Scan this code with your phone (or the in-app scanner) to use it as a remote barcode reader.",
+    "addItem": "Add Item"
   }
 }

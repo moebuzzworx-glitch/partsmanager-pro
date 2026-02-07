@@ -132,7 +132,7 @@ export function ScannerPairingDialog({ dictionary, onScan }: ScannerPairingDialo
                                 </p>
                             </div>
                         ) : (
-                            <PairingCode sessionId={sessionId} baseUrl={baseUrl} />
+                            <PairingCode sessionId={sessionId} baseUrl={baseUrl} dictionary={dictionary} />
                         )}
                     </div>
 

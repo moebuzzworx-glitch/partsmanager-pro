@@ -610,7 +610,8 @@
       "selectedCount": "{count} produit(s) sélectionné(s)",
       "addSelected": "Ajouter la Sélection",
       "cancel": "Annuler"
-    }
+    },
+    "addItem": "Ajouter un Article"
   },
   "trash": {
     "title": "Éléments Supprimés",
@@ -865,6 +866,9 @@
     "session": "Session",
     "scannerPairingTitle": "Scanner Mobile",
     "scannerPairingDesc": "Scannez ce QR code avec votre téléphone pour appairer et commencer à scanner.",
-    "scannerHint": "Gardez cette fenêtre ouverte jusqu'à l'appairage. Les produits scannés seront ajoutés automatiquement."
+    "scannerHint": "Gardez cette fenêtre ouverte jusqu'à l'appairage. Les produits scannés seront ajoutés automatiquement.",
+    "connectMobileScanner": "Connecter le Scanner Mobile",
+    "pairingDescription": "Scannez ce code avec votre téléphone (ou le scanner intégré) pour l'utiliser comme lecteur de codes-barres à distance.",
+    "addItem": "Ajouter un article"
   }
 }
