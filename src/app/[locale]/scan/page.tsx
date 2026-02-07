@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import { useRouter, useParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,69 +11,80 @@ import Link from 'next/link';
 import { PairingCode } from '@/components/dashboard/scan/pairing-code';
 import { SyncService } from '@/lib/sync-service';
 
-// Scanner Component - DOES NOT clear after product scans
-const ScannerComponent = ({ onScan, isPaired }: { onScan: (decodedText: string) => void; isPaired: boolean }) => {
-    const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+// Scanner Component using Html5Qrcode for CONTINUOUS scanning
+const ScannerComponent = ({ onScan }: { onScan: (decodedText: string) => void }) => {
+    const scannerRef = useRef<Html5Qrcode | null>(null);
     const lastScanRef = useRef<string>('');
     const lastScanTimeRef = useRef<number>(0);
-
-    const handleScan = useCallback((decodedText: string) => {
-        // Debounce: ignore same code within 2 seconds
-        const now = Date.now();
-        if (decodedText === lastScanRef.current && now - lastScanTimeRef.current < 2000) {
-            return;
-        }
-        lastScanRef.current = decodedText;
-        lastScanTimeRef.current = now;
-
-        // Vibrate on success
-        if (navigator.vibrate) {
-            navigator.vibrate(100);
-        }
-
-        onScan(decodedText);
-    }, [onScan]);
+    const [isStarted, setIsStarted] = useState(false);
 
     useEffect(() => {
-        if (scannerRef.current) return;
+        let isMounted = true;
 
-        scannerRef.current = new Html5QrcodeScanner(
-            "reader",
-            {
-                fps: 10,
-                qrbox: { width: 250, height: 250 },
-                aspectRatio: 1.0
-            },
-            /* verbose= */ false
-        );
+        const startScanner = async () => {
+            if (scannerRef.current) return;
 
-        scannerRef.current.render(
-            (decodedText) => {
-                // Check if this is a pairing code
-                const isPairingCode = decodedText.includes('session=');
+            try {
+                const html5Qrcode = new Html5Qrcode("reader");
+                scannerRef.current = html5Qrcode;
 
-                handleScan(decodedText);
+                await html5Qrcode.start(
+                    { facingMode: "environment" },
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 },
+                    },
+                    (decodedText) => {
+                        // Debounce: ignore same code within 1.5 seconds
+                        const now = Date.now();
+                        if (decodedText === lastScanRef.current && now - lastScanTimeRef.current < 1500) {
+                            return; // Skip duplicate
+                        }
+                        lastScanRef.current = decodedText;
+                        lastScanTimeRef.current = now;
 
-                // Only clear scanner after pairing, NOT after product scans
-                if (isPairingCode && scannerRef.current) {
-                    scannerRef.current.clear();
-                    scannerRef.current = null;
+                        // Vibrate on success
+                        if (navigator.vibrate) {
+                            navigator.vibrate(100);
+                        }
+
+                        // Call the handler - scanner keeps running!
+                        onScan(decodedText);
+                    },
+                    (errorMessage) => {
+                        // Ignore decode errors (camera still scanning)
+                    }
+                );
+
+                if (isMounted) {
+                    setIsStarted(true);
                 }
-            },
-            (error) => {
-                // Ignore scan errors
+            } catch (err) {
+                console.error("Failed to start scanner:", err);
             }
-        );
+        };
+
+        startScanner();
 
         return () => {
+            isMounted = false;
             if (scannerRef.current) {
-                try { scannerRef.current.clear(); } catch (e) { }
+                scannerRef.current.stop().catch(() => { });
                 scannerRef.current = null;
             }
         };
-    }, [handleScan]);
+    }, [onScan]);
 
-    return <div id="reader" className="w-full h-full text-white min-h-[300px]"></div>;
+    return (
+        <div className="relative w-full min-h-[300px]">
+            <div id="reader" className="w-full"></div>
+            {!isStarted && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black">
+                    <Loader2 className="h-8 w-8 animate-spin text-white" />
+                </div>
+            )}
+        </div>
+    );
 };
 
 const PAIRED_SESSION_STORAGE_KEY = 'stock_manager_paired_session_id';
@@ -225,7 +236,7 @@ export default function ScanPage() {
                     ) : (
                         <Card className="w-full mb-6">
                             <CardContent className="p-0 overflow-hidden relative min-h-[300px] bg-black">
-                                <ScannerComponent onScan={handleScan} isPaired={!!pairedSessionId} />
+                                <ScannerComponent onScan={handleScan} />
                                 {/* Scan Feedback Overlay */}
                                 {lastScannedProduct && (
                                     <div className="absolute bottom-0 left-0 right-0 bg-green-500 text-white p-3 animate-in slide-in-from-bottom duration-200">
