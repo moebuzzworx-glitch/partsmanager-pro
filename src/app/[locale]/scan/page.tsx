@@ -9,7 +9,7 @@ import { Loader2, Camera, ArrowLeft, Monitor, Smartphone } from 'lucide-react';
 import { useFirebase } from '@/firebase/provider';
 import Link from 'next/link';
 import { PairingCode } from '@/components/dashboard/scan/pairing-code';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+// import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'; // Removed
 
 export default function ScanPage({ params }: { params: { locale: string } }) {
     const [scanResult, setScanResult] = useState<string | null>(null);
@@ -86,6 +86,22 @@ export default function ScanPage({ params }: { params: { locale: string } }) {
         return <div id="reader" className="w-full h-full text-white min-h-[300px]"></div>;
     };
 
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    // ... (keep ScannerComponent definition)
+
+    // ... (keep Session/Auth logic)
+
     if (isUserLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
     return (
@@ -94,45 +110,33 @@ export default function ScanPage({ params }: { params: { locale: string } }) {
                 <Link href={`/${params.locale}/dashboard`}>
                     <Button variant="ghost" size="icon"><ArrowLeft /></Button>
                 </Link>
-                <h1 className="text-xl font-bold">Scanner</h1>
+                <h1 className="text-xl font-bold">{isMobile ? 'Mobile Scanner' : 'Desktop Pairing'}</h1>
                 <div className="w-10"></div>
             </div>
 
-            <Tabs defaultValue="scan" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-8">
-                    <TabsTrigger value="scan" className="text-lg py-3">
-                        <Camera className="mr-2 h-5 w-5" />
-                        Scan (Mobile)
-                    </TabsTrigger>
-                    <TabsTrigger value="pair" className="text-lg py-3">
-                        <Monitor className="mr-2 h-5 w-5" />
-                        Pairing (Desktop)
-                    </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="scan" className="mt-0">
-                    <div className="max-w-md mx-auto">
-                        <Card className="w-full mb-6">
-                            <CardContent className="p-0 overflow-hidden relative min-h-[300px] bg-black">
-                                <ScannerComponent />
-                            </CardContent>
-                        </Card>
-                        <div className="text-center text-muted-foreground text-sm px-4">
-                            <p>Point your camera at a product QR code.</p>
-                        </div>
+            {isMobile ? (
+                <div className="max-w-md mx-auto w-full">
+                    <Card className="w-full mb-6">
+                        <CardContent className="p-0 overflow-hidden relative min-h-[300px] bg-black">
+                            <ScannerComponent />
+                        </CardContent>
+                    </Card>
+                    <div className="text-center text-muted-foreground text-sm px-4">
+                        <p>Point your camera at a product QR code.</p>
                     </div>
-                </TabsContent>
-
-                <TabsContent value="pair" className="mt-0">
-                    <div className="max-w-md mx-auto">
-                        <Card>
-                            <CardContent className="pt-6">
-                                <PairingCode sessionId={sessionId} baseUrl={baseUrl} />
-                            </CardContent>
-                        </Card>
+                </div>
+            ) : (
+                <div className="max-w-md mx-auto w-full">
+                    <Card>
+                        <CardContent className="pt-6">
+                            <PairingCode sessionId={sessionId} baseUrl={baseUrl} />
+                        </CardContent>
+                    </Card>
+                    <div className="text-center text-muted-foreground text-sm px-4 mt-8">
+                        <p>Scan this QR code with the mobile app to pair your device.</p>
                     </div>
-                </TabsContent>
-            </Tabs>
+                </div>
+            )}
         </div>
     );
 }
