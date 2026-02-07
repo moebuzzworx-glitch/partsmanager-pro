@@ -11,49 +11,121 @@ import Link from 'next/link';
 import { PairingCode } from '@/components/dashboard/scan/pairing-code';
 import { SyncService } from '@/lib/sync-service';
 
-// Scanner Component using Html5Qrcode for CONTINUOUS scanning
+// Camera info type from html5-qrcode
+interface CameraDevice {
+    id: string;
+    label: string;
+}
+
+// Smart camera selection: pick the best camera for barcode scanning
+function selectBestCamera(cameras: CameraDevice[]): CameraDevice | null {
+    if (cameras.length === 0) return null;
+    if (cameras.length === 1) return cameras[0];
+
+    // Priority order for barcode scanning (main camera is usually best)
+    const priorityKeywords = ['main', 'wide', 'back', 'rear'];
+    const avoidKeywords = ['ultra', 'tele', 'macro', 'depth', 'zoom'];
+
+    // Score each camera
+    const scored = cameras.map(cam => {
+        const label = cam.label.toLowerCase();
+        let score = 0;
+
+        // Boost for priority keywords
+        priorityKeywords.forEach(kw => {
+            if (label.includes(kw)) score += 10;
+        });
+
+        // Penalize keywords that indicate specialized cameras
+        avoidKeywords.forEach(kw => {
+            if (label.includes(kw)) score -= 15;
+        });
+
+        // Cameras with "0" in label are often the main camera
+        if (label.includes('0') || label.includes('camera 0')) score += 5;
+
+        // First camera in list is often the main one
+        if (cameras.indexOf(cam) === 0) score += 3;
+
+        return { cam, score };
+    });
+
+    // Sort by score descending
+    scored.sort((a, b) => b.score - a.score);
+
+    console.log("Camera selection scores:", scored.map(s => `${s.cam.label}: ${s.score}`));
+
+    return scored[0].cam;
+}
+
+// Scanner Component with smart camera auto-selection
 const ScannerComponent = ({ onScan }: { onScan: (decodedText: string) => void }) => {
     const scannerRef = useRef<Html5Qrcode | null>(null);
     const lastScanRef = useRef<string>('');
     const lastScanTimeRef = useRef<number>(0);
     const [isStarted, setIsStarted] = useState(false);
+    const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
+    // Enumerate cameras on mount and auto-select best one
     useEffect(() => {
+        Html5Qrcode.getCameras().then((deviceList) => {
+            // Filter to back cameras only
+            const backCameras = deviceList.filter((cam) => {
+                const label = cam.label.toLowerCase();
+                return !label.includes('front') && !label.includes('user') && !label.includes('selfie');
+            });
+
+            const camerasToUse = backCameras.length > 0 ? backCameras : deviceList;
+
+            // Smart selection
+            const bestCamera = selectBestCamera(camerasToUse);
+            if (bestCamera) {
+                console.log("Selected camera:", bestCamera.label);
+                setSelectedCameraId(bestCamera.id);
+            }
+            setIsLoading(false);
+        }).catch((err) => {
+            console.error("Failed to get cameras:", err);
+            setIsLoading(false);
+        });
+    }, []);
+
+    // Start scanner when camera is selected
+    useEffect(() => {
+        if (!selectedCameraId) return;
+
         let isMounted = true;
 
         const startScanner = async () => {
-            if (scannerRef.current) return;
+            if (scannerRef.current?.isScanning) {
+                await scannerRef.current.stop().catch(() => { });
+            }
 
             try {
-                const html5Qrcode = new Html5Qrcode("reader");
+                const html5Qrcode = scannerRef.current || new Html5Qrcode("reader");
                 scannerRef.current = html5Qrcode;
 
                 await html5Qrcode.start(
-                    { facingMode: "environment" },
+                    selectedCameraId,
                     {
                         fps: 10,
                         qrbox: { width: 250, height: 250 },
                     },
                     (decodedText) => {
-                        // Debounce: ignore same code within 3 seconds
                         const now = Date.now();
                         if (decodedText === lastScanRef.current && now - lastScanTimeRef.current < 3000) {
-                            return; // Skip duplicate
+                            return;
                         }
                         lastScanRef.current = decodedText;
                         lastScanTimeRef.current = now;
 
-                        // Vibrate on success
                         if (navigator.vibrate) {
                             navigator.vibrate(100);
                         }
-
-                        // Call the handler - scanner keeps running!
                         onScan(decodedText);
                     },
-                    (errorMessage) => {
-                        // Ignore decode errors (camera still scanning)
-                    }
+                    () => { }
                 );
 
                 if (isMounted) {
@@ -68,22 +140,18 @@ const ScannerComponent = ({ onScan }: { onScan: (decodedText: string) => void })
 
         return () => {
             isMounted = false;
-            const scanner = scannerRef.current;
-            scannerRef.current = null;
-
-            if (scanner) {
-                // Check if scanner is actually running before trying to stop
-                scanner.isScanning && scanner.stop().catch(() => {
-                    // Silently ignore - scanner might already be stopped
-                });
+            if (scannerRef.current?.isScanning) {
+                scannerRef.current.stop().catch(() => { });
             }
         };
-    }, [onScan]);
+    }, [selectedCameraId, onScan]);
 
     return (
         <div className="relative w-full min-h-[300px]">
             <div id="reader" className="w-full"></div>
-            {!isStarted && (
+
+            {/* Loading State */}
+            {(isLoading || !isStarted) && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black">
                     <Loader2 className="h-8 w-8 animate-spin text-white" />
                 </div>
