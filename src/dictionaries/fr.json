@@ -78,6 +78,8 @@
     "suppliers": "Fournisseurs",
     "invoices": "Factures",
     "trash": "Corbeille",
+    "labels": "Étiquettes (QR)",
+    "scanner": "Scanner Mobile",
     "settings": "Paramètres",
     "expiringSoon": "Votre abonnement expire bientôt ! Renouvelez maintenant pour conserver l'accès à toutes les fonctionnalités.",
     "totalRevenue": "Revenu Total",

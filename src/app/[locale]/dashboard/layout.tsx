@@ -30,6 +30,8 @@ import {
   Info,
   Loader2,
   Headphones,
+  Printer,
+  Camera,
 } from 'lucide-react';
 import { useBotStore } from '@/hooks/use-bot-store';
 import { getDictionary } from '@/lib/dictionaries';
@@ -86,6 +88,10 @@ export default function DashboardLayout({
     { href: `/dashboard/customers`, icon: <Users />, label: dictionary?.dashboard?.customers || 'Customers' },
     { href: `/dashboard/suppliers`, icon: <Users />, label: dictionary?.dashboard?.suppliers || 'Suppliers' },
     { href: `/dashboard/invoices`, icon: <FileText />, label: dictionary?.dashboard?.invoices || 'Invoices' },
+    { href: `/dashboard/invoices`, icon: <FileText />, label: dictionary?.dashboard?.invoices || 'Invoices' },
+    { href: `/dashboard/labels`, icon: <Printer />, label: dictionary?.dashboard?.labels || 'Labels' },
+    // Mobile Scanner - Direct Link
+    { href: `/scan`, icon: <Camera />, label: dictionary?.dashboard?.scanner || 'Scanner' },
     { href: `/dashboard/trash`, icon: <Trash2 />, label: dictionary?.dashboard?.trash || 'Trash' },
   ];
 

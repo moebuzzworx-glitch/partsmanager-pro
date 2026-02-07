@@ -90,6 +90,7 @@
     "totalProductsDesc": "Items needing reorder",
     "lowStockLabel": "low",
     "recentActivity": "Recent Activity",
+    "scanner": "Mobile Scanner",
     "recentActivityPlaceholder": "Recent activity will be shown here",
     "addSupplier": "Add Supplier",
     "addProduct": "Add Product",

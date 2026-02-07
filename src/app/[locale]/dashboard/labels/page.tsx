@@ -1,0 +1,329 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { useFirebase } from '@/firebase/provider';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2, Printer, Search } from 'lucide-react';
+import { LabelTemplate } from '@/components/dashboard/labels/label-template';
+
+interface Product {
+    id: string;
+    name: string;
+    price?: number;
+    reference?: string;
+    stock?: number;
+}
+
+export default function LabelMakerPage() {
+    const { firestore, user } = useFirebase();
+    const { toast } = useToast();
+
+    // Data State
+    const [products, setProducts] = useState<Product[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+    // Settings State
+    const [printerType, setPrinterType] = useState<'a4' | 'thermal'>('thermal');
+    const [showPrice, setShowPrice] = useState(true);
+    const [showName, setShowName] = useState(true);
+    const [showSku, setShowSku] = useState(true);
+
+    // Thermal Dimensions (mm)
+    const [labelWidth, setLabelWidth] = useState(50);
+    const [labelHeight, setLabelHeight] = useState(30);
+    const [baseUrl, setBaseUrl] = useState('');
+
+    // Set Base URL on client
+    useEffect(() => {
+        setBaseUrl(window.location.origin);
+    }, []);
+
+    // Fetch Products
+    useEffect(() => {
+        async function fetchProducts() {
+            if (!firestore || !user) return;
+            try {
+                setLoading(true);
+                const q = query(
+                    collection(firestore, 'products'),
+                    where('userId', '==', user.uid),
+                    orderBy('createdAt', 'desc'), // Show newest first usually helpful for labeling new stock
+                    limit(100) // Limit for performance, maybe add load more later
+                );
+                const snap = await getDocs(q);
+                const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+                setProducts(data);
+            } catch (e) {
+                console.error("Error fetching products", e);
+                toast({ title: "Error", description: "Failed to load products", variant: "destructive" });
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchProducts();
+    }, [firestore, user, toast]);
+
+    // Filtering
+    const filteredProducts = products.filter(p =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.reference?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // Selection Logic
+    const toggleSelect = (id: string) => {
+        const next = new Set(selectedIds);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        setSelectedIds(next);
+    };
+
+    const toggleAll = () => {
+        if (selectedIds.size === filteredProducts.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(filteredProducts.map(p => p.id)));
+        }
+    };
+
+    const handlePrint = () => {
+        window.print();
+    };
+
+    // Selected Products Data
+    const selectedProductsData = products.filter(p => selectedIds.has(p.id));
+
+    return (
+        <div className="p-6 space-y-6">
+            {/* Header and Controls - Hidden on Print */}
+            <div className="flex justify-between items-center print:hidden">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Label Maker</h1>
+                    <p className="text-muted-foreground">Generate and print QR codes for your stock.</p>
+                </div>
+                <Button onClick={handlePrint} disabled={selectedIds.size === 0}>
+                    <Printer className="mr-2 h-4 w-4" />
+                    Print {selectedIds.size} Labels
+                </Button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print:hidden">
+
+                {/* Left: Settings & Preview */}
+                <div className="space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Print Settings</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label>Printer Type</Label>
+                                <Select
+                                    value={printerType}
+                                    onValueChange={(v: any) => setPrinterType(v)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="thermal">Thermal (Roll)</SelectItem>
+                                        <SelectItem value="a4">A4 (Grid)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {printerType === 'thermal' && (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Width (mm)</Label>
+                                        <Input
+                                            type="number"
+                                            value={labelWidth}
+                                            onChange={e => setLabelWidth(Number(e.target.value))}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Height (mm)</Label>
+                                        <Input
+                                            type="number"
+                                            value={labelHeight}
+                                            onChange={e => setLabelHeight(Number(e.target.value))}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="space-y-4 pt-4 border-t">
+                                <div className="flex items-center justify-between">
+                                    <Label>Show Price</Label>
+                                    <Switch checked={showPrice} onCheckedChange={setShowPrice} />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Label>Show Name</Label>
+                                    <Switch checked={showName} onCheckedChange={setShowName} />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Label>Show SKU/Ref</Label>
+                                    <Switch checked={showSku} onCheckedChange={setShowSku} />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-muted/50">
+                        <CardHeader>
+                            <CardTitle className="text-sm">Preview (Single)</CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex justify-center p-6">
+                            {/* Live Preview of dummy or first selected */}
+                            <div className="border shadow-sm bg-white">
+                                <LabelTemplate
+                                    product={selectedProductsData[0] || { id: 'demo', name: 'Product Name', price: 1500, reference: 'REF-001' }}
+                                    baseUrl={baseUrl}
+                                    settings={{
+                                        printerType,
+                                        width: labelWidth,
+                                        height: labelHeight,
+                                        showPrice,
+                                        showName,
+                                        showSku
+                                    }}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Right: Product List */}
+                <Card className="lg:col-span-2 flex flex-col h-[700px]">
+                    <CardHeader className="pb-3">
+                        <CardTitle>Select Products</CardTitle>
+                        <div className="relative">
+                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Search products..."
+                                className="pl-8"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                    </CardHeader>
+                    <CardContent className="flex-1 overflow-auto p-0">
+                        {loading ? (
+                            <div className="flex h-full items-center justify-center">
+                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : (
+                            <table className="w-full text-sm">
+                                <thead className="bg-muted/50 sticky top-0 z-10">
+                                    <tr className="text-left border-b">
+                                        <th className="p-3 w-[50px]">
+                                            <Checkbox
+                                                checked={selectedIds.size === filteredProducts.length && filteredProducts.length > 0}
+                                                onCheckedChange={toggleAll}
+                                            />
+                                        </th>
+                                        <th className="p-3 font-medium">Product</th>
+                                        <th className="p-3 font-medium">Ref</th>
+                                        <th className="p-3 font-medium text-right">Stock</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredProducts.map(p => (
+                                        <tr key={p.id} className="border-b hover:bg-muted/50 transition-colors">
+                                            <td className="p-3">
+                                                <Checkbox
+                                                    checked={selectedIds.has(p.id)}
+                                                    onCheckedChange={() => toggleSelect(p.id)}
+                                                />
+                                            </td>
+                                            <td className="p-3 font-medium">{p.name}</td>
+                                            <td className="p-3 text-muted-foreground">{p.reference || '-'}</td>
+                                            <td className="p-3 text-right">{p.stock || 0}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* PRINT ONLY AREA */}
+            <div className="hidden print:block absolute top-0 left-0 w-full">
+                <style jsx global>{`
+                @media print {
+                    @page {
+                        margin: 0;
+                        size: ${printerType === 'thermal' ? `${labelWidth}mm ${labelHeight}mm` : 'auto'};
+                    }
+                    body {
+                        visibility: hidden;
+                        margin: 0;
+                        padding: 0;
+                    }
+                    .print-area {
+                        visibility: visible;
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                    }
+                    /* Force background graphics for QRs */
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+            `}</style>
+
+                <div className="print-area">
+                    {printerType === 'thermal' ? (
+                        // Thermal Loop (One per "page")
+                        selectedProductsData.map(product => (
+                            <LabelTemplate
+                                key={product.id}
+                                product={product}
+                                baseUrl={baseUrl}
+                                settings={{
+                                    printerType,
+                                    width: labelWidth,
+                                    height: labelHeight,
+                                    showPrice,
+                                    showName,
+                                    showSku
+                                }}
+                            />
+                        ))
+                    ) : (
+                        // A4 Grid Layout
+                        <div className="grid grid-cols-3 gap-4 p-4">
+                            {selectedProductsData.map(product => (
+                                <div key={product.id} className="break-inside-avoid">
+                                    <LabelTemplate
+                                        product={product}
+                                        baseUrl={baseUrl}
+                                        settings={{
+                                            printerType,
+                                            // Standard Avery size usually handled in component style
+                                            showPrice,
+                                            showName,
+                                            showSku
+                                        }}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
