@@ -65,11 +65,9 @@ export function ScannerPairingDialog({ dictionary, onScan }: ScannerPairingDialo
         }
     };
 
-    if (!sessionId) return null;
-
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
-    // Mobile mode: direct scanner
+    // Mobile mode: direct scanner (no session needed)
     if (isMobile) {
         return (
             <>
@@ -93,6 +91,9 @@ export function ScannerPairingDialog({ dictionary, onScan }: ScannerPairingDialo
             </>
         );
     }
+
+    // Desktop mode: need session for pairing
+    if (!sessionId) return null;
 
     // Desktop mode: QR pairing
     return (
