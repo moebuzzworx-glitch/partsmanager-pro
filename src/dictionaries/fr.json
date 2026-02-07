@@ -615,7 +615,9 @@
     },
     "addItem": "Ajouter un Article",
     "percentage": "Pourcentage (%)",
-    "fixedAmount": "Montant Fixe"
+    "fixedAmount": "Montant Fixe",
+    "subtotal": "Sous-total",
+    "discount": "Remise"
   },
   "trash": {
     "title": "Éléments Supprimés",

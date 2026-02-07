@@ -623,7 +623,9 @@
     },
     "addItem": "إضافة عنصر",
     "percentage": "نسبة مئوية (%)",
-    "fixedAmount": "مبلغ ثابت"
+    "fixedAmount": "مبلغ ثابت",
+    "subtotal": "المجموع الفرعي",
+    "discount": "تخفيض"
   },
   "trash": {
     "title": "العناصر المحذوفة",
