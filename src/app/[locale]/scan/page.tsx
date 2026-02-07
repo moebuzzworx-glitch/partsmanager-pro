@@ -9,6 +9,7 @@ import { Loader2, ArrowLeft } from 'lucide-react';
 import { useFirebase } from '@/firebase/provider';
 import Link from 'next/link';
 import { PairingCode } from '@/components/dashboard/scan/pairing-code';
+import { SyncService } from '@/lib/sync-service';
 
 // Scanner Component defined outside to prevent re-renders
 const ScannerComponent = ({ onScan }: { onScan: (decodedText: string) => void }) => {
@@ -46,16 +47,18 @@ export default function ScanPage() {
     const params = useParams();
     const locale = params?.locale as string || 'en'; // Fallback to 'en'
 
-    const [scanResult, setScanResult] = useState<string | null>(null);
     const router = useRouter();
-    const { user, isUserLoading } = useFirebase();
+    const { user, isUserLoading, firestore } = useFirebase();
     const [baseUrl, setBaseUrl] = useState('');
     const [sessionId, setSessionId] = useState('');
     const [isMobile, setIsMobile] = useState(false);
+    const [pairedSessionId, setPairedSessionId] = useState<string | null>(null);
 
+    // Initialize Session (Desktop)
     useEffect(() => {
         setBaseUrl(window.location.origin);
-        setSessionId(crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(7));
+        const newSessionId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(7);
+        setSessionId(newSessionId);
 
         const checkMobile = () => {
             setIsMobile(window.innerWidth < 768);
@@ -66,6 +69,28 @@ export default function ScanPage() {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
+    // Create Session in Firestore (Desktop Only)
+    useEffect(() => {
+        if (!isMobile && firestore && user && sessionId) {
+            SyncService.initSession(firestore, sessionId, user.uid).catch(console.error);
+
+            // Listen for scans
+            const unsubscribe = SyncService.subscribeToSession(firestore, sessionId, (scan) => {
+                // Ignore scans older than session start? For now just log.
+                console.log("Desktop received scan:", scan);
+                // In real app: Add to Invoice Line Items
+                // For now, simple alert to prove it works
+                // Note: 'added' event fires for existing docs too, so we might get old ones on refresh.
+                // A timestamp check would be good here.
+                if (Date.now() - (scan.timestamp?.toMillis?.() || 0) < 5000) {
+                    alert(`New Scan Received!\nProduct: ${scan.productId}`);
+                }
+            });
+
+            return () => unsubscribe();
+        }
+    }, [isMobile, firestore, user, sessionId]);
+
     useEffect(() => {
         if (isUserLoading) return;
         if (!user) {
@@ -73,37 +98,47 @@ export default function ScanPage() {
         }
     }, [user, isUserLoading, router, locale]);
 
-    const handleScan = (decodedText: string) => {
-        setScanResult(decodedText);
+    const handleScan = async (decodedText: string) => {
         console.log("Scanned:", decodedText);
 
         try {
-            let targetId = decodedText;
-
-            // Handle URL format: http://.../scan/ID
-            if (decodedText.includes('/scan/')) {
-                const parts = decodedText.split('/scan/');
-                if (parts.length > 1) {
-                    targetId = parts[1];
-                    // Remove any query params or trailing slashes
-                    targetId = targetId.split('?')[0].split('/')[0];
-                }
-            }
-
-            // Handle Pairing Code
+            // 1. Check for Pairing Code
             if (decodedText.includes('session=')) {
-                alert("Pairing not fully implemented yet. Code: " + decodedText);
+                const urlParams = new URLSearchParams(decodedText.split('?')[1]);
+                const sid = urlParams.get('session');
+                if (sid) {
+                    setPairedSessionId(sid);
+                    alert("Success! Paired with Desktop.");
+                }
                 return;
             }
 
-            // Navigate to Product Page
+            // 2. Extract Product ID
+            let targetId = decodedText;
+            if (decodedText.includes('/scan/')) {
+                const parts = decodedText.split('/scan/');
+                if (parts.length > 1) {
+                    targetId = parts[1].split('?')[0].split('/')[0];
+                }
+            }
+
+            // 3. If Paired -> Send to Desktop
+            if (pairedSessionId && firestore) {
+                await SyncService.sendScan(firestore, pairedSessionId, targetId, user?.uid);
+                // Keep scanner open, show tiny toast/feedback
+                // For now, just a log/alert
+                // toast({ title: "Sent to Desktop", description: targetId });
+                console.log("Sent to desktop:", targetId);
+                return;
+            }
+
+            // 4. Default -> Navigate to Product Page
             const targetPath = `/${locale}/scan/${targetId}`;
-            console.log("Navigating to:", targetPath);
             router.push(targetPath);
 
         } catch (e) {
             console.error("Parse error", e);
-            alert("Error parsing QR Code");
+            alert("Error: " + e);
         }
     };
 
@@ -115,7 +150,14 @@ export default function ScanPage() {
                 <Link href={`/${locale}/dashboard`}>
                     <Button variant="ghost" size="icon"><ArrowLeft /></Button>
                 </Link>
-                <h1 className="text-xl font-bold">{isMobile ? 'Mobile Scanner' : 'Desktop Pairing'}</h1>
+                <div className="text-center">
+                    <h1 className="text-xl font-bold">{isMobile ? 'Mobile Scanner' : 'Desktop Pairing'}</h1>
+                    {isMobile && pairedSessionId && (
+                        <span className="text-xs text-green-600 font-mono bg-green-100 px-2 py-0.5 rounded-full">
+                            ● Paired
+                        </span>
+                    )}
+                </div>
                 <div className="w-10"></div>
             </div>
 
@@ -127,8 +169,12 @@ export default function ScanPage() {
                         </CardContent>
                     </Card>
                     <div className="text-center text-muted-foreground text-sm px-4">
-                        <p>Point your camera at a product QR code.</p>
-                        <p className="text-xs mt-2 text-muted-foreground/50">Debug: {locale}</p>
+                        <p>{pairedSessionId ? "Scanning sends to Desktop..." : "Point at Product or Pairing Code."}</p>
+                        {pairedSessionId && (
+                            <Button variant="link" size="sm" onClick={() => setPairedSessionId(null)} className="text-red-500 h-auto p-0 mt-2">
+                                Unpair
+                            </Button>
+                        )}
                     </div>
                 </div>
             ) : (
@@ -140,6 +186,7 @@ export default function ScanPage() {
                     </Card>
                     <div className="text-center text-muted-foreground text-sm px-4 mt-8">
                         <p>Scan this QR code with the mobile app to pair your device.</p>
+                        <p className="text-xs mt-2 font-mono text-muted-foreground/50">Session: {sessionId.slice(0, 8)}...</p>
                     </div>
                 </div>
             )}
