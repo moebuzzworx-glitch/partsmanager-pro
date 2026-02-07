@@ -38,9 +38,12 @@ interface MobileScannerDialogProps {
     onOpenChange: (open: boolean) => void;
     onScan: (productId: string) => void;
     title?: string;
+    dictionary?: any;
 }
 
-export function MobileScannerDialog({ open, onOpenChange, onScan, title = "Scan Product" }: MobileScannerDialogProps) {
+export function MobileScannerDialog({ open, onOpenChange, onScan, title, dictionary }: MobileScannerDialogProps) {
+    const t = dictionary?.scanner || {};
+    const displayTitle = title || t.scanProduct || "Scan Product";
     const scannerRef = useRef<Html5Qrcode | null>(null);
     const isTransitioningRef = useRef<boolean>(false);
     const lastScanRef = useRef<string>('');
@@ -186,15 +189,15 @@ export function MobileScannerDialog({ open, onOpenChange, onScan, title = "Scan 
                 <DialogHeader className="p-4 pb-2">
                     <DialogTitle className="flex items-center gap-2">
                         <Camera className="h-5 w-5" />
-                        {title}
+                        {displayTitle}
                         {scanCount > 0 && (
                             <span className="text-xs font-normal bg-green-100 text-green-600 px-2 py-0.5 rounded-full">
-                                {scanCount} scanned
+                                {scanCount} {t.scanned || 'scanned'}
                             </span>
                         )}
                     </DialogTitle>
                     <DialogDescription>
-                        Point your camera at a product barcode or QR code
+                        {t.scanDescription || 'Point your camera at a product barcode or QR code'}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -213,7 +216,7 @@ export function MobileScannerDialog({ open, onOpenChange, onScan, title = "Scan 
                         <div className="absolute bottom-0 left-0 right-0 bg-green-500 text-white p-3 animate-in slide-in-from-bottom duration-200">
                             <div className="flex items-center justify-center gap-2">
                                 <Check className="h-5 w-5" />
-                                <span className="font-medium">Added: {lastScanned.slice(0, 25)}{lastScanned.length > 25 ? '...' : ''}</span>
+                                <span className="font-medium">{t.added || 'Added'}: {lastScanned.slice(0, 25)}{lastScanned.length > 25 ? '...' : ''}</span>
                             </div>
                         </div>
                     )}
@@ -221,10 +224,10 @@ export function MobileScannerDialog({ open, onOpenChange, onScan, title = "Scan 
 
                 <div className="p-4 pt-2 flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">
-                        {isStarted ? 'Scanner active. Keep scanning!' : 'Starting camera...'}
+                        {isStarted ? (t.scannerActive || 'Scanner active. Keep scanning!') : (t.startingCamera || 'Starting camera...')}
                     </span>
                     <Button variant="outline" onClick={() => onOpenChange(false)}>
-                        Done
+                        {t.done || 'Done'}
                     </Button>
                 </div>
             </DialogContent>

@@ -811,5 +811,27 @@
     "itemName": "customers",
     "deleteTitle": "Delete Customer?",
     "deleteConfirmMessage": "Are you sure? This requires your deletion password."
+  },
+  "scanner": {
+    "mobileScanner": "Mobile Scanner",
+    "desktopPairing": "Desktop Pairing",
+    "scanProduct": "Scan",
+    "scanDescription": "Point your camera at a product barcode or QR code",
+    "scanned": "scanned",
+    "added": "Added",
+    "sent": "Sent",
+    "scannerActive": "Scanner active. Keep scanning!",
+    "startingCamera": "Starting camera...",
+    "done": "Done",
+    "paired": "Paired!",
+    "startingScanner": "Starting scanner...",
+    "scanningSendsToDesktop": "Scanning sends to Desktop. Keep scanning!",
+    "pointAtProductOrPairing": "Point at Product or Pairing Code.",
+    "unpairAndReset": "Unpair & Reset",
+    "scanQrToPair": "Scan this QR code with the mobile app to pair your device.",
+    "session": "Session",
+    "scannerPairingTitle": "Mobile Scanner",
+    "scannerPairingDesc": "Scan this QR code with your phone to pair and start scanning products.",
+    "scannerHint": "Keep this open until paired. Scanned products will be added automatically."
   }
 }

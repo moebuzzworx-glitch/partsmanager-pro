@@ -844,5 +844,27 @@
     "description": "Gérer vos informations client.",
     "addButton": "Ajouter un Client",
     "searchPlaceholder": "Rechercher les clients..."
+  },
+  "scanner": {
+    "mobileScanner": "Scanner Mobile",
+    "desktopPairing": "Appairage Bureau",
+    "scanProduct": "Scanner",
+    "scanDescription": "Dirigez votre caméra vers un code-barres ou un QR code",
+    "scanned": "scannés",
+    "added": "Ajouté",
+    "sent": "Envoyé",
+    "scannerActive": "Scanner actif. Continuez à scanner !",
+    "startingCamera": "Démarrage de la caméra...",
+    "done": "Terminé",
+    "paired": "Appairé !",
+    "startingScanner": "Démarrage du scanner...",
+    "scanningSendsToDesktop": "Les scans sont envoyés au bureau. Continuez !",
+    "pointAtProductOrPairing": "Pointez vers un produit ou un code d'appairage.",
+    "unpairAndReset": "Dissocier et réinitialiser",
+    "scanQrToPair": "Scannez ce QR code avec l'application mobile pour appairer votre appareil.",
+    "session": "Session",
+    "scannerPairingTitle": "Scanner Mobile",
+    "scannerPairingDesc": "Scannez ce QR code avec votre téléphone pour appairer et commencer à scanner.",
+    "scannerHint": "Gardez cette fenêtre ouverte jusqu'à l'appairage. Les produits scannés seront ajoutés automatiquement."
   }
 }

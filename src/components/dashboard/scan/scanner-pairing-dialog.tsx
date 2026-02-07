@@ -79,14 +79,14 @@ export function ScannerPairingDialog({ dictionary, onScan }: ScannerPairingDialo
                     className="gap-2"
                 >
                     <Camera className="h-4 w-4" />
-                    {dictionary?.createInvoiceForm?.scanProduct || 'Scan'}
+                    {dictionary?.scanner?.scanProduct || dictionary?.createInvoiceForm?.scanProduct || 'Scan'}
                 </Button>
 
                 <MobileScannerDialog
                     open={open}
                     onOpenChange={setOpen}
                     onScan={handleMobileScan}
-                    title={dictionary?.createInvoiceForm?.scanProduct || 'Scan Product'}
+                    dictionary={dictionary}
                 />
             </>
         );
@@ -106,7 +106,7 @@ export function ScannerPairingDialog({ dictionary, onScan }: ScannerPairingDialo
                 className="gap-2"
             >
                 <Smartphone className="h-4 w-4" />
-                {dictionary?.createInvoiceForm?.mobileScanner || 'Scan'}
+                {dictionary?.scanner?.scanProduct || dictionary?.createInvoiceForm?.mobileScanner || 'Scan'}
             </Button>
 
             <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -114,10 +114,10 @@ export function ScannerPairingDialog({ dictionary, onScan }: ScannerPairingDialo
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <QrCode className="h-5 w-5" />
-                            {dictionary?.createInvoiceForm?.scannerPairingTitle || 'Mobile Scanner'}
+                            {dictionary?.scanner?.scannerPairingTitle || dictionary?.createInvoiceForm?.scannerPairingTitle || 'Mobile Scanner'}
                         </DialogTitle>
                         <DialogDescription>
-                            {dictionary?.createInvoiceForm?.scannerPairingDesc || 'Scan this QR code with your phone to pair and start scanning products.'}
+                            {dictionary?.scanner?.scannerPairingDesc || dictionary?.createInvoiceForm?.scannerPairingDesc || 'Scan this QR code with your phone to pair and start scanning products.'}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -128,7 +128,7 @@ export function ScannerPairingDialog({ dictionary, onScan }: ScannerPairingDialo
                                     <Check className="h-10 w-10 text-green-600" />
                                 </div>
                                 <p className="text-lg font-semibold text-green-600">
-                                    {dictionary?.createInvoiceForm?.paired || 'Paired!'}
+                                    {dictionary?.scanner?.paired || dictionary?.createInvoiceForm?.paired || 'Paired!'}
                                 </p>
                             </div>
                         ) : (
@@ -137,7 +137,7 @@ export function ScannerPairingDialog({ dictionary, onScan }: ScannerPairingDialo
                     </div>
 
                     <p className="text-xs text-center text-muted-foreground">
-                        {dictionary?.createInvoiceForm?.scannerHint || 'Keep this open until paired. Scanned products will be added automatically.'}
+                        {dictionary?.scanner?.scannerHint || dictionary?.createInvoiceForm?.scannerHint || 'Keep this open until paired. Scanned products will be added automatically.'}
                     </p>
                 </DialogContent>
             </Dialog>

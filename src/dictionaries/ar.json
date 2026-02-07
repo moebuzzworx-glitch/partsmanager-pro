@@ -852,5 +852,27 @@
     "description": "إدارة معلومات العميل الخاصة بك.",
     "addButton": "إضافة عميل",
     "searchPlaceholder": "بحث عن عملاء..."
+  },
+  "scanner": {
+    "mobileScanner": "الماسح المحمول",
+    "desktopPairing": "إقران سطح المكتب",
+    "scanProduct": "مسح",
+    "scanDescription": "وجه الكاميرا نحو الباركود أو رمز QR",
+    "scanned": "ممسوحة",
+    "added": "تمت الإضافة",
+    "sent": "تم الإرسال",
+    "scannerActive": "الماسح نشط. استمر في المسح!",
+    "startingCamera": "جارٍ تشغيل الكاميرا...",
+    "done": "تم",
+    "paired": "تم الإقران!",
+    "startingScanner": "جارٍ تشغيل الماسح...",
+    "scanningSendsToDesktop": "يتم إرسال المسح إلى سطح المكتب. استمر!",
+    "pointAtProductOrPairing": "وجه نحو منتج أو رمز إقران.",
+    "unpairAndReset": "إلغاء الإقران وإعادة التعيين",
+    "scanQrToPair": "امسح رمز QR هذا بتطبيق الهاتف لإقران جهازك.",
+    "session": "الجلسة",
+    "scannerPairingTitle": "الماسح المحمول",
+    "scannerPairingDesc": "امسح رمز QR بهاتفك للإقران وبدء المسح.",
+    "scannerHint": "أبقِ هذه النافذة مفتوحة حتى يتم الإقران. ستتم إضافة المنتجات الممسوحة تلقائياً."
   }
 }
