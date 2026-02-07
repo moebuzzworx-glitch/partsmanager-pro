@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { useFirebase } from '@/firebase/provider';
+import { useFirebase } from '@/firebase';
 import { SyncService, ScanEvent } from '@/lib/sync-service';
 import { useToast } from '@/hooks/use-toast';
 

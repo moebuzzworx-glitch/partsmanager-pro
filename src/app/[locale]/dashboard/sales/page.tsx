@@ -33,7 +33,7 @@ import {
 import { useScanListener } from '@/hooks/use-scan-listener';
 import { LogSaleDialog, LogSaleDialogRef } from "@/components/dashboard/log-sale-dialog";
 import { EditSaleDialog } from "@/components/dashboard/edit-sale-dialog";
-import { useFirebase } from "@/firebase/provider";
+import { useFirebase } from "@/firebase";
 import { collection, getDocs, query, where, doc, getDoc, deleteDoc } from "firebase/firestore";
 import { ProtectedActionDialog } from "@/components/protected-action-dialog";
 import { generateDocumentPdf } from "@/components/dashboard/document-generator";

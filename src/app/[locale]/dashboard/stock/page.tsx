@@ -41,7 +41,7 @@ import { getDictionary } from "@/lib/dictionaries";
 import { Locale } from "@/lib/config";
 import { cn } from "@/lib/utils";
 import { AddProductDialog, AddProductDialogRef } from "@/components/dashboard/add-product-dialog";
-import { useFirebase } from "@/firebase/provider";
+import { useFirebase } from "@/firebase";
 import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
 import { hybridDeleteProduct } from "@/lib/hybrid-import-v2";
 import { useToast } from "@/hooks/use-toast";

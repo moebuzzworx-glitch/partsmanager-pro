@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useFirebase } from "@/firebase/provider";
+import { useFirebase } from "@/firebase";
 import { getUserInvoices, deleteInvoice, updateInvoicePaidStatus, recordSalesFromInvoice, deleteSalesForInvoice, type StoredInvoice } from "@/lib/invoices-utils";
 import { ProtectedActionDialog } from "@/components/protected-action-dialog";
 
