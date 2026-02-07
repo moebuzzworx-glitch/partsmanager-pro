@@ -61,6 +61,7 @@ function selectBestCamera(cameras: CameraDevice[]): CameraDevice | null {
 // Scanner Component with smart camera auto-selection
 const ScannerComponent = ({ onScan }: { onScan: (decodedText: string) => void }) => {
     const scannerRef = useRef<Html5Qrcode | null>(null);
+    const isTransitioningRef = useRef<boolean>(false); // Guard against overlapping calls
     const lastScanRef = useRef<string>('');
     const lastScanTimeRef = useRef<number>(0);
     const [isStarted, setIsStarted] = useState(false);
@@ -94,15 +95,21 @@ const ScannerComponent = ({ onScan }: { onScan: (decodedText: string) => void })
     // Start scanner when camera is selected
     useEffect(() => {
         if (!selectedCameraId) return;
+        if (isTransitioningRef.current) return; // Don't start if already transitioning
 
         let isMounted = true;
 
         const startScanner = async () => {
-            if (scannerRef.current?.isScanning) {
-                await scannerRef.current.stop().catch(() => { });
-            }
+            if (isTransitioningRef.current) return;
 
             try {
+                isTransitioningRef.current = true;
+
+                // Stop existing scanner if any
+                if (scannerRef.current?.isScanning) {
+                    await scannerRef.current.stop().catch(() => { });
+                }
+
                 const html5Qrcode = scannerRef.current || new Html5Qrcode("reader");
                 scannerRef.current = html5Qrcode;
 
@@ -133,6 +140,8 @@ const ScannerComponent = ({ onScan }: { onScan: (decodedText: string) => void })
                 }
             } catch (err) {
                 console.error("Failed to start scanner:", err);
+            } finally {
+                isTransitioningRef.current = false;
             }
         };
 
@@ -140,8 +149,15 @@ const ScannerComponent = ({ onScan }: { onScan: (decodedText: string) => void })
 
         return () => {
             isMounted = false;
-            if (scannerRef.current?.isScanning) {
-                scannerRef.current.stop().catch(() => { });
+            // Safe stop with transition guard
+            const scanner = scannerRef.current;
+            if (scanner && !isTransitioningRef.current) {
+                if (scanner.isScanning) {
+                    isTransitioningRef.current = true;
+                    scanner.stop().catch(() => { }).finally(() => {
+                        isTransitioningRef.current = false;
+                    });
+                }
             }
         };
     }, [selectedCameraId, onScan]);

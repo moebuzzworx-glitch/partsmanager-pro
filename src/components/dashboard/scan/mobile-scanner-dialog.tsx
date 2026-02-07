@@ -42,6 +42,7 @@ interface MobileScannerDialogProps {
 
 export function MobileScannerDialog({ open, onOpenChange, onScan, title = "Scan Product" }: MobileScannerDialogProps) {
     const scannerRef = useRef<Html5Qrcode | null>(null);
+    const isTransitioningRef = useRef<boolean>(false); // Guard against overlapping calls
     const lastScanRef = useRef<string>('');
     const lastScanTimeRef = useRef<number>(0);
 
@@ -87,24 +88,51 @@ export function MobileScannerDialog({ open, onOpenChange, onScan, title = "Scan 
         setTimeout(() => setLastScanned(null), 2000);
     }, [onScan]);
 
+    // Safe stop function with transition guard
+    const safeStopScanner = useCallback(async () => {
+        const scanner = scannerRef.current;
+        if (!scanner || isTransitioningRef.current) return;
+
+        try {
+            // Check if actually scanning (isScanning is a getter, not a method)
+            if (scanner.isScanning) {
+                isTransitioningRef.current = true;
+                await scanner.stop();
+            }
+        } catch (err) {
+            // Silently ignore - may already be stopped
+        } finally {
+            isTransitioningRef.current = false;
+        }
+    }, []);
+
     // Start/stop scanner based on dialog open state
     useEffect(() => {
         if (!open) {
             // Cleanup when closed
-            if (scannerRef.current?.isScanning) {
-                scannerRef.current.stop().catch(() => { });
-            }
+            safeStopScanner();
             setIsStarted(false);
             setIsLoading(false);
             setScanCount(0);
             return;
         }
 
+        // Don't start if already transitioning
+        if (isTransitioningRef.current) return;
+
         // Start scanner when dialog opens
         setIsLoading(true);
 
         const startScanner = async () => {
+            // Double-check transition state
+            if (isTransitioningRef.current) {
+                setIsLoading(false);
+                return;
+            }
+
             try {
+                isTransitioningRef.current = true;
+
                 const deviceList = await Html5Qrcode.getCameras();
 
                 // Filter to back cameras
@@ -119,6 +147,7 @@ export function MobileScannerDialog({ open, onOpenChange, onScan, title = "Scan 
                 if (!bestCamera) {
                     console.error("No camera found");
                     setIsLoading(false);
+                    isTransitioningRef.current = false;
                     return;
                 }
 
@@ -137,6 +166,8 @@ export function MobileScannerDialog({ open, onOpenChange, onScan, title = "Scan 
             } catch (err) {
                 console.error("Failed to start scanner:", err);
                 setIsLoading(false);
+            } finally {
+                isTransitioningRef.current = false;
             }
         };
 
@@ -145,11 +176,9 @@ export function MobileScannerDialog({ open, onOpenChange, onScan, title = "Scan 
 
         return () => {
             clearTimeout(timer);
-            if (scannerRef.current?.isScanning) {
-                scannerRef.current.stop().catch(() => { });
-            }
+            safeStopScanner();
         };
-    }, [open, handleScanResult]);
+    }, [open, handleScanResult, safeStopScanner]);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
