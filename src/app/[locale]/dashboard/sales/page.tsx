@@ -35,25 +35,6 @@ import { useRef } from 'react';
 import { useScanListener } from '@/hooks/use-scan-listener';
 import { LogSaleDialog, LogSaleDialogRef } from "@/components/dashboard/log-sale-dialog";
 
-// ... inside SalesPage
-const logSaleDialogRef = useRef<LogSaleDialogRef>(null);
-
-useScanListener((scan) => {
-  // Auto-open log sale dialog when a product is scanned on this page
-  if (logSaleDialogRef.current) {
-    logSaleDialogRef.current.handleScan(scan.productId);
-  }
-});
-
-return (
-  // ...
-  <LogSaleDialog
-    ref={logSaleDialogRef}
-    dictionary={dictionary}
-    onSaleAdded={fetchSales}
-  />
-    // ...
-
 import { EditSaleDialog } from "@/components/dashboard/edit-sale-dialog";
 import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, where, doc, getDoc, deleteDoc } from "firebase/firestore";
