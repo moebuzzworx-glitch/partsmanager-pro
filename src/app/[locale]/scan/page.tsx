@@ -61,17 +61,23 @@ function selectBestCamera(cameras: CameraDevice[]): CameraDevice | null {
 // Scanner Component with smart camera auto-selection
 const ScannerComponent = ({ onScan }: { onScan: (decodedText: string) => void }) => {
     const scannerRef = useRef<Html5Qrcode | null>(null);
-    const isTransitioningRef = useRef<boolean>(false); // Guard against overlapping calls
+    const isTransitioningRef = useRef<boolean>(false);
     const lastScanRef = useRef<string>('');
     const lastScanTimeRef = useRef<number>(0);
+    const onScanRef = useRef(onScan); // Stable ref for callback
+
     const [isStarted, setIsStarted] = useState(false);
     const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    // Keep onScanRef up to date without triggering re-renders
+    useEffect(() => {
+        onScanRef.current = onScan;
+    }, [onScan]);
+
     // Enumerate cameras on mount and auto-select best one
     useEffect(() => {
         Html5Qrcode.getCameras().then((deviceList) => {
-            // Filter to back cameras only
             const backCameras = deviceList.filter((cam) => {
                 const label = cam.label.toLowerCase();
                 return !label.includes('front') && !label.includes('user') && !label.includes('selfie');
@@ -79,7 +85,6 @@ const ScannerComponent = ({ onScan }: { onScan: (decodedText: string) => void })
 
             const camerasToUse = backCameras.length > 0 ? backCameras : deviceList;
 
-            // Smart selection
             const bestCamera = selectBestCamera(camerasToUse);
             if (bestCamera) {
                 console.log("Selected camera:", bestCamera.label);
@@ -92,10 +97,10 @@ const ScannerComponent = ({ onScan }: { onScan: (decodedText: string) => void })
         });
     }, []);
 
-    // Start scanner when camera is selected
+    // Start scanner when camera is selected - NO onScan dependency
     useEffect(() => {
         if (!selectedCameraId) return;
-        if (isTransitioningRef.current) return; // Don't start if already transitioning
+        if (isTransitioningRef.current) return;
 
         let isMounted = true;
 
@@ -105,7 +110,6 @@ const ScannerComponent = ({ onScan }: { onScan: (decodedText: string) => void })
             try {
                 isTransitioningRef.current = true;
 
-                // Stop existing scanner if any
                 if (scannerRef.current?.isScanning) {
                     await scannerRef.current.stop().catch(() => { });
                 }
@@ -130,7 +134,8 @@ const ScannerComponent = ({ onScan }: { onScan: (decodedText: string) => void })
                         if (navigator.vibrate) {
                             navigator.vibrate(100);
                         }
-                        onScan(decodedText);
+                        // Use ref to call callback - prevents re-render dependency
+                        onScanRef.current(decodedText);
                     },
                     () => { }
                 );
@@ -149,7 +154,6 @@ const ScannerComponent = ({ onScan }: { onScan: (decodedText: string) => void })
 
         return () => {
             isMounted = false;
-            // Safe stop with transition guard
             const scanner = scannerRef.current;
             if (scanner && !isTransitioningRef.current) {
                 if (scanner.isScanning) {
@@ -160,7 +164,7 @@ const ScannerComponent = ({ onScan }: { onScan: (decodedText: string) => void })
                 }
             }
         };
-    }, [selectedCameraId, onScan]);
+    }, [selectedCameraId]); // Removed onScan - using ref instead
 
     return (
         <div className="relative w-full min-h-[300px]">
