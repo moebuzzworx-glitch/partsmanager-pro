@@ -147,39 +147,39 @@ export const CreateInvoiceForm = React.forwardRef<CreateInvoiceFormRef, {
     name: 'lineItems',
   });
 
-  // Handle scans
+  // Reusable scan handler for both desktop pairing and mobile direct scanning
+  const handleProductScan = React.useCallback((productId: string) => {
+    const product = products.find(p => p.id === productId);
+    if (product) {
+      const currentItems = form.getValues('lineItems');
+      const existingIndex = currentItems.findIndex(item => item.reference === product.reference || item.designation === product.name);
+
+      if (existingIndex >= 0) {
+        const currentQty = currentItems[existingIndex].quantity;
+        form.setValue(`lineItems.${existingIndex}.quantity`, currentQty + 1);
+        toast({ title: "Quantity Updated", description: `${product.name} +1` });
+      } else {
+        const price = documentType === 'PURCHASE_ORDER' ? (product.purchasePrice || 0) : (product.price || 0);
+        append({
+          reference: product.reference || '',
+          designation: product.name,
+          quantity: 1,
+          unitPrice: price,
+          unit: 'pcs'
+        });
+        toast({ title: "Product Added", description: `${product.name}` });
+      }
+    } else {
+      toast({ title: "Product Not Found", description: "Not found in stock.", variant: "destructive" });
+    }
+  }, [products, form, documentType, append, toast]);
+
+  // Handle scans via ref (for desktop pairing mode)
   React.useImperativeHandle(ref, () => ({
     submit: () => {
       form.handleSubmit(onSubmit)();
     },
-    handleScan: (productId: string) => {
-      const product = products.find(p => p.id === productId);
-      if (product) {
-        // Check if product already exists in lineItems to increment quantity
-        const currentItems = form.getValues('lineItems');
-        const existingIndex = currentItems.findIndex(item => item.reference === product.reference || item.designation === product.name);
-
-        if (existingIndex >= 0) {
-          // Increment
-          const currentQty = currentItems[existingIndex].quantity;
-          form.setValue(`lineItems.${existingIndex}.quantity`, currentQty + 1);
-          toast({ title: "Quantity Updated", description: `${product.name} +1` });
-        } else {
-          // Add new
-          const price = documentType === 'PURCHASE_ORDER' ? (product.purchasePrice || 0) : (product.price || 0);
-          append({
-            reference: product.reference || '',
-            designation: product.name,
-            quantity: 1,
-            unitPrice: price,
-            unit: 'pcs'
-          });
-          toast({ title: "Product Added", description: `${product.name}` });
-        }
-      } else {
-        toast({ title: "Product Not Found", description: "Not found in stock.", variant: "destructive" });
-      }
-    }
+    handleScan: handleProductScan
   }));
 
   const { watch, setValue } = form;
@@ -641,7 +641,7 @@ export const CreateInvoiceForm = React.forwardRef<CreateInvoiceFormRef, {
             <div className="flex justify-between items-center">
               <h3 className="font-semibold">{dictionary?.createInvoiceForm?.lineItems || 'Line Items'}</h3>
               <div className="flex gap-2">
-                <ScannerPairingDialog dictionary={dictionary} />
+                <ScannerPairingDialog dictionary={dictionary} onScan={handleProductScan} />
                 <Button
                   type="button"
                   variant="outline"

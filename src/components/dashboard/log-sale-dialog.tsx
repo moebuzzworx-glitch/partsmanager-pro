@@ -382,7 +382,7 @@ export const LogSaleDialog = React.forwardRef<LogSaleDialogRef, { dictionary: Di
             <div className="grid gap-3">
               <div className="flex justify-between items-center">
                 <Label htmlFor="product" className="text-base font-semibold">{d.product}</Label>
-                <ScannerPairingDialog dictionary={dictionary} />
+                <ScannerPairingDialog dictionary={dictionary} onScan={(productId) => setPendingScanId(productId)} />
               </div>
               <div className="flex gap-2">
                 <div className="flex-[3] relative">
