@@ -22,7 +22,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useFirebase } from '@/firebase/provider';
+import { useFirebase } from '@/firebase';
 import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { User as AppUser, DocumentType } from '@/lib/types';
 import { canExport, getExportRestrictionMessage } from '@/lib/trial-utils';

@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { CreateInvoiceForm, CreateInvoiceFormRef } from './create-invoice-form';
+import { useFirebase } from '@/firebase';
 
 export interface CreateInvoiceDialogRef {
   handleScan: (productId: string) => void;

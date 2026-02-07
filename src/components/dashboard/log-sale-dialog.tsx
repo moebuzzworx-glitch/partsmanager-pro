@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useFirebase } from '@/firebase/provider';
+import { useFirebase } from '@/firebase';
 import { collection, getDocs, query, where, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { TrialButtonLock } from '@/components/trial-button-lock';
 import { hybridUpdateProduct } from '@/lib/hybrid-import-v2';
