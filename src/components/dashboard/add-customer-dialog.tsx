@@ -157,7 +157,7 @@ export function AddCustomerDialog({ onCustomerAdded, dictionary }: AddCustomerDi
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
+            <PlusCircle className="me-2 h-4 w-4" />
             {dictionary?.addCustomerDialog?.submit || 'Add Customer'}
           </Button>
         </DialogTrigger>
@@ -306,7 +306,7 @@ export function AddCustomerDialog({ onCustomerAdded, dictionary }: AddCustomerDi
                   {dictionary?.addCustomerDialog?.cancel || 'Cancel'}
                 </Button>
                 <Button type="submit" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                   {dictionary?.addCustomerDialog?.submit || 'Add Customer'}
                 </Button>
               </DialogFooter>

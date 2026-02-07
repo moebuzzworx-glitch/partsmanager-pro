@@ -323,7 +323,7 @@ export const LogSaleDialog = React.forwardRef<LogSaleDialogRef, { dictionary: Di
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
+            <PlusCircle className="me-2 h-4 w-4" />
             {d.logSale}
           </Button>
         </DialogTrigger>
@@ -447,14 +447,14 @@ export const LogSaleDialog = React.forwardRef<LogSaleDialogRef, { dictionary: Di
             {/* Sale Items Table */}
             {saleItems.length > 0 && (
               <Card className="border-primary/20">
-                <CardContent className="p-0">
-                  <Table>
+                <CardContent className="p-0 overflow-x-auto">
+                  <Table className="min-w-[600px]">
                     <TableHeader className="bg-primary/5">
                       <TableRow className="border-primary/10">
                         <TableHead className="font-semibold text-primary">{d.product}</TableHead>
                         <TableHead className="font-semibold text-primary w-[100px]">{d.quantity}</TableHead>
-                        <TableHead className="font-semibold text-primary text-right w-[120px]">{d.price}</TableHead>
-                        <TableHead className="font-semibold text-primary text-right w-[120px]">{d.total}</TableHead>
+                        <TableHead className="font-semibold text-primary text-end w-[120px]">{d.price}</TableHead>
+                        <TableHead className="font-semibold text-primary text-end w-[120px]">{d.total}</TableHead>
                         <TableHead className="w-[50px]"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -476,8 +476,8 @@ export const LogSaleDialog = React.forwardRef<LogSaleDialogRef, { dictionary: Di
                               min="0"
                             />
                           </TableCell>
-                          <TableCell className="text-right font-medium">{item.price.toFixed(2)} {dictionary.dashboard?.currency || 'DZD'}</TableCell>
-                          <TableCell className="text-right font-semibold text-primary">{(item.price * item.saleQuantity).toFixed(2)} {dictionary.dashboard?.currency || 'DZD'}</TableCell>
+                          <TableCell className="text-end font-medium">{item.price.toFixed(2)} {dictionary.dashboard?.currency || 'DZD'}</TableCell>
+                          <TableCell className="text-end font-semibold text-primary">{(item.price * item.saleQuantity).toFixed(2)} {dictionary.dashboard?.currency || 'DZD'}</TableCell>
                           <TableCell>
                             <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
                               <Trash2 className="h-4 w-4 text-destructive" />
@@ -524,7 +524,7 @@ export const LogSaleDialog = React.forwardRef<LogSaleDialogRef, { dictionary: Di
                   </div>
 
                   {/* Totals Summary */}
-                  <div className="flex flex-col items-end gap-1 w-full sm:w-auto text-right">
+                  <div className="flex flex-col items-end gap-1 w-full sm:w-auto text-end">
                     <div className="text-sm text-muted-foreground">
                       <span>{(dictionary as any).createInvoiceForm?.subtotal || 'Subtotal'}: </span>
                       <span className="font-medium">{subTotal.toFixed(2)}</span>
@@ -558,7 +558,7 @@ export const LogSaleDialog = React.forwardRef<LogSaleDialogRef, { dictionary: Di
               disabled={!customerInput.trim() || saleItems.length === 0 || isLoading}
               className="flex-1"
             >
-              {isLoading ? <span className="animate-spin mr-2">⏳</span> : null}
+              {isLoading ? <span className="animate-spin me-2">⏳</span> : null}
               {d.saveAndGenerate || 'Save & Generate Receipt'}
             </Button>
           </DialogFooter>

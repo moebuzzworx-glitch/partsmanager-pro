@@ -160,7 +160,7 @@ export default function CreateAccessRightDialog({ onAccessRightCreated }: Create
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <PlusCircle className="h-4 w-4 mr-2" />
+          <PlusCircle className="h-4 w-4 me-2" />
           Create Access Right
         </Button>
       </DialogTrigger>
@@ -454,7 +454,7 @@ export default function CreateAccessRightDialog({ onAccessRightCreated }: Create
                 Cancel
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                 Create Access Right
               </Button>
             </div>

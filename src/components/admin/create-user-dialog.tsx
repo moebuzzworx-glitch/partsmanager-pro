@@ -192,7 +192,7 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button disabled={!canCreate('users')}>
-          <PlusCircle className="h-4 w-4 mr-2" />
+          <PlusCircle className="h-4 w-4 me-2" />
           Create User
         </Button>
       </DialogTrigger>
@@ -304,7 +304,7 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
                         <SelectTrigger disabled={isLoadingAccessRights}>
                           {isLoadingAccessRights ? (
                             <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              <Loader2 className="me-2 h-4 w-4 animate-spin" />
                               Loading...
                             </>
                           ) : (
@@ -335,7 +335,7 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
                 Cancel
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                 Create User
               </Button>
             </DialogFooter>

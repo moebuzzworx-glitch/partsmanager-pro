@@ -171,7 +171,7 @@ export function EditUserDialog({ user, onUserUpdated }: EditUserDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          <Edit className="h-4 w-4 mr-2" />
+          <Edit className="h-4 w-4 me-2" />
           Edit
         </Button>
       </DialogTrigger>
@@ -270,7 +270,7 @@ export function EditUserDialog({ user, onUserUpdated }: EditUserDialogProps) {
                         <SelectTrigger disabled={isLoadingAccessRights}>
                           {isLoadingAccessRights ? (
                             <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              <Loader2 className="me-2 h-4 w-4 animate-spin" />
                               Loading...
                             </>
                           ) : (
@@ -323,7 +323,7 @@ export function EditUserDialog({ user, onUserUpdated }: EditUserDialogProps) {
                 Cancel
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                 Update User
               </Button>
             </DialogFooter>

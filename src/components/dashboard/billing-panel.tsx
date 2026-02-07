@@ -310,7 +310,7 @@ export function BillingPanel({ dictionary }: { dictionary?: any }) {
                         <div>
                           <p className="text-sm text-muted-foreground">{dictionary?.billing?.annualService || 'Annual after-sales service renewal'}</p>
                         </div>
-                        <div className="text-right">
+                        <div className="text-end">
                           <p className="text-2xl font-bold text-primary">{RENEWAL_PRICE.toLocaleString()} DZD</p>
                           <p className="text-xs text-muted-foreground">{dictionary?.billing?.perYear || '/ year'}</p>
                         </div>

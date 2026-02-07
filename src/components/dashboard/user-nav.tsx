@@ -113,15 +113,15 @@ export function UserNav({
           </div>
         </DropdownMenuLabel>
         <DropdownMenuItem onClick={() => setProfileOpen(true)}>
-          <UserIcon className="mr-2 h-4 w-4" />
+          <UserIcon className="me-2 h-4 w-4" />
           <span>Profile</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut}>
           {isLoggingOut ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="me-2 h-4 w-4 animate-spin" />
           ) : (
-            <LogOut className="mr-2 h-4 w-4" />
+            <LogOut className="me-2 h-4 w-4" />
           )}
           <span>{dictionary.logout}</span>
         </DropdownMenuItem>

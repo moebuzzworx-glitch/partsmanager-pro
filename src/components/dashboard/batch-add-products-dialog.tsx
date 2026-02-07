@@ -163,7 +163,7 @@ export function BatchAddProductsDialog({
                             placeholder={d.searchPlaceholder || 'Search by name or reference...'}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10"
+                            className="ps-10"
                         />
                     </div>
                     <Button

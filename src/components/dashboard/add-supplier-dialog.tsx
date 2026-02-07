@@ -157,7 +157,7 @@ export function AddSupplierDialog({ dictionary, onSupplierAdded }: AddSupplierDi
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
+            <PlusCircle className="me-2 h-4 w-4" />
             {dictionary?.addSupplierDialog?.submit || 'Add Supplier'}
           </Button>
         </DialogTrigger>
@@ -306,7 +306,7 @@ export function AddSupplierDialog({ dictionary, onSupplierAdded }: AddSupplierDi
                   {dictionary?.addSupplierDialog?.cancel || 'Cancel'}
                 </Button>
                 <Button type="submit" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                   {dictionary?.addSupplierDialog?.submit || 'Add Supplier'}
                 </Button>
               </DialogFooter>

@@ -102,7 +102,7 @@ export function SignupForm({ dictionary, locale = 'en' }: { dictionary: Awaited<
         variant="outline"
         className="w-full"
       >
-        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
         Sign up with Google
       </Button>
 
@@ -150,7 +150,7 @@ export function SignupForm({ dictionary, locale = 'en' }: { dictionary: Awaited<
             className="w-full"
             disabled={isLoading || isUserLoading}
           >
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
             {dictionary.signupButton}
           </Button>
         </form>

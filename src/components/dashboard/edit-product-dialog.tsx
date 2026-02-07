@@ -108,7 +108,7 @@ export const EditProductDialog = forwardRef<EditProductDialogRef, EditProductDia
                 <form onSubmit={handleSubmit}>
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="name" className="text-right">
+                            <Label htmlFor="name" className="text-end">
                                 {d?.name || 'Name'}
                             </Label>
                             <Input
@@ -119,7 +119,7 @@ export const EditProductDialog = forwardRef<EditProductDialogRef, EditProductDia
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="reference" className="text-right">
+                            <Label htmlFor="reference" className="text-end">
                                 {d?.reference || 'Reference'}
                             </Label>
                             <Input
@@ -130,7 +130,7 @@ export const EditProductDialog = forwardRef<EditProductDialogRef, EditProductDia
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="brand" className="text-right">
+                            <Label htmlFor="brand" className="text-end">
                                 {d?.brand || 'Brand'}
                             </Label>
                             <Input
@@ -141,7 +141,7 @@ export const EditProductDialog = forwardRef<EditProductDialogRef, EditProductDia
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="stock" className="text-right">
+                            <Label htmlFor="stock" className="text-end">
                                 {d?.stock || 'Stock'}
                             </Label>
                             <Input
@@ -153,7 +153,7 @@ export const EditProductDialog = forwardRef<EditProductDialogRef, EditProductDia
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="purchasePrice" className="text-right">
+                            <Label htmlFor="purchasePrice" className="text-end">
                                 {d?.purchasePrice || 'Buying Price'}
                             </Label>
                             <Input
@@ -166,7 +166,7 @@ export const EditProductDialog = forwardRef<EditProductDialogRef, EditProductDia
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="price" className="text-right">
+                            <Label htmlFor="price" className="text-end">
                                 {d?.price || 'Selling Price'}
                             </Label>
                             <Input
@@ -181,7 +181,7 @@ export const EditProductDialog = forwardRef<EditProductDialogRef, EditProductDia
                     </div>
                     <DialogFooter>
                         <Button type="submit" disabled={isLoading}>
-                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                             {d?.save || 'Save changes'}
                         </Button>
                     </DialogFooter>

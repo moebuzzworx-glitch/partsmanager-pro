@@ -189,7 +189,7 @@ export function ProtectedActionDialog({
                                     setError('');
                                 }}>{dictionary?.common?.cancel || 'Cancel'}</AlertDialogCancel>
                                 <Button type="submit" variant="destructive" disabled={loading || !password}>
-                                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    {loading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                                     {dictionary?.settings?.confirmDelete || 'Confirm Delete'}
                                 </Button>
                             </AlertDialogFooter>

@@ -280,71 +280,73 @@ export default function LabelMakerPage() {
             </div>
 
             {/* PRINT ONLY AREA */}
-            <div className="hidden print:block absolute top-0 left-0 w-full">
-                <style jsx global>{`
+            <div className="hidden print:block w-full">
                 @media print {
                     @page {
-                        margin: 0;
-                        size: ${printerType === 'thermal' ? `${labelWidth}mm ${labelHeight}mm` : 'auto'};
+                    margin: 0;
+                size: ${printerType === 'thermal' ? `${labelWidth}mm ${labelHeight}mm` : 'A4'};
                     }
-                    body {
-                        visibility: hidden;
-                        margin: 0;
-                        padding: 0;
+                body {
+                    background: white;
                     }
-                    .print-area {
-                        visibility: visible;
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                        width: 100%;
+                    /* Hide everything by default */
+                    body > * {
+                    display: none;
                     }
-                    /* Force background graphics for QRs */
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
+                /* Show the print area which is a direct child of the page component's root div */
+                /* But since we can't easily target the specific root div's other children without specific classes, 
+                   we rely on 'print:hidden' classes on the UI elements and 'print:block' on the print area. */
+                    
+                /* However, if we used display:none on body > *, we hide the root div too. */
+                /* Better approach: The Tailwind classes 'print:hidden' already handle the UI. 
+                   We just need to ensure the print area flows correctly. */
+
+                .print-area {
+                    width: 100%;
+                height: 100%;
+                    }
                 }
             `}</style>
 
-                <div className="print-area">
-                    {printerType === 'thermal' ? (
-                        // Thermal Loop (One per "page")
-                        selectedProductsData.map(product => (
-                            <LabelTemplate
-                                key={product.id}
-                                product={product}
-                                baseUrl={baseUrl}
-                                settings={{
-                                    printerType,
-                                    width: labelWidth,
-                                    height: labelHeight,
-                                    showPrice,
-                                    showName,
-                                    showSku
-                                }}
-                            />
-                        ))
-                    ) : (
-                        // A4 Grid Layout
-                        <div className="grid grid-cols-3 gap-4 p-4">
-                            {selectedProductsData.map(product => (
-                                <div key={product.id} className="break-inside-avoid">
-                                    <LabelTemplate
-                                        product={product}
-                                        baseUrl={baseUrl}
-                                        settings={{
-                                            printerType,
-                                            // Standard Avery size usually handled in component style
-                                            showPrice,
-                                            showName,
-                                            showSku
-                                        }}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+            <div className="print-area">
+                {printerType === 'thermal' ? (
+                    // Thermal Loop (One per "page")
+                    selectedProductsData.map(product => (
+                        <LabelTemplate
+                            key={product.id}
+                            product={product}
+                            baseUrl={baseUrl}
+                            settings={{
+                                printerType,
+                                width: labelWidth,
+                                height: labelHeight,
+                                showPrice,
+                                showName,
+                                showSku
+                            }}
+                        />
+                    ))
+                ) : (
+                    // A4 Grid Layout - Using Flex/Flow for better page breaking
+                    <div className="flex flex-wrap content-start gap-1 p-[5mm]">
+                        {selectedProductsData.map(product => (
+                            <div key={product.id} className="break-inside-avoid mb-1">
+                                <LabelTemplate
+                                    product={product}
+                                    baseUrl={baseUrl}
+                                    settings={{
+                                        printerType,
+                                        showPrice,
+                                        showName,
+                                        showSku
+                                    }}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
+        </div >
     );
 }

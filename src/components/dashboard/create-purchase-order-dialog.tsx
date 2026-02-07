@@ -69,7 +69,7 @@ export const CreatePurchaseOrderDialog = React.forwardRef<CreatePurchaseOrderDia
                     {!hideTrigger && (
                         <DialogTrigger asChild>
                             <Button>
-                                <PlusCircle className="mr-2 h-4 w-4" />
+                                <PlusCircle className="me-2 h-4 w-4" />
                                 {dictionary?.invoices?.createPurchaseOrderButton || 'New Purchase Order'}
                             </Button>
                         </DialogTrigger>

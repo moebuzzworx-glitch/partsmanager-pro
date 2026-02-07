@@ -66,7 +66,7 @@ export function TrialButtonLock({
             
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
               <p className="font-semibold text-blue-900">Premium Benefits:</p>
-              <ul className="text-sm text-blue-800 space-y-1 ml-4">
+              <ul className="text-sm text-blue-800 space-y-1 ms-4">
                 <li>✅ Unlimited product management</li>
                 <li>✅ Export invoices & reports</li>
                 <li>✅ Full data synchronization</li>

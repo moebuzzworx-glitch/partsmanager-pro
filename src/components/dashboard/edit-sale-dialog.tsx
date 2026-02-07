@@ -101,7 +101,7 @@ export function EditSaleDialog({ sale, open, onOpenChange, onSaleUpdated, dictio
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="product" className="text-right">
+                        <Label htmlFor="product" className="text-end">
                             {d?.product || 'Product'}
                         </Label>
                         <Input
@@ -112,7 +112,7 @@ export function EditSaleDialog({ sale, open, onOpenChange, onSaleUpdated, dictio
                         />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="customer" className="text-right">
+                        <Label htmlFor="customer" className="text-end">
                             {d?.customer || 'Customer'}
                         </Label>
                         <Input
@@ -123,7 +123,7 @@ export function EditSaleDialog({ sale, open, onOpenChange, onSaleUpdated, dictio
                         />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="date" className="text-right">
+                        <Label htmlFor="date" className="text-end">
                             {d?.date || 'Date'}
                         </Label>
                         <Input
@@ -135,7 +135,7 @@ export function EditSaleDialog({ sale, open, onOpenChange, onSaleUpdated, dictio
                         />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="amount" className="text-right">
+                        <Label htmlFor="amount" className="text-end">
                             {d?.amount || 'Amount'}
                         </Label>
                         <Input
@@ -149,7 +149,7 @@ export function EditSaleDialog({ sale, open, onOpenChange, onSaleUpdated, dictio
                     </div>
                     <DialogFooter>
                         <Button type="submit" disabled={isLoading}>
-                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            {isLoading ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
                             {d?.submit || 'Save changes'}
                         </Button>
                     </DialogFooter>

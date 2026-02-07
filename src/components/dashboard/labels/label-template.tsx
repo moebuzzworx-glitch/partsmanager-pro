@@ -26,9 +26,8 @@ export function LabelTemplate({ product, settings, baseUrl }: LabelTemplateProps
             width: `${settings.width}mm`,
             height: `${settings.height}mm`,
             // Force break for thermal
-            pageBreakAfter: 'always',
-            border: '1px solid #ddd', // Light border for preview, removal in print CSS might be needed
-            padding: '2px', // Minimal padding
+            pageBreakAfter: 'always' as any,
+            // Border only for screen transparency, handle in CSS
         }
         : {
             width: '63.5mm', // Standard Address Label size approx
@@ -41,7 +40,10 @@ export function LabelTemplate({ product, settings, baseUrl }: LabelTemplateProps
 
     return (
         <div
-            className="flex flex-col items-center justify-center bg-white text-center overflow-hidden box-border relative"
+            className={cn(
+                "flex flex-col items-center justify-center bg-white text-center overflow-hidden box-border relative",
+                settings.printerType === 'thermal' ? "border border-gray-200 print:border-none print:p-0" : ""
+            )}
             style={containerStyle}
         >
             {/* Product Name - Ultra Compact */}

@@ -125,7 +125,7 @@ export function AdminSidebar({ locale }: AdminSidebarProps) {
                       <Icon className="h-4 w-4" />
                       <span>{item.label}</span>
                       {item.badge && (
-                        <span className="ml-auto inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs font-bold h-5 w-5">
+                        <span className="ms-auto inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs font-bold h-5 w-5">
                           {item.badge}
                         </span>
                       )}

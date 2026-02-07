@@ -209,7 +209,7 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button>
-            <PlusCircle className="mr-2" />
+            <PlusCircle className="me-2" />
             {d.logPurchase}
           </Button>
         </DialogTrigger>
@@ -311,14 +311,14 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
 
             {purchaseItems.length > 0 && (
               <Card>
-                <CardContent className="p-0">
-                  <Table>
+                <CardContent className="p-0 overflow-x-auto">
+                  <Table className="min-w-[600px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead>{d.itemDescription}</TableHead>
                         <TableHead className="w-[100px]">{d.quantity}</TableHead>
-                        <TableHead className="text-right w-[120px]">{d.price}</TableHead>
-                        <TableHead className="text-right w-[120px]">{d.total}</TableHead>
+                        <TableHead className="text-end w-[120px]">{d.price}</TableHead>
+                        <TableHead className="text-end w-[120px]">{d.total}</TableHead>
                         <TableHead className="w-[50px]"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -335,17 +335,17 @@ export function LogPurchaseDialog({ dictionary, onPurchaseAdded }: { dictionary:
                               min="0"
                             />
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-end">
                             <Input
                               type="number"
                               value={item.unitPrice}
                               onChange={(e) => handlePriceChange(index, parseFloat(e.target.value))}
-                              className="w-full text-right"
+                              className="w-full text-end"
                               min="0"
                               step="0.01"
                             />
                           </TableCell>
-                          <TableCell className="text-right">{(item.unitPrice * item.quantity).toFixed(2)} {dictionary.dashboard?.currency || 'DZD'}</TableCell>
+                          <TableCell className="text-end">{(item.unitPrice * item.quantity).toFixed(2)} {dictionary.dashboard?.currency || 'DZD'}</TableCell>
                           <TableCell>
                             <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}>
                               <Trash2 className="h-4 w-4 text-destructive" />

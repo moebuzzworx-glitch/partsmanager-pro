@@ -648,7 +648,7 @@ export const CreateInvoiceForm = React.forwardRef<CreateInvoiceFormRef, {
                   size="sm"
                   onClick={() => append({ designation: '', quantity: 1, unitPrice: 0, reference: '', unit: 'pcs' })}
                 >
-                  <PlusCircle className="mr-2 h-4 w-4" />
+                  <PlusCircle className="me-2 h-4 w-4" />
                   {dictionary?.createInvoiceForm?.addItem || 'Add Item'}
                 </Button>
                 <Button
@@ -657,7 +657,7 @@ export const CreateInvoiceForm = React.forwardRef<CreateInvoiceFormRef, {
                   size="sm"
                   onClick={() => setBatchDialogOpen(true)}
                 >
-                  <ListPlus className="mr-2 h-4 w-4" />
+                  <ListPlus className="me-2 h-4 w-4" />
                   {dictionary?.createInvoiceForm?.batchAddProducts || 'Add Products'}
                 </Button>
               </div>
@@ -665,8 +665,8 @@ export const CreateInvoiceForm = React.forwardRef<CreateInvoiceFormRef, {
 
             <div className="space-y-4">
               {fields.map((field, index) => (
-                <div key={field.id} className="grid grid-cols-12 gap-x-4 gap-y-2 p-4 border rounded-md relative">
-                  <p className="col-span-12 text-sm font-medium">{dictionary?.createInvoiceForm?.itemNumber?.replace('{number}', String(index + 1)) || `Item ${index + 1}`}</p>
+                <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-x-4 gap-y-2 p-4 border rounded-md relative">
+                  <p className="col-span-1 md:col-span-12 text-sm font-medium">{dictionary?.createInvoiceForm?.itemNumber?.replace('{number}', String(index + 1)) || `Item ${index + 1}`}</p>
 
                   <FormField
                     control={form.control}
@@ -677,7 +677,7 @@ export const CreateInvoiceForm = React.forwardRef<CreateInvoiceFormRef, {
                         p.reference && referenceValue && p.reference.toLowerCase().includes(referenceValue.toLowerCase())
                       );
                       return (
-                        <FormItem className="col-span-3 relative">
+                        <FormItem className="col-span-1 md:col-span-3 relative">
                           <FormLabel>{dictionary?.createInvoiceForm?.reference || 'Reference'}</FormLabel>
                           <FormControl>
                             <Input
@@ -718,7 +718,7 @@ export const CreateInvoiceForm = React.forwardRef<CreateInvoiceFormRef, {
                         (p.reference && p.reference.toLowerCase().includes(designationValue.toLowerCase()))
                       );
                       return (
-                        <FormItem className="col-span-4 relative">
+                        <FormItem className="col-span-1 md:col-span-4 relative">
                           <FormLabel>{dictionary?.createInvoiceForm?.designation || 'Designation'}</FormLabel>
                           <FormControl>
                             <Input
@@ -757,7 +757,7 @@ export const CreateInvoiceForm = React.forwardRef<CreateInvoiceFormRef, {
                     control={form.control}
                     name={`lineItems.${index}.unit`}
                     render={({ field }) => (
-                      <FormItem className="col-span-2">
+                      <FormItem className="col-span-1 md:col-span-2">
                         <FormLabel>{dictionary?.createInvoiceForm?.unit || 'Unit'}</FormLabel>
                         <FormControl>
                           <Input {...field} placeholder={dictionary?.createInvoiceForm?.unitPlaceholder || 'pcs'} />
@@ -771,7 +771,7 @@ export const CreateInvoiceForm = React.forwardRef<CreateInvoiceFormRef, {
                     control={form.control}
                     name={`lineItems.${index}.quantity`}
                     render={({ field }) => (
-                      <FormItem className="col-span-2">
+                      <FormItem className="col-span-1 md:col-span-2">
                         <FormLabel>
                           {documentType === 'DELIVERY_NOTE' ? (dictionary?.createInvoiceForm?.quantityDelivered || 'Qty Delivered') : (dictionary?.createInvoiceForm?.quantity || 'Qty')}
                         </FormLabel>
@@ -787,7 +787,7 @@ export const CreateInvoiceForm = React.forwardRef<CreateInvoiceFormRef, {
                     control={form.control}
                     name={`lineItems.${index}.unitPrice`}
                     render={({ field }) => (
-                      <FormItem className="col-span-3">
+                      <FormItem className="col-span-1 md:col-span-3">
                         <FormLabel>
                           {documentType === 'PURCHASE_ORDER' ? (dictionary?.createInvoiceForm?.purchasePrice || 'Purchase Price') :
                             documentType === 'DELIVERY_NOTE' ? (dictionary?.createInvoiceForm?.priceOptional || 'Price (Optional)') :

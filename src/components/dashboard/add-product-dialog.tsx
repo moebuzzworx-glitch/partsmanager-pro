@@ -646,7 +646,7 @@ export const AddProductDialog = forwardRef<AddProductDialogRef, { dictionary: Di
     return (
       <TrialButtonLock user={user}>
         <Button disabled title="Trial users cannot add products">
-          <PlusCircle className="mr-2" />
+          <PlusCircle className="me-2" />
           {dictionary.dashboard.addProduct}
         </Button>
       </TrialButtonLock>
@@ -666,7 +666,7 @@ export const AddProductDialog = forwardRef<AddProductDialogRef, { dictionary: Di
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>
-              <PlusCircle className="mr-2" />
+              <PlusCircle className="me-2" />
               {dictionary.dashboard.addProduct}
             </Button>
           </DialogTrigger>
@@ -739,7 +739,7 @@ export const AddProductDialog = forwardRef<AddProductDialogRef, { dictionary: Di
                   </div>
                   <DialogFooter>
                     <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                       {d.submit}
                     </Button>
                   </DialogFooter>
