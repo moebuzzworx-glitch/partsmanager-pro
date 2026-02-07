@@ -281,6 +281,7 @@ export default function LabelMakerPage() {
 
             {/* PRINT ONLY AREA */}
             <div className="hidden print:block w-full">
+                <style jsx global>{`
                 @media print {
                     @page {
                     margin: 0;
@@ -308,45 +309,45 @@ export default function LabelMakerPage() {
                 }
             `}</style>
 
-            <div className="print-area">
-                {printerType === 'thermal' ? (
-                    // Thermal Loop (One per "page")
-                    selectedProductsData.map(product => (
-                        <LabelTemplate
-                            key={product.id}
-                            product={product}
-                            baseUrl={baseUrl}
-                            settings={{
-                                printerType,
-                                width: labelWidth,
-                                height: labelHeight,
-                                showPrice,
-                                showName,
-                                showSku
-                            }}
-                        />
-                    ))
-                ) : (
-                    // A4 Grid Layout - Using Flex/Flow for better page breaking
-                    <div className="flex flex-wrap content-start gap-1 p-[5mm]">
-                        {selectedProductsData.map(product => (
-                            <div key={product.id} className="break-inside-avoid mb-1">
-                                <LabelTemplate
-                                    product={product}
-                                    baseUrl={baseUrl}
-                                    settings={{
-                                        printerType,
-                                        showPrice,
-                                        showName,
-                                        showSku
-                                    }}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                )}
+                <div className="print-area">
+                    {printerType === 'thermal' ? (
+                        // Thermal Loop (One per "page")
+                        selectedProductsData.map(product => (
+                            <LabelTemplate
+                                key={product.id}
+                                product={product}
+                                baseUrl={baseUrl}
+                                settings={{
+                                    printerType,
+                                    width: labelWidth,
+                                    height: labelHeight,
+                                    showPrice,
+                                    showName,
+                                    showSku
+                                }}
+                            />
+                        ))
+                    ) : (
+                        // A4 Grid Layout - Using Flex/Flow for better page breaking
+                        <div className="flex flex-wrap content-start gap-1 p-[5mm]">
+                            {selectedProductsData.map(product => (
+                                <div key={product.id} className="break-inside-avoid mb-1">
+                                    <LabelTemplate
+                                        product={product}
+                                        baseUrl={baseUrl}
+                                        settings={{
+                                            printerType,
+                                            showPrice,
+                                            showName,
+                                            showSku
+                                        }}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
         </div >
     );
 }
