@@ -68,9 +68,14 @@ const ScannerComponent = ({ onScan }: { onScan: (decodedText: string) => void })
 
         return () => {
             isMounted = false;
-            if (scannerRef.current) {
-                scannerRef.current.stop().catch(() => { });
-                scannerRef.current = null;
+            const scanner = scannerRef.current;
+            scannerRef.current = null;
+
+            if (scanner) {
+                // Check if scanner is actually running before trying to stop
+                scanner.isScanning && scanner.stop().catch(() => {
+                    // Silently ignore - scanner might already be stopped
+                });
             }
         };
     }, [onScan]);
