@@ -3,8 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { MoreHorizontal, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { use } from "react";
+import { useEffect, useState, useRef, use } from "react";
 import { getDictionary } from "@/lib/dictionaries";
 import { Locale } from "@/lib/config";
 import {
@@ -31,20 +30,17 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useRef } from 'react';
 import { useScanListener } from '@/hooks/use-scan-listener';
 import { LogSaleDialog, LogSaleDialogRef } from "@/components/dashboard/log-sale-dialog";
-
 import { EditSaleDialog } from "@/components/dashboard/edit-sale-dialog";
 import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, where, doc, getDoc, deleteDoc } from "firebase/firestore";
 import { ProtectedActionDialog } from "@/components/protected-action-dialog";
 import { generateDocumentPdf } from "@/components/dashboard/document-generator";
-import { getUserSettings } from "@/lib/settings-utils";
+import { getUserSettings, getNextDocumentNumber, updateLastDocumentNumber } from "@/lib/settings-utils";
 import { saveInvoiceData } from "@/lib/invoices-utils";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getNextDocumentNumber, updateLastDocumentNumber } from "@/lib/settings-utils";
 
 interface Sale {
   id: string;
