@@ -14,9 +14,36 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { CreateInvoiceForm, CreateInvoiceFormRef } from './create-invoice-form';
 import { useFirebase } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { User as AppUser } from '@/lib/types';
+import { TrialButtonLock } from '@/components/trial-button-lock';
+import type { Locale } from '@/lib/config';
 
 export interface CreateInvoiceDialogRef {
   handleScan: (productId: string) => void;
+}
+
+interface CreateInvoiceDialogProps {
+  locale: Locale;
+  dictionary: any;
+  onInvoiceCreated?: () => void;
+  defaultType?: 'INVOICE' | 'TERM_INVOICE' | 'DELIVERY_NOTE' | 'SALES_RECEIPT' | 'PURCHASE_ORDER';
+  initialData?: {
+    clientName?: string;
+    clientAddress?: string;
+    clientNis?: string;
+    clientNif?: string;
+    clientRc?: string;
+    clientArt?: string;
+    clientRib?: string;
+    lineItems?: { reference?: string; designation: string; quantity: number; unitPrice: number; unit?: string }[];
+    paymentMethod?: string;
+    applyVatToAll?: boolean;
+    applyTimbre?: boolean;
+  };
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }
 
 export const CreateInvoiceDialog = React.forwardRef<CreateInvoiceDialogRef, CreateInvoiceDialogProps>(({ locale, dictionary, onInvoiceCreated, defaultType, initialData, externalOpen, onExternalOpenChange, hideTrigger }, ref) => {
