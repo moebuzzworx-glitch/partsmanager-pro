@@ -922,8 +922,8 @@ export const CreateInvoiceForm = React.forwardRef<CreateInvoiceFormRef, {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="percentage">Percent (%)</SelectItem>
-                              <SelectItem value="amount">Fixed Amount</SelectItem>
+                              <SelectItem value="percentage">{dictionary?.createInvoiceForm?.percentage || 'Percent (%)'}</SelectItem>
+                              <SelectItem value="amount">{dictionary?.createInvoiceForm?.fixedAmount || 'Fixed Amount'}</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />

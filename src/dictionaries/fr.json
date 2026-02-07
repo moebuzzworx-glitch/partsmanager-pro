@@ -611,7 +611,9 @@
       "addSelected": "Ajouter la Sélection",
       "cancel": "Annuler"
     },
-    "addItem": "Ajouter un Article"
+    "addItem": "Ajouter un Article",
+    "percentage": "Pourcentage (%)",
+    "fixedAmount": "Montant Fixe"
   },
   "trash": {
     "title": "Éléments Supprimés",

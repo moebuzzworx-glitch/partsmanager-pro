@@ -619,7 +619,9 @@
       "addSelected": "إضافة المحدد",
       "cancel": "إلغاء"
     },
-    "addItem": "إضافة عنصر"
+    "addItem": "إضافة عنصر",
+    "percentage": "نسبة مئوية (%)",
+    "fixedAmount": "مبلغ ثابت"
   },
   "trash": {
     "title": "العناصر المحذوفة",

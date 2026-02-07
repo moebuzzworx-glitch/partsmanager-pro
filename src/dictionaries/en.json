@@ -592,7 +592,9 @@
       "addSelected": "Add Selected",
       "cancel": "Cancel"
     },
-    "addItem": "Add Item"
+    "addItem": "Add Item",
+    "percentage": "Percent (%)",
+    "fixedAmount": "Fixed Amount"
   },
   "trash": {
     "title": "Deleted Items",

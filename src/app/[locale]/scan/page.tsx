@@ -195,6 +195,22 @@ export default function ScanPage() {
     const [showPairSuccess, setShowPairSuccess] = useState(false);
     const [lastScannedProduct, setLastScannedProduct] = useState<string | null>(null);
     const [scanCount, setScanCount] = useState(0);
+    const [dictionary, setDictionary] = useState<any>(null);
+
+    // Fetch dictionary for translations
+    useEffect(() => {
+        const loadDictionary = async () => {
+            try {
+                const dict = await import(`@/dictionaries/${locale}.json`);
+                setDictionary(dict.default);
+            } catch (e) {
+                console.error("Failed to load dictionary:", e);
+            }
+        };
+        loadDictionary();
+    }, [locale]);
+
+    const t = dictionary?.scanner || {};
 
     // Initialize Session and check for stored pairing
     useEffect(() => {
@@ -303,10 +319,10 @@ export default function ScanPage() {
                     <Button variant="ghost" size="icon"><ArrowLeft /></Button>
                 </Link>
                 <div className="text-center">
-                    <h1 className="text-xl font-bold">{isMobile ? 'Mobile Scanner' : 'Desktop Pairing'}</h1>
+                    <h1 className="text-xl font-bold">{isMobile ? (t.mobileScanner || 'Mobile Scanner') : (t.desktopPairing || 'Desktop Pairing')}</h1>
                     {isMobile && pairedSessionId && (
                         <span className="text-xs text-green-600 font-mono bg-green-100 px-2 py-0.5 rounded-full">
-                            ● Paired {scanCount > 0 && `(${scanCount} scanned)`}
+                            ● {t.paired || 'Paired'} {scanCount > 0 && `(${scanCount} ${t.scanned || 'scanned'})`}
                         </span>
                     )}
                 </div>
@@ -322,8 +338,8 @@ export default function ScanPage() {
                                 <div className="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center mb-4 animate-in zoom-in duration-300">
                                     <Check className="h-10 w-10 text-green-600" />
                                 </div>
-                                <p className="text-xl font-bold text-green-600">Paired!</p>
-                                <p className="text-sm text-green-600/70">Starting scanner...</p>
+                                <p className="text-xl font-bold text-green-600">{t.paired || 'Paired!'}</p>
+                                <p className="text-sm text-green-600/70">{t.startingScanner || 'Starting scanner...'}</p>
                             </CardContent>
                         </Card>
                     ) : (
@@ -335,7 +351,7 @@ export default function ScanPage() {
                                     <div className="absolute bottom-0 left-0 right-0 bg-green-500 text-white p-3 animate-in slide-in-from-bottom duration-200">
                                         <div className="flex items-center justify-center gap-2">
                                             <Check className="h-5 w-5" />
-                                            <span className="font-medium">Sent: {lastScannedProduct.slice(0, 20)}...</span>
+                                            <span className="font-medium">{t.sent || 'Sent'}: {lastScannedProduct.slice(0, 20)}...</span>
                                         </div>
                                     </div>
                                 )}
@@ -344,10 +360,10 @@ export default function ScanPage() {
                     )}
 
                     <div className="text-center text-muted-foreground text-sm px-4">
-                        <p>{pairedSessionId ? "Scanning sends to Desktop. Keep scanning!" : "Point at Product or Pairing Code."}</p>
+                        <p>{pairedSessionId ? (t.scanningSendsToDesktop || "Scanning sends to Desktop. Keep scanning!") : (t.pointAtProductOrPairing || "Point at Product or Pairing Code.")}</p>
                         {pairedSessionId && (
                             <Button variant="link" size="sm" onClick={handleUnpair} className="text-red-500 h-auto p-0 mt-2">
-                                Unpair & Reset
+                                {t.unpairAndReset || 'Unpair & Reset'}
                             </Button>
                         )}
                     </div>
@@ -356,12 +372,12 @@ export default function ScanPage() {
                 <div className="max-w-md mx-auto w-full">
                     <Card>
                         <CardContent className="pt-6">
-                            <PairingCode sessionId={sessionId} baseUrl={baseUrl} />
+                            <PairingCode sessionId={sessionId} baseUrl={baseUrl} dictionary={dictionary} />
                         </CardContent>
                     </Card>
                     <div className="text-center text-muted-foreground text-sm px-4 mt-8">
-                        <p>Scan this QR code with the mobile app to pair your device.</p>
-                        <p className="text-xs mt-2 font-mono text-muted-foreground/50">Session: {sessionId.slice(0, 8)}...</p>
+                        <p>{t.scanQrToPair || 'Scan this QR code with the mobile app to pair your device.'}</p>
+                        <p className="text-xs mt-2 font-mono text-muted-foreground/50">{t.session || 'Session'}: {sessionId.slice(0, 8)}...</p>
                     </div>
                 </div>
             )}
