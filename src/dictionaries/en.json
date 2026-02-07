@@ -455,6 +455,8 @@
     "description": "Set default values for business logic and pricing."
   },
   "table": {
+    "cancel": "Cancel",
+    "close": "Close",
     "name": "Name",
     "email": "Email",
     "phone": "Phone",

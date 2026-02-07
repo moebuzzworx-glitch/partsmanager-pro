@@ -847,7 +847,7 @@ export const AddProductDialog = forwardRef<AddProductDialogRef, { dictionary: Di
                           if (importStatus === 'success') setOpen(false);
                         }}
                       >
-                        {importStatus === 'success' ? 'Close' : 'Cancel'}
+                        {importStatus === 'success' ? ((dictionary as any)?.table?.close || 'Close') : ((dictionary as any)?.table?.cancel || 'Cancel')}
                       </Button>
                     )}
                   </DialogFooter>

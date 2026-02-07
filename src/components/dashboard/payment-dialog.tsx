@@ -15,6 +15,7 @@ interface PaymentDialogProps {
     invoiceNumber: string;
     onPaymentInitiated?: () => void;
     onPaymentComplete?: () => void;
+    dictionary?: any;
 }
 
 type PaymentStatus = 'idle' | 'creating' | 'pending' | 'success' | 'failed';
@@ -26,9 +27,18 @@ export function PaymentDialog({
     clientName,
     invoiceNumber,
     onPaymentInitiated,
-    onPaymentComplete
+    onPaymentComplete,
+    dictionary
 }: PaymentDialogProps) {
     const { toast } = useToast();
+    // ... (skip lines)
+    <Button
+        variant="ghost"
+        onClick={() => onOpenChange(false)}
+        className="w-full"
+    >
+        {dictionary?.table?.cancel || 'Cancel'}
+    </Button>
     const { user } = useFirebase();
     const [status, setStatus] = React.useState<PaymentStatus>('idle');
     const [checkoutUrl, setCheckoutUrl] = React.useState<string | null>(null);

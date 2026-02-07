@@ -460,6 +460,8 @@
     "description": "Définissez les valeurs par défaut pour la logique métier et la tarification."
   },
   "table": {
+    "cancel": "Annuler",
+    "close": "Fermer",
     "name": "Nom",
     "email": "E-mail",
     "phone": "Téléphone",

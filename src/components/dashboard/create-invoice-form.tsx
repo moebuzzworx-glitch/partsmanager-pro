@@ -1024,6 +1024,7 @@ export const CreateInvoiceForm = React.forwardRef<CreateInvoiceFormRef, {
           amount={createdInvoiceData.amount}
           clientName={createdInvoiceData.clientName}
           invoiceNumber={createdInvoiceData.number}
+          dictionary={dictionary}
         />
       )}
     </>

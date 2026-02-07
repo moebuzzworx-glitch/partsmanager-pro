@@ -387,6 +387,7 @@ export function BillingPanel({ dictionary }: { dictionary?: any }) {
           // - FIRST_PURCHASE-xxx = New license purchase
           // - RENEWAL-xxx = After-sales renewal
         }}
+        dictionary={dictionary}
       />
     </>
   );

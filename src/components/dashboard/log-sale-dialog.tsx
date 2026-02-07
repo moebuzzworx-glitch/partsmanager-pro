@@ -509,7 +509,7 @@ export const LogSaleDialog = React.forwardRef<LogSaleDialogRef, { dictionary: Di
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="percentage">{(dictionary as any).createInvoiceForm?.percentage || 'Percent (%)'}</SelectItem>
-                          <SelectItem value="amount">{(dictionary as any).createInvoiceForm?.amount || 'Fixed'}</SelectItem>
+                          <SelectItem value="amount">{(dictionary as any).createInvoiceForm?.fixedAmount || 'Fixed'}</SelectItem>
                         </SelectContent>
                       </Select>
                       <Input
