@@ -48,8 +48,6 @@ import { useToast } from "@/hooks/use-toast";
 import { getProductsByUserExcludingPending, getStorageSize, initDB } from "@/lib/indexeddb";
 import { useOffline } from "@/hooks/use-offline";
 import { ProtectedActionDialog } from "@/components/protected-action-dialog";
-import { useScanListener } from '@/hooks/use-scan-listener';
-import { useRef } from 'react';
 
 interface Product {
   id: string;
@@ -81,29 +79,6 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
   // Protection State
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [confirmBatchDelete, setConfirmBatchDelete] = useState(false);
-
-  const addProductDialogRef = useRef<AddProductDialogRef>(null);
-  const editProductDialogRef = useRef<EditProductDialogRef>(null);
-
-  useScanListener((scan) => {
-    // Check if product exists in CURRENTLY LOADED products
-    // We match by reference (exact) or ID (exact)
-    const existing = products.find(p =>
-      (p.reference && p.reference.toLowerCase() === scan.productId.toLowerCase()) ||
-      p.id === scan.productId
-    );
-
-    if (existing) {
-      editProductDialogRef.current?.open(existing);
-      toast({
-        title: "Product Found",
-        description: `Opened edit for ${existing.name}`
-      });
-    } else {
-      // Open Add Dialog
-      addProductDialogRef.current?.openWithReference(scan.productId);
-    }
-  });
 
   const fetchProducts = async () => {
     if (!firestore || !user?.uid) return;

@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { PlusCircle, Trash2, ChevronDown } from 'lucide-react';
+import { PlusCircle, Trash2, ChevronDown, ChevronUp, QrCode } from 'lucide-react';
 import { getDictionary } from '@/lib/dictionaries';
 import type { Product, Contact } from '@/lib/types';
 import {
@@ -42,6 +42,9 @@ import { generateDocumentPdf } from '@/components/dashboard/document-generator';
 import { getUserSettings } from '@/lib/settings-utils';
 import { ToastAction } from '@/components/ui/toast';
 import { useToast } from '@/hooks/use-toast';
+import { useScanSession } from '@/lib/scan-session-provider';
+import { PairingCode } from '@/components/dashboard/scan/pairing-code';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 type Dictionary = Awaited<ReturnType<typeof getDictionary>>;
 
@@ -314,6 +317,37 @@ export const LogSaleDialog = React.forwardRef<LogSaleDialogRef, { dictionary: Di
     }
   }
 
+  // QR Code Section Component for Mobile Scanner Pairing
+  const ScannerQRSection = ({ dictionary }: { dictionary: Dictionary }) => {
+    const { sessionId } = useScanSession();
+    const [isQrOpen, setIsQrOpen] = useState(false);
+
+    if (!sessionId) return null;
+
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+
+    return (
+      <Collapsible open={isQrOpen} onOpenChange={setIsQrOpen} className="my-4">
+        <CollapsibleTrigger asChild>
+          <Button variant="outline" size="sm" className="w-full flex justify-between items-center">
+            <span className="flex items-center gap-2">
+              <QrCode className="h-4 w-4" />
+              {dictionary?.logSaleDialog?.scannerPairing || 'Mobile Scanner'}
+            </span>
+            {isQrOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <Card className="bg-muted/50">
+            <CardContent className="p-4 flex justify-center">
+              <PairingCode sessionId={sessionId} baseUrl={baseUrl} />
+            </CardContent>
+          </Card>
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  };
+
   return (
     <TrialButtonLock user={appUser}>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -328,6 +362,8 @@ export const LogSaleDialog = React.forwardRef<LogSaleDialogRef, { dictionary: Di
             <DialogTitle>{d.title}</DialogTitle>
             <DialogDescription>{d.description}</DialogDescription>
           </DialogHeader>
+          {/* Collapsible QR Code Section for Mobile Scanner */}
+          <ScannerQRSection dictionary={dictionary} />
           <div className="space-y-6 py-4">
             {/* Customer Field with Autocomplete */}
             <div className="grid gap-3">

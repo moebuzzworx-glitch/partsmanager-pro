@@ -38,9 +38,9 @@ import { generateDocumentPdf } from "@/components/dashboard/document-generator";
 import { getUserSettings } from "@/lib/settings-utils";
 import { useScanListener } from '@/hooks/use-scan-listener';
 import { CreateInvoiceDialog, CreateInvoiceDialogRef } from "@/components/dashboard/create-invoice-dialog";
-import { CreatePurchaseOrderDialog } from "@/components/dashboard/create-purchase-order-dialog";
-import { CreateDeliveryNoteDialog } from "@/components/dashboard/create-delivery-note-dialog";
-import { CreateSalesReceiptDialog } from "@/components/dashboard/create-sales-receipt-dialog";
+import { CreatePurchaseOrderDialog, CreatePurchaseOrderDialogRef } from "@/components/dashboard/create-purchase-order-dialog";
+import { CreateDeliveryNoteDialog, CreateDeliveryNoteDialogRef } from "@/components/dashboard/create-delivery-note-dialog";
+import { CreateSalesReceiptDialog, CreateSalesReceiptDialogRef } from "@/components/dashboard/create-sales-receipt-dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   DropdownMenu,
@@ -76,11 +76,27 @@ export default function InvoicesPage({
   const [invoiceToDuplicate, setInvoiceToDuplicate] = useState<StoredInvoice | null>(null);
   const [duplicateTargetType, setDuplicateTargetType] = useState<'INVOICE' | 'TERM_INVOICE' | 'DELIVERY_NOTE' | 'SALES_RECEIPT' | 'PURCHASE_ORDER'>('INVOICE');
 
+  // Refs for all document type dialogs
   const createInvoiceDialogRef = useRef<CreateInvoiceDialogRef>(null);
+  const createPurchaseOrderDialogRef = useRef<CreatePurchaseOrderDialogRef>(null);
+  const createDeliveryNoteDialogRef = useRef<CreateDeliveryNoteDialogRef>(null);
+  const createSalesReceiptDialogRef = useRef<CreateSalesReceiptDialogRef>(null);
 
+  // Route scans to the currently active tab's dialog
   useScanListener((scan) => {
-    if (activeTab === 'INVOICE' && createInvoiceDialogRef.current) {
-      createInvoiceDialogRef.current.handleScan(scan.productId);
+    switch (activeTab) {
+      case 'INVOICE':
+        createInvoiceDialogRef.current?.handleScan(scan.productId);
+        break;
+      case 'PURCHASE_ORDER':
+        createPurchaseOrderDialogRef.current?.handleScan(scan.productId);
+        break;
+      case 'DELIVERY_NOTE':
+        createDeliveryNoteDialogRef.current?.handleScan(scan.productId);
+        break;
+      case 'SALES_RECEIPT':
+        createSalesReceiptDialogRef.current?.handleScan(scan.productId);
+        break;
     }
   });
 
@@ -379,6 +395,7 @@ export default function InvoicesPage({
                 )}
                 {activeTab === 'PURCHASE_ORDER' && (
                   <CreatePurchaseOrderDialog
+                    ref={createPurchaseOrderDialogRef}
                     locale={locale}
                     dictionary={dictionary}
                     onCreated={fetchInvoicesList}
@@ -386,6 +403,7 @@ export default function InvoicesPage({
                 )}
                 {activeTab === 'DELIVERY_NOTE' && (
                   <CreateDeliveryNoteDialog
+                    ref={createDeliveryNoteDialogRef}
                     locale={locale}
                     dictionary={dictionary}
                     onCreated={fetchInvoicesList}
@@ -393,6 +411,7 @@ export default function InvoicesPage({
                 )}
                 {activeTab === 'SALES_RECEIPT' && (
                   <CreateSalesReceiptDialog
+                    ref={createSalesReceiptDialogRef}
                     locale={locale}
                     dictionary={dictionary}
                     onCreated={fetchInvoicesList}

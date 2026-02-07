@@ -35,6 +35,10 @@ import { generateDocumentPdf } from './document-generator';
 import { getCustomersForAutoComplete, getProductsForAutoComplete, type ClientAutoComplete, type ProductAutoComplete } from '@/lib/invoice-autocomplete-utils';
 import { PaymentDialog } from './payment-dialog';
 import { BatchAddProductsDialog } from './batch-add-products-dialog';
+import { useScanSession } from '@/lib/scan-session-provider';
+import { PairingCode } from '@/components/dashboard/scan/pairing-code';
+import { QrCode, ChevronDown, ChevronUp } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const lineItemSchema = z.object({
   reference: z.string().optional(),
@@ -425,10 +429,43 @@ export const CreateInvoiceForm = React.forwardRef<CreateInvoiceFormRef, {
     }
   };
 
+  // QR Code Section Component for Mobile Scanner Pairing
+  const ScannerQRSection = () => {
+    const { sessionId } = useScanSession();
+    const [isQrOpen, setIsQrOpen] = React.useState(false);
+
+    if (!sessionId) return null;
+
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+
+    return (
+      <Collapsible open={isQrOpen} onOpenChange={setIsQrOpen} className="mb-4">
+        <CollapsibleTrigger asChild>
+          <Button variant="outline" size="sm" className="w-full flex justify-between items-center">
+            <span className="flex items-center gap-2">
+              <QrCode className="h-4 w-4" />
+              {dictionary?.createInvoiceForm?.scannerPairing || 'Mobile Scanner'}
+            </span>
+            {isQrOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <Card className="bg-muted/50">
+            <CardContent className="p-4 flex justify-center">
+              <PairingCode sessionId={sessionId} baseUrl={baseUrl} />
+            </CardContent>
+          </Card>
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  };
+
   return (
     <>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <Form {...form}>
+          {/* Collapsible QR Code Section for Mobile Scanner */}
+          <ScannerQRSection />
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="font-semibold">{dictionary?.createInvoiceForm?.invoiceDetails || 'Document Details'}</h3>
