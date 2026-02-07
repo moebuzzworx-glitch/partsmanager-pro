@@ -5,7 +5,7 @@ import { EditProductDialog, EditProductDialogRef } from "@/components/dashboard/
 export const dynamic = 'force-dynamic';
 
 import { MoreHorizontal, PlusCircle, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { use } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +79,9 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
   // Protection State
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [confirmBatchDelete, setConfirmBatchDelete] = useState(false);
+
+  // Ref for EditProductDialog
+  const editProductDialogRef = React.useRef<EditProductDialogRef>(null);
 
   const fetchProducts = async () => {
     if (!firestore || !user?.uid) return;
