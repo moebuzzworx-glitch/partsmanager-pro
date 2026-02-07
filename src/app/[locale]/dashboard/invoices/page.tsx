@@ -4,8 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { getDictionary } from "@/lib/dictionaries";
 import { Locale } from "@/lib/config";
-import { useEffect, useState } from "react";
-import { use } from "react";
+import { useEffect, useState, useRef, use } from "react";
 import {
   Card,
   CardContent,
@@ -37,7 +36,6 @@ import { ProtectedActionDialog } from "@/components/protected-action-dialog";
 
 import { generateDocumentPdf } from "@/components/dashboard/document-generator";
 import { getUserSettings } from "@/lib/settings-utils";
-import { useRef } from 'react';
 import { useScanListener } from '@/hooks/use-scan-listener';
 import { CreateInvoiceDialog, CreateInvoiceDialogRef } from "@/components/dashboard/create-invoice-dialog";
 import { CreatePurchaseOrderDialog } from "@/components/dashboard/create-purchase-order-dialog";
