@@ -1,6 +1,6 @@
 'use client';
 
-import { EditProductDialog } from "@/components/dashboard/edit-product-dialog";
+import { EditProductDialog, EditProductDialogRef } from "@/components/dashboard/edit-product-dialog";
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +40,7 @@ import { ProgressModal } from "@/components/ui/progress-modal";
 import { getDictionary } from "@/lib/dictionaries";
 import { Locale } from "@/lib/config";
 import { cn } from "@/lib/utils";
-import { AddProductDialog } from "@/components/dashboard/add-product-dialog";
+import { AddProductDialog, AddProductDialogRef } from "@/components/dashboard/add-product-dialog";
 import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
 import { hybridDeleteProduct } from "@/lib/hybrid-import-v2";
@@ -48,6 +48,8 @@ import { useToast } from "@/hooks/use-toast";
 import { getProductsByUserExcludingPending, getStorageSize, initDB } from "@/lib/indexeddb";
 import { useOffline } from "@/hooks/use-offline";
 import { ProtectedActionDialog } from "@/components/protected-action-dialog";
+import { useScanListener } from '@/hooks/use-scan-listener';
+import { useRef } from 'react';
 
 interface Product {
   id: string;
@@ -79,8 +81,29 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
   // Protection State
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [confirmBatchDelete, setConfirmBatchDelete] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+  const addProductDialogRef = useRef<AddProductDialogRef>(null);
+  const editProductDialogRef = useRef<EditProductDialogRef>(null);
+
+  useScanListener((scan) => {
+    // Check if product exists in CURRENTLY LOADED products
+    // We match by reference (exact) or ID (exact)
+    const existing = products.find(p =>
+      (p.reference && p.reference.toLowerCase() === scan.productId.toLowerCase()) ||
+      p.id === scan.productId
+    );
+
+    if (existing) {
+      editProductDialogRef.current?.open(existing);
+      toast({
+        title: "Product Found",
+        description: `Opened edit for ${existing.name}`
+      });
+    } else {
+      // Open Add Dialog
+      addProductDialogRef.current?.openWithReference(scan.productId);
+    }
+  });
 
   const fetchProducts = async () => {
     if (!firestore || !user?.uid) return;
@@ -435,8 +458,7 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>{d.actions}</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => {
-                              setEditingProduct(product);
-                              setEditDialogOpen(true);
+                              editProductDialogRef.current?.open(product);
                             }}>
                               {d.edit}
                             </DropdownMenuItem>
@@ -476,17 +498,11 @@ export default function StockPage({ params }: { params: Promise<{ locale: Locale
           )}
         </CardFooter>
       </Card>
-      {editingProduct && (
-        <EditProductDialog
-          product={editingProduct}
-          open={editDialogOpen}
-          onOpenChange={setEditDialogOpen}
-          onProductUpdated={() => {
-            fetchProducts();
-          }}
-          dictionary={dictionary}
-        />
-      )}
+      <EditProductDialog
+        ref={editProductDialogRef}
+        onProductUpdated={fetchProducts}
+        dictionary={dictionary}
+      />
     </div>
   );
 }

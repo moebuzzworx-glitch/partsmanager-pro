@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -51,7 +50,11 @@ interface SaleItem extends ProductAutoComplete {
   price: number;
 }
 
-export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Dictionary; onSaleAdded?: () => void }) {
+export interface LogSaleDialogRef {
+  handleScan: (productId: string) => void;
+}
+
+export const LogSaleDialog = React.forwardRef<LogSaleDialogRef, { dictionary: Dictionary; onSaleAdded?: () => void }>(({ dictionary, onSaleAdded }, ref) => {
   const d = dictionary.logSaleDialog;
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
@@ -70,6 +73,41 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
   const [settings, setSettings] = useState<any>(null);
   const [appUser, setAppUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Scan Logic
+  const [pendingScanId, setPendingScanId] = useState<string | null>(null);
+
+  React.useImperativeHandle(ref, () => ({
+    handleScan: (productId: string) => {
+      setOpen(true);
+      setPendingScanId(productId);
+    }
+  }));
+
+  // Handle pending scan once products are loaded
+  useEffect(() => {
+    if (open && pendingScanId && products.length > 0) {
+      const product = products.find(p => p.id === pendingScanId);
+      if (product) {
+        // Prevent adding if already dealing with quantity
+        if (!saleItems.find(item => item.id === product.id)) {
+          setSaleItems(prev => [...prev, {
+            ...product,
+            price: product.price || 0,
+            saleQuantity: 1
+          }]);
+          toast({ title: "Product Scanned", description: `${product.name} added.` });
+        } else {
+          // Increment if already exists
+          setSaleItems(prev => prev.map(item => item.id === product.id ? { ...item, saleQuantity: item.saleQuantity + 1 } : item));
+          toast({ title: "Quantity Updated", description: `${product.name} +1` });
+        }
+      } else {
+        toast({ title: "Product Not Found", description: "This product is not in your stock.", variant: "destructive" });
+      }
+      setPendingScanId(null);
+    }
+  }, [open, pendingScanId, products, saleItems, toast]);
 
   // Fetch products and customers from Firestore when dialog opens
   useEffect(() => {
@@ -521,4 +559,6 @@ export function LogSaleDialog({ dictionary, onSaleAdded }: { dictionary: Diction
       </Dialog>
     </TrialButtonLock>
   );
-}
+});
+
+LogSaleDialog.displayName = 'LogSaleDialog';

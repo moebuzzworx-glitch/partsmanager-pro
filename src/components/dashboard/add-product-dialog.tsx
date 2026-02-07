@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -45,11 +44,6 @@ interface ProductRow {
   [key: string]: any;
 }
 
-/**
- * Multi-language column header mapping with all supported synonyms
- * Supports: English, French, Arabic
- * Includes common misspellings and variations for robustness
- */
 const COLUMN_HEADERS_MAP = {
   designation: {
     en: ['designation', 'name', 'product name', 'product', 'description', 'libelle', 'designations', 'title', 'item name', 'product title'],
@@ -78,12 +72,6 @@ const COLUMN_HEADERS_MAP = {
   },
 };
 
-/**
- * Normalize header text for fuzzy matching:
- * - Remove accents (é → e, ç → c)
- * - Remove special characters and spaces
- * - Convert to lowercase
- */
 const normalizeHeaderText = (text: string): string => {
   return text
     .toLowerCase()
@@ -92,8 +80,11 @@ const normalizeHeaderText = (text: string): string => {
     .replace(/[^\w]/g, '') // Remove all non-word characters (spaces, apostrophes, dashes, etc.)
     .trim();
 };
+export interface AddProductDialogRef {
+  openWithReference: (reference: string) => void;
+}
 
-export function AddProductDialog({ dictionary, onProductAdded, products = [] }: { dictionary: Dictionary; onProductAdded?: () => void; products?: Product[] }) {
+export const AddProductDialog = forwardRef<AddProductDialogRef, { dictionary: Dictionary; onProductAdded?: () => void; products?: Product[] }>(({ dictionary, onProductAdded, products = [] }, ref) => {
   const d = dictionary.addProductDialog;
   const { user, firestore } = useFirebase();
   const { toast } = useToast();
@@ -116,6 +107,17 @@ export function AddProductDialog({ dictionary, onProductAdded, products = [] }: 
     quantity: '0',
     purchasePrice: '0',
   });
+
+  useImperativeHandle(ref, () => ({
+    openWithReference: (reference: string) => {
+      setOpen(true);
+      setFormData(prev => ({ ...prev, reference }));
+      toast({
+        title: "New Product Scan",
+        description: `Reference ${reference} pre-filled.`
+      });
+    }
+  }));
 
   // Fetch user document and settings to check permissions and get profit margin
   useEffect(() => {
@@ -857,4 +859,6 @@ export function AddProductDialog({ dictionary, onProductAdded, products = [] }: 
       </TrialButtonLock>
     </>
   );
-}
+});
+
+AddProductDialog.displayName = "AddProductDialog";

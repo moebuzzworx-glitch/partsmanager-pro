@@ -31,7 +31,29 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogSaleDialog } from "@/components/dashboard/log-sale-dialog";
+import { useRef } from 'react';
+import { useScanListener } from '@/hooks/use-scan-listener';
+import { LogSaleDialog, LogSaleDialogRef } from "@/components/dashboard/log-sale-dialog";
+
+// ... inside SalesPage
+const logSaleDialogRef = useRef<LogSaleDialogRef>(null);
+
+useScanListener((scan) => {
+  // Auto-open log sale dialog when a product is scanned on this page
+  if (logSaleDialogRef.current) {
+    logSaleDialogRef.current.handleScan(scan.productId);
+  }
+});
+
+return (
+  // ...
+  <LogSaleDialog
+    ref={logSaleDialogRef}
+    dictionary={dictionary}
+    onSaleAdded={fetchSales}
+  />
+    // ...
+
 import { EditSaleDialog } from "@/components/dashboard/edit-sale-dialog";
 import { useFirebase } from "@/firebase/provider";
 import { collection, getDocs, query, where, doc, getDoc, deleteDoc } from "firebase/firestore";
@@ -63,6 +85,14 @@ export default function SalesPage({
   const { locale } = use(params);
   const { firestore, user } = useFirebase();
   const { toast } = useToast();
+  const logSaleDialogRef = useRef<LogSaleDialogRef>(null);
+
+  useScanListener((scan) => {
+    if (logSaleDialogRef.current) {
+      logSaleDialogRef.current.handleScan(scan.productId);
+    }
+  });
+
   const [sales, setSales] = useState<Sale[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dictionary, setDictionary] = useState<any>(null);
@@ -297,7 +327,11 @@ export default function SalesPage({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <LogSaleDialog dictionary={dictionary} onSaleAdded={fetchSales} />
+              <LogSaleDialog
+                ref={logSaleDialogRef}
+                dictionary={dictionary}
+                onSaleAdded={fetchSales}
+              />
             </div>
           </div>
         </CardHeader>

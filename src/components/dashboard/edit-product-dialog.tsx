@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -18,18 +18,21 @@ import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Product } from '@/lib/types';
 
+export interface EditProductDialogRef {
+    open: (product: Product) => void;
+}
+
 interface EditProductDialogProps {
-    product: Product;
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
     onProductUpdated: () => void;
     dictionary?: any;
 }
 
-export function EditProductDialog({ product, open, onOpenChange, onProductUpdated, dictionary }: EditProductDialogProps) {
+export const EditProductDialog = forwardRef<EditProductDialogRef, EditProductDialogProps>(({ onProductUpdated, dictionary }, ref) => {
     const { user, firestore } = useFirebase();
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
+    const [open, setOpen] = useState(false);
+    const [product, setProduct] = useState<Product | null>(null);
     const d = dictionary?.editProductDialog;
 
     const [formData, setFormData] = useState({
@@ -41,8 +44,9 @@ export function EditProductDialog({ product, open, onOpenChange, onProductUpdate
         price: '0',
     });
 
-    useEffect(() => {
-        if (product) {
+    useImperativeHandle(ref, () => ({
+        open: (product: Product) => {
+            setProduct(product);
             setFormData({
                 name: product.name || '',
                 reference: product.reference || '',
@@ -51,12 +55,13 @@ export function EditProductDialog({ product, open, onOpenChange, onProductUpdate
                 purchasePrice: (product.purchasePrice || 0).toString(),
                 price: (product.price || 0).toString(),
             });
+            setOpen(true);
         }
-    }, [product]);
+    }));
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!firestore || !user) return;
+        if (!firestore || !user || !product) return;
 
         setIsLoading(true);
         try {
@@ -78,7 +83,7 @@ export function EditProductDialog({ product, open, onOpenChange, onProductUpdate
             });
 
             onProductUpdated();
-            onOpenChange(false);
+            setOpen(false);
         } catch (error: any) {
             console.error('Error updating product:', error);
             toast({
@@ -92,7 +97,7 @@ export function EditProductDialog({ product, open, onOpenChange, onProductUpdate
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={setOpen}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>{d?.title || 'Edit Product'}</DialogTitle>
@@ -100,90 +105,88 @@ export function EditProductDialog({ product, open, onOpenChange, onProductUpdate
                         {d?.description || "Make changes to the product details here. Click save when you're done."}
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="name" className="text-right">
-                            {d?.name || 'Name'}
-                        </Label>
-                        <Input
-                            id="name"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="col-span-3"
-                            required
-                        />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="reference" className="text-right">
-                            {d?.reference || 'Reference'}
-                        </Label>
-                        <Input
-                            id="reference"
-                            value={formData.reference}
-                            onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
-                            className="col-span-3"
-                        />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="brand" className="text-right">
-                            {d?.brand || 'Brand'}
-                        </Label>
-                        <Input
-                            id="brand"
-                            value={formData.brand}
-                            onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                            className="col-span-3"
-                        />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="stock" className="text-right">
-                            {d?.stock || 'Stock'}
-                        </Label>
-                        <Input
-                            id="stock"
-                            type="number"
-                            value={formData.stock}
-                            onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                            className="col-span-3"
-                            min="0"
-                        />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="purchasePrice" className="text-right">
-                            {d?.purchasePrice || 'Buy Price'}
-                        </Label>
-                        <Input
-                            id="purchasePrice"
-                            type="number"
-                            value={formData.purchasePrice}
-                            onChange={(e) => setFormData({ ...formData, purchasePrice: e.target.value })}
-                            className="col-span-3"
-                            min="0"
-                            step="0.01"
-                        />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="price" className="text-right">
-                            {d?.price || 'Sell Price'}
-                        </Label>
-                        <Input
-                            id="price"
-                            type="number"
-                            value={formData.price}
-                            onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                            className="col-span-3"
-                            min="0"
-                            step="0.01"
-                        />
+                <form onSubmit={handleSubmit}>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="name" className="text-right">
+                                {d?.name || 'Name'}
+                            </Label>
+                            <Input
+                                id="name"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                className="col-span-3"
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="reference" className="text-right">
+                                {d?.reference || 'Reference'}
+                            </Label>
+                            <Input
+                                id="reference"
+                                value={formData.reference}
+                                onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
+                                className="col-span-3"
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="brand" className="text-right">
+                                {d?.brand || 'Brand'}
+                            </Label>
+                            <Input
+                                id="brand"
+                                value={formData.brand}
+                                onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                                className="col-span-3"
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="stock" className="text-right">
+                                {d?.stock || 'Stock'}
+                            </Label>
+                            <Input
+                                id="stock"
+                                type="number"
+                                value={formData.stock}
+                                onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                                className="col-span-3"
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="purchasePrice" className="text-right">
+                                {d?.purchasePrice || 'Buying Price'}
+                            </Label>
+                            <Input
+                                id="purchasePrice"
+                                type="number"
+                                step="0.01"
+                                value={formData.purchasePrice}
+                                onChange={(e) => setFormData({ ...formData, purchasePrice: e.target.value })}
+                                className="col-span-3"
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="price" className="text-right">
+                                {d?.price || 'Selling Price'}
+                            </Label>
+                            <Input
+                                id="price"
+                                type="number"
+                                step="0.01"
+                                value={formData.price}
+                                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                                className="col-span-3"
+                            />
+                        </div>
                     </div>
                     <DialogFooter>
                         <Button type="submit" disabled={isLoading}>
-                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            {d?.submit || 'Save changes'}
+                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {d?.save || 'Save changes'}
                         </Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
         </Dialog>
     );
-}
+});

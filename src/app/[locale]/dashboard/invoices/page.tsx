@@ -37,7 +37,9 @@ import { ProtectedActionDialog } from "@/components/protected-action-dialog";
 
 import { generateDocumentPdf } from "@/components/dashboard/document-generator";
 import { getUserSettings } from "@/lib/settings-utils";
-import { CreateInvoiceDialog } from "@/components/dashboard/create-invoice-dialog";
+import { useRef } from 'react';
+import { useScanListener } from '@/hooks/use-scan-listener';
+import { CreateInvoiceDialog, CreateInvoiceDialogRef } from "@/components/dashboard/create-invoice-dialog";
 import { CreatePurchaseOrderDialog } from "@/components/dashboard/create-purchase-order-dialog";
 import { CreateDeliveryNoteDialog } from "@/components/dashboard/create-delivery-note-dialog";
 import { CreateSalesReceiptDialog } from "@/components/dashboard/create-sales-receipt-dialog";
@@ -75,6 +77,14 @@ export default function InvoicesPage({
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [invoiceToDuplicate, setInvoiceToDuplicate] = useState<StoredInvoice | null>(null);
   const [duplicateTargetType, setDuplicateTargetType] = useState<'INVOICE' | 'TERM_INVOICE' | 'DELIVERY_NOTE' | 'SALES_RECEIPT' | 'PURCHASE_ORDER'>('INVOICE');
+
+  const createInvoiceDialogRef = useRef<CreateInvoiceDialogRef>(null);
+
+  useScanListener((scan) => {
+    if (activeTab === 'INVOICE' && createInvoiceDialogRef.current) {
+      createInvoiceDialogRef.current.handleScan(scan.productId);
+    }
+  });
 
   const confirmDeleteInvoice = async () => {
     if (!firestore || !invoiceToDelete) return;
@@ -363,6 +373,7 @@ export default function InvoicesPage({
                 </CardTitle>
                 {activeTab === 'INVOICE' && (
                   <CreateInvoiceDialog
+                    ref={createInvoiceDialogRef}
                     locale={locale}
                     dictionary={dictionary}
                     onInvoiceCreated={fetchInvoicesList}

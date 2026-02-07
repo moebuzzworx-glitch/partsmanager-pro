@@ -12,44 +12,17 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
-import { CreateInvoiceForm } from './create-invoice-form';
-import type { Locale } from '@/lib/config';
-import { useFirebase } from '@/firebase/provider';
-import { doc, getDoc } from 'firebase/firestore';
-import { User as AppUser } from '@/lib/types';
-import { canExport } from '@/lib/trial-utils';
-import { TrialButtonLock } from '@/components/trial-button-lock';
+import { CreateInvoiceForm, CreateInvoiceFormRef } from './create-invoice-form';
 
-type Dictionary = Awaited<ReturnType<typeof import('@/lib/dictionaries').getDictionary>>;
-
-interface CreateInvoiceDialogProps {
-  locale: Locale;
-  dictionary: Dictionary;
-  onInvoiceCreated?: () => void;
-  defaultType?: 'INVOICE' | 'TERM_INVOICE' | 'PURCHASE_ORDER' | 'DELIVERY_NOTE' | 'SALES_RECEIPT';
-  initialData?: {
-    clientName?: string;
-    clientAddress?: string;
-    clientNis?: string;
-    clientNif?: string;
-    clientRc?: string;
-    clientArt?: string;
-    clientRib?: string;
-    lineItems?: { reference?: string; designation: string; quantity: number; unitPrice: number; unit?: string }[];
-    paymentMethod?: string;
-    applyVatToAll?: boolean;
-    applyTimbre?: boolean;
-  };
-  externalOpen?: boolean;
-  onExternalOpenChange?: (open: boolean) => void;
-  hideTrigger?: boolean;
+export interface CreateInvoiceDialogRef {
+  handleScan: (productId: string) => void;
 }
 
-export function CreateInvoiceDialog({ locale, dictionary, onInvoiceCreated, defaultType, initialData, externalOpen, onExternalOpenChange, hideTrigger }: CreateInvoiceDialogProps) {
+export const CreateInvoiceDialog = React.forwardRef<CreateInvoiceDialogRef, CreateInvoiceDialogProps>(({ locale, dictionary, onInvoiceCreated, defaultType, initialData, externalOpen, onExternalOpenChange, hideTrigger }, ref) => {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const setOpen = onExternalOpenChange || setInternalOpen;
-  const formRef = React.useRef<HTMLFormElement>(null);
+  const formRef = React.useRef<CreateInvoiceFormRef>(null);
   const { user, firestore } = useFirebase();
   const [userDoc, setUserDoc] = React.useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -73,6 +46,16 @@ export function CreateInvoiceDialog({ locale, dictionary, onInvoiceCreated, defa
     fetchUserDoc();
   }, [user, firestore]);
 
+  React.useImperativeHandle(ref, () => ({
+    handleScan: (productId: string) => {
+      setOpen(true);
+      // We need to wait for the dialog to open and form to mount
+      setTimeout(() => {
+        formRef.current?.handleScan(productId);
+      }, 100);
+    }
+  }));
+
   const handleSuccess = () => {
     setOpen(false);
     if (onInvoiceCreated) {
@@ -82,7 +65,7 @@ export function CreateInvoiceDialog({ locale, dictionary, onInvoiceCreated, defa
 
   const handleSubmit = () => {
     if (formRef.current) {
-      formRef.current.dispatchEvent(new Event('submit', { bubbles: true }));
+      formRef.current.submit();
     }
   };
 
@@ -125,4 +108,6 @@ export function CreateInvoiceDialog({ locale, dictionary, onInvoiceCreated, defa
       </Dialog>
     </TrialButtonLock>
   );
-}
+});
+
+CreateInvoiceDialog.displayName = 'CreateInvoiceDialog';

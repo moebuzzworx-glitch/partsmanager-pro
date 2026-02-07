@@ -68,7 +68,12 @@ const formSchema = z.object({
 export type InvoiceFormData = z.infer<typeof formSchema>;
 // ...
 
-export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
+export interface CreateInvoiceFormRef {
+  submit: () => void;
+  handleScan: (productId: string) => void;
+}
+
+export const CreateInvoiceForm = React.forwardRef<CreateInvoiceFormRef, {
   documentType: DocumentType;
   onLoadingChange?: (isLoading: boolean) => void;
   onSuccess: () => void;
@@ -90,6 +95,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
 }>(({ documentType: initialDocumentType, onLoadingChange, onSuccess, dictionary, hideTypeSelector, initialData }, ref) => {
   const { user, firestore } = useFirebase();
   const { toast } = useToast();
+  // ... state ...
   const [settingsState, setSettingsState] = React.useState<AppSettings | null>(null);
   const [userDoc, setUserDoc] = React.useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -135,6 +141,41 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
     control: form.control,
     name: 'lineItems',
   });
+
+  // Handle scans
+  React.useImperativeHandle(ref, () => ({
+    submit: () => {
+      form.handleSubmit(onSubmit)();
+    },
+    handleScan: (productId: string) => {
+      const product = products.find(p => p.id === productId);
+      if (product) {
+        // Check if product already exists in lineItems to increment quantity
+        const currentItems = form.getValues('lineItems');
+        const existingIndex = currentItems.findIndex(item => item.reference === product.reference || item.designation === product.name);
+
+        if (existingIndex >= 0) {
+          // Increment
+          const currentQty = currentItems[existingIndex].quantity;
+          form.setValue(`lineItems.${existingIndex}.quantity`, currentQty + 1);
+          toast({ title: "Quantity Updated", description: `${product.name} +1` });
+        } else {
+          // Add new
+          const price = documentType === 'PURCHASE_ORDER' ? (product.purchasePrice || 0) : (product.price || 0);
+          append({
+            reference: product.reference || '',
+            designation: product.name,
+            quantity: 1,
+            unitPrice: price,
+            unit: 'pcs'
+          });
+          toast({ title: "Product Added", description: `${product.name}` });
+        }
+      } else {
+        toast({ title: "Product Not Found", description: "Not found in stock.", variant: "destructive" });
+      }
+    }
+  }));
 
   const { watch, setValue } = form;
   const applyVatToAll = watch('applyVatToAll');
@@ -386,7 +427,7 @@ export const CreateInvoiceForm = React.forwardRef<HTMLFormElement, {
 
   return (
     <>
-      <form ref={ref} onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <Form {...form}>
           <div className="space-y-4">
             <div className="flex justify-between items-center">

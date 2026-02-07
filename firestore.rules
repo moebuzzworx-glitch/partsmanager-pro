@@ -400,7 +400,26 @@ service cloud.firestore {
       // Only super admins can delete access rights
       allow delete: if isAdmin() && isAccessRightsAdmin();
     }
+    /**
+     * @description Real-time Pairing Sessions for Mobile Scanner
+     * @access Authenticated users can create sessions and write scans
+     * Sessions are ephemeral and used for device-to-device communication
+     */
+    match /sync_sessions/{sessionId} {
+      // Allow any authenticated user to create/read a session
+      allow read, create: if isSignedIn();
+      // Allow host to update status (e.g. close session)
+      allow update: if isSignedIn() && resource.data.hostId == request.auth.uid;
+
+      // Subcollection for scan events
+      match /scans/{scanId} {
+        // Mobile device (any auth user) can write a scan
+        // Desktop (any auth user, usually host) can read scans
+        allow read, create: if isSignedIn();
+      }
+    }
   }
+
 
   /**
    * Additional helper function for access rights admin check
