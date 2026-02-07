@@ -35,9 +35,9 @@ const ScannerComponent = ({ onScan }: { onScan: (decodedText: string) => void })
                         qrbox: { width: 250, height: 250 },
                     },
                     (decodedText) => {
-                        // Debounce: ignore same code within 1.5 seconds
+                        // Debounce: ignore same code within 3 seconds
                         const now = Date.now();
-                        if (decodedText === lastScanRef.current && now - lastScanTimeRef.current < 1500) {
+                        if (decodedText === lastScanRef.current && now - lastScanTimeRef.current < 3000) {
                             return; // Skip duplicate
                         }
                         lastScanRef.current = decodedText;
