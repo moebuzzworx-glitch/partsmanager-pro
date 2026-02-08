@@ -324,10 +324,15 @@ export default function LabelMakerPage() {
                             />
                         ))
                     ) : (
-                        // A4 Grid Layout - Using Flex/Flow for better page breaking
-                        <div className="flex flex-wrap content-start gap-1 p-[5mm]">
+                        // A4 Grid Layout - Strict 3x7
+                        <div className="grid grid-cols-3 content-start gap-y-1 gap-x-0" style={{
+                            width: '210mm',
+                            margin: '0 auto',
+                            padding: '0mm',
+                            boxSizing: 'border-box'
+                        }}>
                             {selectedProductsData.map(product => (
-                                <div key={product.id} className="break-inside-avoid mb-1">
+                                <div key={product.id} className="break-inside-avoid flex justify-center items-center p-1">
                                     <LabelTemplate
                                         product={product}
                                         baseUrl={baseUrl}

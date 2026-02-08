@@ -57,7 +57,10 @@ export function LabelTemplate({ product, settings, baseUrl }: LabelTemplateProps
             )}
 
             {/* QR Code */}
-            <div className="flex-1 flex items-center justify-center min-h-0 overflow-hidden py-0.5">
+            <div className={cn(
+                "flex-1 flex items-center justify-center min-h-0 overflow-hidden",
+                settings.printerType === 'thermal' ? "py-0" : "py-0.5"
+            )}>
                 <QRCodeSVG
                     value={qrValue}
                     // Dynamic size: (Total Height - Text Space approx 12mm) converted to px
