@@ -71,10 +71,10 @@ export default function DashboardLayout({
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const { openBot } = useBotStore();
   const [isMobile, setIsMobile] = useState(false);
+  const dir = locale === 'ar' ? 'rtl' : 'ltr';
 
   // Set dir attribute based on locale
   useEffect(() => {
-    const dir = locale === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.dir = dir;
     document.documentElement.lang = locale;
 
@@ -83,7 +83,7 @@ export default function DashboardLayout({
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
-  }, [locale]);
+  }, [locale, dir]);
 
   useEffect(() => {
     getDictionary(locale).then(setDictionary);
@@ -131,7 +131,7 @@ export default function DashboardLayout({
           </div>
           <FullScreenToggle />
           <LanguageSwitcher />
-          <DropdownMenu>
+          <DropdownMenu dir={dir}>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="icon">
                 <span className="sr-only">Toggle theme</span>
@@ -143,7 +143,7 @@ export default function DashboardLayout({
               <ThemeSwitcher />
             </DropdownMenuContent>
           </DropdownMenu>
-          <DropdownMenu>
+          <DropdownMenu dir={dir}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5" />
