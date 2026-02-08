@@ -93,8 +93,10 @@ export function UserNav({
     }
   }
 
+  const dir = locale === 'ar' ? 'rtl' : 'ltr';
+
   return (
-    <DropdownMenu>
+    <DropdownMenu dir={dir}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">

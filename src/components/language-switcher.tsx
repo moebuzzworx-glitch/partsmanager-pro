@@ -26,7 +26,7 @@ export function LanguageSwitcher() {
     segments[1] = locale
     return segments.join('/')
   }
-  
+
   if (!isMounted) {
     return null;
   }
@@ -35,8 +35,11 @@ export function LanguageSwitcher() {
     window.location.href = redirectedPathName(locale);
   };
 
+  const locale = pathName?.split('/')[1] || 'en';
+  const dir = locale === 'ar' ? 'rtl' : 'ltr';
+
   return (
-    <DropdownMenu>
+    <DropdownMenu dir={dir}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon">
           <Globe className="h-5 w-5" />
