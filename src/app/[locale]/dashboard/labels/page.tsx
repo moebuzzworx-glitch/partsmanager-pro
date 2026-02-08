@@ -327,7 +327,7 @@ export default function LabelMakerPage() {
                         // A4 Grid Layout - Strict 3x7
                         <div className="grid grid-cols-3 content-start gap-y-1 gap-x-0" style={{
                             width: '210mm',
-                            margin: '0 auto',
+                            margin: '-5mm 0 0 -5mm', // Shift Up and Left
                             padding: '0mm',
                             boxSizing: 'border-box'
                         }}>
