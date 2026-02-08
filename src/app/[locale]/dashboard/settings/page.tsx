@@ -7,14 +7,16 @@ export default async function SettingsPage({ params }: { params: Promise<{ local
   const { locale } = await params;
   const dictionary = await getDictionary(locale);
 
+  const dir = locale === 'ar' ? 'rtl' : 'ltr';
+
   return (
     <SettingsProvider>
-      <div className="space-y-8">
+      <div className="space-y-8 max-w-full overflow-hidden" dir={dir}>
         <div>
           <h1 className="text-3xl font-headline font-bold">{dictionary.dashboard.settings}</h1>
           <p className="text-muted-foreground">{dictionary?.settings?.description || 'Manage your application and user settings.'}</p>
         </div>
-        <SettingsForm dictionary={dictionary} />
+        <SettingsForm dictionary={dictionary} dir={dir} />
       </div>
     </SettingsProvider>
   );

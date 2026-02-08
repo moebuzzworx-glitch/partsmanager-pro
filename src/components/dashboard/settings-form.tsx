@@ -10,10 +10,10 @@ import { NotificationSoundSettings } from '@/components/notification-sound-setti
 import { SecuritySettings } from './security-settings';
 
 
-export function SettingsForm({ dictionary }: { dictionary?: any }) {
+export function SettingsForm({ dictionary, dir }: { dictionary?: any; dir?: string }) {
     return (
-        <div dir="inherit">
-            <Tabs defaultValue="company">
+        <div dir={dir}>
+            <Tabs defaultValue="company" dir={dir}>
                 <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto">
                     <TabsTrigger value="company">{dictionary?.settings?.companyTab || 'Company'}</TabsTrigger>
                     <TabsTrigger value="business">{dictionary?.settings?.businessTab || 'Business'}</TabsTrigger>
