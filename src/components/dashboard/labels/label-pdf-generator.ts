@@ -30,12 +30,7 @@ export const generateLabelPdf = async (
     const cols = 3;
     const rows = 7;
     const labelWidth = 70; // 210 / 3
-    const labelHeight = 42.3; // 297 / 7 approx. Or stick to standard 38.1mm (Avery defines it).
-    // User wanted "3x7" which implies filling the page?
-    // If I use 42.3mm height, it fills the page perfectly.
-    // If I use 38.1mm, I have margins.
-    // User complained about positioning. 
-    // Filling the page (42.3mm) is safer for "nearly 0 margin".
+    const labelHeight = 42.3; // 297 / 7 approx.
 
     const labelsPerPage = cols * rows;
 
@@ -58,7 +53,6 @@ export const generateLabelPdf = async (
 
         // --- Content Generation ---
         const cx = x + (labelWidth / 2); // Center X of cell
-        const cy = y + (labelHeight / 2); // Center Y of cell
 
         // 1. Product Name (Top)
         if (settings.showName) {
@@ -70,7 +64,7 @@ export const generateLabelPdf = async (
             doc.text(nameLines, cx, y + 5, { align: 'center', baseline: 'top' });
         }
 
-        // 2. QR Code (Center)
+        // 2. QR Code (Center) - Adjusted to match Preview (Smaller & Higher)
         // Generate QR Data URL
         const qrValue = baseUrl ? `${baseUrl}/scan/${product.id}` : product.id;
         try {
@@ -81,34 +75,33 @@ export const generateLabelPdf = async (
             });
 
             // Draw Image
-            // Size: 25mm x 25mm?
-            const qrSize = 25;
-            // Position: Center
-            doc.addImage(qrDataUrl, 'PNG', cx - (qrSize / 2), cy - (qrSize / 2) + 2, qrSize, qrSize);
+            // PREVIEW MATCHING SIZE: 20mm (Small and clean)
+            const qrSize = 20;
+            // Position: Top at 9mm (leaving space for name)
+            // Bottom at 29mm.
+            doc.addImage(qrDataUrl, 'PNG', cx - (qrSize / 2), y + 9, qrSize, qrSize);
 
         } catch (err) {
             console.error('QR Generation Failed', err);
         }
 
-        // 3. Price (Bottom)
+        // 3. Price (Bottom) - Moved DOWN to avoid overlap
         if (settings.showPrice) {
             doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
             const priceText = `${product.price?.toLocaleString()} DZD`;
-            doc.text(priceText, cx, y + labelHeight - 8, { align: 'center' });
+            // Position at 37mm (Gap of 8mm from QR bottom)
+            doc.text(priceText, cx, y + 37, { align: 'center' });
         }
 
-        // 4. SKU (Bottom Small)
+        // 4. SKU (Bottom Small) - Very Bottom
         if (settings.showSku && product.reference) {
             doc.setFontSize(7);
             doc.setFont("helvetica", "normal");
             doc.setTextColor(100);
-            doc.text(product.reference, cx, y + labelHeight - 4, { align: 'center' });
+            doc.text(product.reference, cx, y + 41, { align: 'center' });
             doc.setTextColor(0);
         }
-
-        // Optional: Draw Debug Border (remove for production, or keep as user requested 0 margin / full bleed)
-        // doc.rect(x, y, labelWidth, labelHeight); 
     }
 
     // Open PDF
