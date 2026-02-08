@@ -118,18 +118,15 @@ export default function LabelMakerPage() {
     };
 
     const handlePrint = async () => {
-        if (printerType === 'a4') {
-            // Use PDF Generation for A4 to ensure perfect pagination
-            await generateLabelPdf(selectedProductsData, {
-                showPrice,
-                showName,
-                showSku,
-                printerType
-            }, baseUrl);
-        } else {
-            // Use Browser Print for Thermal (CSS is optimized for it)
-            window.print();
-        }
+        // Always use PDF Generation for consistent quality and control
+        await generateLabelPdf(selectedProductsData, {
+            showPrice,
+            showName,
+            showSku,
+            printerType,
+            width: labelWidth,
+            height: labelHeight
+        }, baseUrl);
     };
 
     // Selected Products Data
@@ -145,10 +142,7 @@ export default function LabelMakerPage() {
                 </div>
                 <Button onClick={handlePrint} disabled={selectedIds.size === 0}>
                     <Printer className="mr-2 h-4 w-4" />
-                    {printerType === 'a4'
-                        ? (dictionary?.reusable?.downloadPdf || 'Download PDF')
-                        : (dictionary?.reusable?.printLabels || 'Print {count} Labels').replace('{count}', String(selectedIds.size))
-                    }
+                    {dictionary?.reusable?.downloadPdf || 'Download PDF'}
                 </Button>
             </div>
 
