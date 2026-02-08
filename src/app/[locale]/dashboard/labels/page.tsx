@@ -324,28 +324,40 @@ export default function LabelMakerPage() {
                             />
                         ))
                     ) : (
-                        // A4 Grid Layout - Strict 3x7
-                        <div className="grid grid-cols-3 content-start gap-y-1 gap-x-0" style={{
-                            width: '210mm',
-                            margin: '-15mm 0 0 -10mm', // More Left (-10mm) and Double Up (-15mm approx)
-                            padding: '0mm',
-                            boxSizing: 'border-box'
-                        }}>
-                            {selectedProductsData.map(product => (
-                                <div key={product.id} className="break-inside-avoid flex justify-center items-center p-1">
-                                    <LabelTemplate
-                                        product={product}
-                                        baseUrl={baseUrl}
-                                        settings={{
-                                            printerType,
-                                            showPrice,
-                                            showName,
-                                            showSku
-                                        }}
-                                    />
-                                </div>
-                            ))}
-                        </div>
+                        // A4 Grid Layout - Pagination via Chunking (3x7 = 21 per page)
+                        Array.from({ length: Math.ceil(selectedProductsData.length / 21) }).map((_, pageIndex) => (
+                            <div
+                                key={pageIndex}
+                                className="grid grid-cols-3 content-start gap-y-1 gap-x-0"
+                                style={{
+                                    width: '210mm',
+                                    // Height constraint to force break if needed, but separate divs with break-after is better
+                                    // 3x7 * 38.1mm = ~266mm. 
+                                    height: '297mm', // Force full page height to ensure break works cleanly?
+                                    // Or just let content flow.
+                                    margin: '-15mm 0 0 -10mm',
+                                    padding: '0mm',
+                                    boxSizing: 'border-box',
+                                    pageBreakAfter: pageIndex < Math.ceil(selectedProductsData.length / 21) - 1 ? 'always' : 'auto',
+                                    breakAfter: pageIndex < Math.ceil(selectedProductsData.length / 21) - 1 ? 'page' : 'auto'
+                                }}
+                            >
+                                {selectedProductsData.slice(pageIndex * 21, (pageIndex + 1) * 21).map(product => (
+                                    <div key={product.id} className="break-inside-avoid flex justify-center items-center p-1">
+                                        <LabelTemplate
+                                            product={product}
+                                            baseUrl={baseUrl}
+                                            settings={{
+                                                printerType,
+                                                showPrice,
+                                                showName,
+                                                showSku
+                                            }}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        ))
                     )}
                 </div>
             </div>
