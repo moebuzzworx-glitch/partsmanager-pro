@@ -255,29 +255,29 @@ export default function LabelMakerPage() {
                         ) : (
                             <table className="w-full text-sm">
                                 <thead className="bg-muted/50 sticky top-0 z-10">
-                                    <tr className="text-start border-b">
-                                        <th className="p-3 w-[50px]">
+                                    <tr className="border-b">
+                                        <th className="p-3 w-[50px] text-center">
                                             <Checkbox
                                                 checked={selectedIds.size === filteredProducts.length && filteredProducts.length > 0}
                                                 onCheckedChange={toggleAll}
                                             />
                                         </th>
-                                        <th className="p-3 font-medium">{t.product || 'Product'}</th>
-                                        <th className="p-3 font-medium">{t.ref || 'Ref'}</th>
+                                        <th className="p-3 font-medium text-start">{t.product || 'Product'}</th>
+                                        <th className="p-3 font-medium text-start">{t.ref || 'Ref'}</th>
                                         <th className="p-3 font-medium text-end">{t.stock || 'Stock'}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filteredProducts.map(p => (
                                         <tr key={p.id} className="border-b hover:bg-muted/50 transition-colors">
-                                            <td className="p-3">
+                                            <td className="p-3 text-center">
                                                 <Checkbox
                                                     checked={selectedIds.has(p.id)}
                                                     onCheckedChange={() => toggleSelect(p.id)}
                                                 />
                                             </td>
-                                            <td className="p-3 font-medium">{p.name}</td>
-                                            <td className="p-3 text-muted-foreground">{p.reference || '-'}</td>
+                                            <td className="p-3 font-medium text-start">{p.name}</td>
+                                            <td className="p-3 text-muted-foreground text-start">{p.reference || '-'}</td>
                                             <td className="p-3 text-end">{p.stock || 0}</td>
                                         </tr>
                                     ))}
