@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { generateLabelPdf } from '@/components/dashboard/labels/label-pdf-generator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
@@ -116,8 +117,19 @@ export default function LabelMakerPage() {
         }
     };
 
-    const handlePrint = () => {
-        window.print();
+    const handlePrint = async () => {
+        if (printerType === 'a4') {
+            // Use PDF Generation for A4 to ensure perfect pagination
+            await generateLabelPdf(selectedProductsData, {
+                showPrice,
+                showName,
+                showSku,
+                printerType
+            }, baseUrl);
+        } else {
+            // Use Browser Print for Thermal (CSS is optimized for it)
+            window.print();
+        }
     };
 
     // Selected Products Data
@@ -133,7 +145,10 @@ export default function LabelMakerPage() {
                 </div>
                 <Button onClick={handlePrint} disabled={selectedIds.size === 0}>
                     <Printer className="mr-2 h-4 w-4" />
-                    {(t.printLabels || 'Print {count} Labels').replace('{count}', String(selectedIds.size))}
+                    {printerType === 'a4'
+                        ? (dictionary?.reusable?.downloadPdf || 'Download PDF')
+                        : (dictionary?.reusable?.printLabels || 'Print {count} Labels').replace('{count}', String(selectedIds.size))
+                    }
                 </Button>
             </div>
 
@@ -146,6 +161,12 @@ export default function LabelMakerPage() {
                             <CardTitle>{t.printSettings || 'Print Settings'}</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                            <div className="flex justify-end mt-6">
+                                <Button onClick={handlePrint} size="lg" className="gap-2" disabled={selectedIds.size === 0}>
+                                    <Printer className="h-4 w-4" />
+                                    {printerType === 'a4' ? dictionary?.reusable?.downloadPdf || 'Download PDF' : dictionary?.reusable?.print || 'Print Labels'}
+                                </Button>
+                            </div>
                             <div className="space-y-2">
                                 <Label>{t.printerType || 'Printer Type'}</Label>
                                 <Select
