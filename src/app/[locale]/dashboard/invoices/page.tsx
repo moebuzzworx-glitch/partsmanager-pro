@@ -317,7 +317,7 @@ export default function InvoicesPage({
   const dir = locale === 'ar' ? 'rtl' : 'ltr';
 
   return (
-    <div className="space-y-8 px-4 md:px-0" dir={dir}>
+    <div className="space-y-8 px-4 md:px-0 max-w-full overflow-hidden" dir={dir}>
       <ProtectedActionDialog
         open={!!invoiceToDelete}
         onOpenChange={(open) => !open && setInvoiceToDelete(null)}
@@ -367,9 +367,9 @@ export default function InvoicesPage({
         <p className="text-muted-foreground">{dictionary.invoices?.description || 'Generate and manage invoices.'}</p>
       </div>
 
-      <Tabs defaultValue="INVOICE" value={activeTab} onValueChange={setActiveTab} dir={dir}>
-        <div className="flex justify-between items-center mb-4">
-          <TabsList>
+      <Tabs defaultValue="INVOICE" value={activeTab} onValueChange={setActiveTab} dir={dir} className="w-full">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+          <TabsList className="flex flex-wrap h-auto gap-2 justify-start w-full sm:w-auto">
             <TabsTrigger value="INVOICE">{dictionary.invoices?.tabInvoices || 'Factures'}</TabsTrigger>
             <TabsTrigger value="PURCHASE_ORDER">{dictionary.invoices?.tabPurchaseOrders || 'Bons de Commande'}</TabsTrigger>
             <TabsTrigger value="DELIVERY_NOTE">{dictionary.invoices?.tabDeliveryNotes || 'Bons de Livraison'}</TabsTrigger>
