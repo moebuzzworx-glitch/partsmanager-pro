@@ -866,5 +866,14 @@
     "ref": "Ref",
     "stock": "Stock",
     "cancel": "Cancel"
+  },
+  "reusable": {
+    "downloadPdf": "Download PDF",
+    "print": "Print",
+    "printLabels": "Print {count} Labels",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit"
   }
 }

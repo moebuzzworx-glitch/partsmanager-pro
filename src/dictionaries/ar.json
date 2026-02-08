@@ -905,5 +905,14 @@
     "ref": "المرجع",
     "stock": "المخزون",
     "cancel": "إلغاء"
+  },
+  "reusable": {
+    "downloadPdf": "تحميل PDF",
+    "print": "طباعة",
+    "printLabels": "طباعة {count} ملصق",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "delete": "حذف",
+    "edit": "تعديل"
   }
 }

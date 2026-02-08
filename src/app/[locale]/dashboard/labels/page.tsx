@@ -161,12 +161,6 @@ export default function LabelMakerPage() {
                             <CardTitle>{t.printSettings || 'Print Settings'}</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="flex justify-end mt-6">
-                                <Button onClick={handlePrint} size="lg" className="gap-2" disabled={selectedIds.size === 0}>
-                                    <Printer className="h-4 w-4" />
-                                    {printerType === 'a4' ? dictionary?.reusable?.downloadPdf || 'Download PDF' : dictionary?.reusable?.print || 'Print Labels'}
-                                </Button>
-                            </div>
                             <div className="space-y-2">
                                 <Label>{t.printerType || 'Printer Type'}</Label>
                                 <Select

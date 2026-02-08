@@ -897,5 +897,14 @@
     "ref": "Réf",
     "stock": "Stock",
     "cancel": "Annuler"
+  },
+  "reusable": {
+    "downloadPdf": "Télécharger PDF",
+    "print": "Imprimer",
+    "printLabels": "Impression {count} Étiquettes",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier"
   }
 }
