@@ -102,6 +102,13 @@ export const generateLabelPdf = async (
             doc.text(product.reference, cx, y + 41, { align: 'center' });
             doc.setTextColor(0);
         }
+
+        // 5. Border (Cut Lines) - Light Grey Dashed matching preview
+        doc.setDrawColor(200, 200, 200); // Light Grey
+        doc.setLineWidth(0.1);
+        doc.setLineDashPattern([1, 1], 0); // Dashed pattern
+        doc.rect(x, y, labelWidth, labelHeight);
+        doc.setLineDashPattern([], 0); // Reset dash
     }
 
     // Open PDF
