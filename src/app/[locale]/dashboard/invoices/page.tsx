@@ -315,7 +315,7 @@ export default function InvoicesPage({
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 px-4 md:px-0">
       <ProtectedActionDialog
         open={!!invoiceToDelete}
         onOpenChange={(open) => !open && setInvoiceToDelete(null)}
@@ -449,9 +449,9 @@ export default function InvoicesPage({
                     <TableHead>{dictionary.table?.invoiceNumber || 'Number'}</TableHead>
                     <TableHead>{activeTab === 'PURCHASE_ORDER' ? (dictionary.invoices?.supplier || 'Supplier') : (dictionary.table?.client || 'Client')}</TableHead>
                     <TableHead>{dictionary.table?.date || 'Date'}</TableHead>
-                    <TableHead className="text-right">{dictionary.table?.amount || 'Amount'}</TableHead>
+                    <TableHead className="text-end">{dictionary.table?.amount || 'Amount'}</TableHead>
                     <TableHead>{dictionary.table?.status || 'Status'}</TableHead>
-                    <TableHead className="text-right">{dictionary.table?.actions || 'Actions'}</TableHead>
+                    <TableHead className="text-end">{dictionary.table?.actions || 'Actions'}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -467,7 +467,7 @@ export default function InvoicesPage({
                         <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
                         <TableCell>{invoice.clientName}</TableCell>
                         <TableCell>{new Date(invoice.invoiceDate).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-right font-semibold">
+                        <TableCell className="text-end font-semibold">
                           {invoice.total?.toFixed(2) || '0.00'} {dictionary?.dashboard?.currency || 'DZD'}
                         </TableCell>
                         <TableCell>
@@ -475,7 +475,7 @@ export default function InvoicesPage({
                             {invoice.paid ? dictionary.invoices?.paid || 'Paid' : dictionary.invoices?.unpaid || 'Unpaid'}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right space-x-2">
+                        <TableCell className="text-end space-x-2 rtl:space-x-reverse">
                           <Button
                             variant="outline"
                             size="sm"
@@ -500,9 +500,9 @@ export default function InvoicesPage({
                                 disabled={regeneratingId === invoice.id}
                               >
                                 {regeneratingId === invoice.id ? (
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
                                 ) : (
-                                  <Download className="mr-2 h-4 w-4" />
+                                  <Download className="me-2 h-4 w-4" />
                                 )}
                                 {regeneratingId === invoice.id ? dictionary.invoices?.regenerating || 'Generating...' : dictionary.invoices?.download || 'Download'}
                               </Button>
@@ -523,7 +523,7 @@ export default function InvoicesPage({
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="outline" size="sm">
-                                <Copy className="mr-2 h-4 w-4" />
+                                <Copy className="me-2 h-4 w-4" />
                                 {dictionary.invoices?.duplicateAs || 'Reuse'}
                               </Button>
                             </DropdownMenuTrigger>

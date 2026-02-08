@@ -377,7 +377,7 @@ export default function TrashPage({
   if (!dictionary) return <div>Loading...</div>;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 px-4 md:px-0">
       <ProtectedActionDialog
         open={!!deleteId || isBatchDelete}
         onOpenChange={(open) => {
@@ -418,7 +418,7 @@ export default function TrashPage({
                   size="sm"
                   onClick={handleBatchRestore}
                 >
-                  <RotateCcw className="mr-2 h-4 w-4" />
+                  <RotateCcw className="me-2 h-4 w-4" />
                   {dictionary?.trash?.restoreSelected || 'Restore Selected'} ({selectedItems.size})
                 </Button>
                 <Button
@@ -426,7 +426,7 @@ export default function TrashPage({
                   size="sm"
                   onClick={() => setIsBatchDelete(true)}
                 >
-                  <Trash className="mr-2 h-4 w-4" />
+                  <Trash className="me-2 h-4 w-4" />
                   {dictionary?.trash?.deleteSelectedPermanently || 'Delete Permanently'} ({selectedItems.size})
                 </Button>
               </div>
@@ -445,7 +445,7 @@ export default function TrashPage({
                 </TableHead>
                 <TableHead>{dictionary.table?.product || 'Product'}</TableHead>
                 <TableHead className="hidden md:table-cell">{dictionary.table?.sku || 'SKU'}</TableHead>
-                <TableHead className="text-right">{dictionary.stockPage?.actions || 'Actions'}</TableHead>
+                <TableHead className="text-end">{dictionary.stockPage?.actions || 'Actions'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -459,13 +459,13 @@ export default function TrashPage({
                   </TableCell>
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell className="hidden md:table-cell">{product.reference}</TableCell>
-                  <TableCell className="text-right space-x-2">
+                  <TableCell className="text-end space-x-2 rtl:space-x-reverse">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleRestore(product.id)}
                     >
-                      <RotateCcw className="mr-2 h-4 w-4" />
+                      <RotateCcw className="me-2 h-4 w-4" />
                       {dictionary?.trash?.restore || 'Restore'}
                     </Button>
                     <Button
@@ -473,7 +473,7 @@ export default function TrashPage({
                       size="sm"
                       onClick={() => setDeleteId(product.id)}
                     >
-                      <Trash className="mr-2 h-4 w-4" />
+                      <Trash className="me-2 h-4 w-4" />
                       {dictionary?.trash?.deletePermanently || 'Delete Permanently'}
                     </Button>
                   </TableCell>
@@ -496,7 +496,7 @@ export default function TrashPage({
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="me-2 h-4 w-4 animate-spin" />
                     {dictionary.common?.loading || 'Loading...'}
                   </>
                 ) : (

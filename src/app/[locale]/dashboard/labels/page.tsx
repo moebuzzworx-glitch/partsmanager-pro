@@ -133,7 +133,7 @@ export default function LabelMakerPage() {
     const selectedProductsData = products.filter(p => selectedIds.has(p.id));
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 px-4 md:px-0">
             {/* Header and Controls - Hidden on Print */}
             <div className="flex justify-between items-center print:hidden">
                 <div>
@@ -238,10 +238,10 @@ export default function LabelMakerPage() {
                     <CardHeader className="pb-3">
                         <CardTitle>{t.selectProducts || 'Select Products'}</CardTitle>
                         <div className="relative">
-                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Search className="absolute start-2 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder={t.searchProducts || "Search products..."}
-                                className="pl-8"
+                                className="ps-8"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                             />
@@ -255,7 +255,7 @@ export default function LabelMakerPage() {
                         ) : (
                             <table className="w-full text-sm">
                                 <thead className="bg-muted/50 sticky top-0 z-10">
-                                    <tr className="text-left border-b">
+                                    <tr className="text-start border-b">
                                         <th className="p-3 w-[50px]">
                                             <Checkbox
                                                 checked={selectedIds.size === filteredProducts.length && filteredProducts.length > 0}
@@ -264,7 +264,7 @@ export default function LabelMakerPage() {
                                         </th>
                                         <th className="p-3 font-medium">{t.product || 'Product'}</th>
                                         <th className="p-3 font-medium">{t.ref || 'Ref'}</th>
-                                        <th className="p-3 font-medium text-right">{t.stock || 'Stock'}</th>
+                                        <th className="p-3 font-medium text-end">{t.stock || 'Stock'}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -278,7 +278,7 @@ export default function LabelMakerPage() {
                                             </td>
                                             <td className="p-3 font-medium">{p.name}</td>
                                             <td className="p-3 text-muted-foreground">{p.reference || '-'}</td>
-                                            <td className="p-3 text-right">{p.stock || 0}</td>
+                                            <td className="p-3 text-end">{p.stock || 0}</td>
                                         </tr>
                                     ))}
                                 </tbody>
