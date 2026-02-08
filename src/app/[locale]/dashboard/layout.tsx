@@ -234,6 +234,7 @@ export default function DashboardLayout({
             <UserNav
               user={mockUser}
               dictionary={dictionary.auth}
+              locale={locale}
             />
           )}
         </header>

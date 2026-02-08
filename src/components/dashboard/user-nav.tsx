@@ -31,12 +31,14 @@ import { useBotStore } from '@/hooks/use-bot-store';
 export function UserNav({
   user: initialUser,
   dictionary,
+  locale
 }: {
   user?: User;
   dictionary: Awaited<ReturnType<typeof getDictionary>>['auth'];
+  locale?: string;
 }) {
   const pathname = usePathname();
-  const locale = pathname.split('/')[1] || 'en';
+  const currentLocale = locale || pathname?.split('/')[1] || 'en';
   const router = useRouter();
   const auth = useAuth();
   const { toast } = useToast();
@@ -80,7 +82,7 @@ export function UserNav({
 
       closeBot();
 
-      router.push(`/${locale}`);
+      router.push(`/${currentLocale}`);
     } catch (error: any) {
       console.error('Logout error:', error);
       toast({
@@ -93,7 +95,7 @@ export function UserNav({
     }
   }
 
-  const dir = locale === 'ar' ? 'rtl' : 'ltr';
+  const dir = currentLocale === 'ar' ? 'rtl' : 'ltr';
 
   return (
     <DropdownMenu dir={dir}>

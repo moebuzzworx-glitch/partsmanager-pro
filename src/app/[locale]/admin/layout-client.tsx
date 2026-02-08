@@ -314,6 +314,7 @@ export function AdminLayoutClient({
               createdAt: userDoc.createdAt as any
             }}
             dictionary={dictionary.auth}
+            locale={locale}
           />
         )}
       </header>
