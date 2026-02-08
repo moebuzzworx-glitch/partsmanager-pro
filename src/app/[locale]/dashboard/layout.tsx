@@ -117,7 +117,7 @@ export default function DashboardLayout({
   return (
     <ScanSessionProvider>
       <SidebarProvider className="flex flex-col h-[100dvh] bg-background w-full">
-        <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6 w-full">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 print:hidden">
           <MobileTriggerLogo />
           <div className="flex-1">
             {/* Search can go here */}
@@ -238,7 +238,7 @@ export default function DashboardLayout({
           )}
         </header>
         <div className='flex flex-1 overflow-hidden w-full'>
-          <Sidebar>
+          <Sidebar className="print:hidden">
             <SidebarHeader>
             </SidebarHeader>
             <SidebarContent className="pt-16">

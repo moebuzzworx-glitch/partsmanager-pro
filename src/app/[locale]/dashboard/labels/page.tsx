@@ -290,16 +290,12 @@ export default function LabelMakerPage() {
                 body {
                     background: white;
                     }
-                    /* Hide everything by default */
-                    body > * {
-                    display: none;
-                    }
+                    /* We rely on print:hidden classes on UI elements */
                 /* Show the print area which is a direct child of the page component's root div */
                 /* But since we can't easily target the specific root div's other children without specific classes, 
                    we rely on 'print:hidden' classes on the UI elements and 'print:block' on the print area. */
                     
                 /* However, if we used display:none on body > *, we hide the root div too. */
-                /* Better approach: The Tailwind classes 'print:hidden' already handle the UI. 
                    We just need to ensure the print area flows correctly. */
 
                 .print-area {
