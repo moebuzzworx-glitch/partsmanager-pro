@@ -317,7 +317,7 @@ export default function InvoicesPage({
   const dir = locale === 'ar' ? 'rtl' : 'ltr';
 
   return (
-    <div className="space-y-8 px-4 md:px-0 max-w-full overflow-hidden" dir={dir}>
+    <div className="space-y-8 md:px-0 max-w-full overflow-hidden" dir={dir}>
       <ProtectedActionDialog
         open={!!invoiceToDelete}
         onOpenChange={(open) => !open && setInvoiceToDelete(null)}
@@ -448,9 +448,9 @@ export default function InvoicesPage({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{dictionary.table?.invoiceNumber || 'Number'}</TableHead>
+                    <TableHead className="hidden md:table-cell">{dictionary.table?.invoiceNumber || 'Number'}</TableHead>
                     <TableHead>{activeTab === 'PURCHASE_ORDER' ? (dictionary.invoices?.supplier || 'Supplier') : (dictionary.table?.client || 'Client')}</TableHead>
-                    <TableHead>{dictionary.table?.date || 'Date'}</TableHead>
+                    <TableHead className="hidden md:table-cell">{dictionary.table?.date || 'Date'}</TableHead>
                     <TableHead className="text-end">{dictionary.table?.amount || 'Amount'}</TableHead>
                     <TableHead>{dictionary.table?.status || 'Status'}</TableHead>
                     <TableHead className="text-end">{dictionary.table?.actions || 'Actions'}</TableHead>
@@ -466,9 +466,9 @@ export default function InvoicesPage({
                   ) : (
                     filteredAndSortedInvoices.map(invoice => (
                       <TableRow key={invoice.id}>
-                        <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
+                        <TableCell className="font-medium hidden md:table-cell">{invoice.invoiceNumber}</TableCell>
                         <TableCell>{invoice.clientName}</TableCell>
-                        <TableCell>{new Date(invoice.invoiceDate).toLocaleDateString()}</TableCell>
+                        <TableCell className="hidden md:table-cell">{new Date(invoice.invoiceDate).toLocaleDateString()}</TableCell>
                         <TableCell className="text-end font-semibold">
                           {invoice.total?.toFixed(2) || '0.00'} {dictionary?.dashboard?.currency || 'DZD'}
                         </TableCell>
