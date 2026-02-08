@@ -420,15 +420,15 @@ export default function InvoicesPage({
                   />
                 )}
               </div>
-              <div className="flex gap-4 items-center">
+              <div className="flex flex-col md:flex-row gap-4 items-center">
                 <Input
                   placeholder={dictionary.invoices?.searchPlaceholder || 'Search by number or name...'}
-                  className="flex-1"
+                  className="flex-1 w-full"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
                 <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as 'newest' | 'oldest')}>
-                  <SelectTrigger className="w-44">
+                  <SelectTrigger className="w-full md:w-44">
                     <SelectValue placeholder={dictionary.invoices?.sortPlaceholder || 'Sort by...'} />
                   </SelectTrigger>
                   <SelectContent>
