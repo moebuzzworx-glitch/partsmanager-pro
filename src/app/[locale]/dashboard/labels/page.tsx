@@ -133,7 +133,7 @@ export default function LabelMakerPage() {
     const selectedProductsData = products.filter(p => selectedIds.has(p.id));
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="space-y-6">
             {/* Header and Controls - Hidden on Print */}
             <div className="flex justify-between items-center print:hidden">
                 <div>
