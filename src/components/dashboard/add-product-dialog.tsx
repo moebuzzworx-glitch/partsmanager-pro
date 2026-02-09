@@ -181,10 +181,18 @@ export const AddProductDialog = forwardRef<AddProductDialogRef, { dictionary: Di
         return;
       }
 
+      // Auto-generate reference if missing
+      let reference = formData.reference;
+      if (!reference || reference.trim() === '') {
+        const prefix = formData.designation.substring(0, 3).toUpperCase();
+        const timestamp = Date.now().toString().slice(-5);
+        reference = `${prefix}-${timestamp}`;
+      }
+
       // Use addProductOrUpdateStock to handle both create and merge cases
       const newProductData = {
         name: formData.designation,
-        reference: formData.reference,
+        reference: reference,
         brand: formData.brand,
         stock: parseInt(formData.quantity),
         purchasePrice: parseFloat(formData.purchasePrice),
