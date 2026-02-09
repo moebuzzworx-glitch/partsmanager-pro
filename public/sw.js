@@ -7,28 +7,9 @@ self.addEventListener('activate', (event) => {
   console.log('Service Worker activated');
 });
 
-// Prevent offline access
+// Offline support - simple pass-through
 self.addEventListener('fetch', (event) => {
-  // Only allow requests to same origin
-  const url = new URL(event.request.url);
-  
-  // Allow all netlify.app and vercel.app subdomains, localhost
-  const isAllowedDomain = 
-    self.location.hostname.includes('netlify.app') ||
-    self.location.hostname.includes('vercel.app') ||
-    self.location.hostname === 'localhost' ||
-    self.location.hostname === '127.0.0.1';
-  
-  if (!isAllowedDomain) {
-    event.respondWith(
-      new Response('Access Denied', {
-        status: 403,
-        statusText: 'Forbidden',
-      })
-    );
-    return;
-  }
-  
-  // Normal fetch
-  event.respondWith(fetch(event.request));
+  // Allow all requests to pass through to browser (network or cache)
+  // This enables offline support if the browser has cached resources
+  return;
 });
