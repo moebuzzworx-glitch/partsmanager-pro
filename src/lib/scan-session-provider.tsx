@@ -44,9 +44,11 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
 
         // Listen
         const unsubscribe = SyncService.subscribeToSession(firestore, sessionId, (scan) => {
-            // Filter out old scans (older than 5 seconds from now) to avoid processing history on reload
+            // Filter out old scans (older than 60 seconds from now) to avoid processing history on reload
             const scanTime = scan.timestamp?.toMillis?.() || 0;
-            if (Date.now() - scanTime < 5000) {
+            const timeDiff = Date.now() - scanTime;
+
+            if (timeDiff < 60000) {
                 console.log("Global Scan Received:", scan);
                 setLastScan(scan);
                 toast({
@@ -60,6 +62,8 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
                     const audio = new Audio('/sounds/beep.mp3'); // We need to add this file or use a data URI
                     audio.play().catch(e => console.log("Audio play failed", e));
                 } catch (e) { }
+            } else {
+                console.warn(`Skipping old scan: ${scan.productId}, age: ${timeDiff}ms`);
             }
         });
 
