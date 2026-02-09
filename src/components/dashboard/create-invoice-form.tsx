@@ -642,24 +642,6 @@ export const CreateInvoiceForm = React.forwardRef<CreateInvoiceFormRef, {
               <h3 className="font-semibold">{dictionary?.createInvoiceForm?.lineItems || 'Line Items'}</h3>
               <div className="flex gap-2">
                 <ScannerPairingDialog dictionary={dictionary} onScan={handleProductScan} />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => append({ designation: '', quantity: 1, unitPrice: 0, reference: '', unit: 'pcs' })}
-                >
-                  <PlusCircle className="me-2 h-4 w-4" />
-                  {dictionary?.createInvoiceForm?.addItem || 'Add Item'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setBatchDialogOpen(true)}
-                >
-                  <ListPlus className="me-2 h-4 w-4" />
-                  {dictionary?.createInvoiceForm?.batchAddProducts || 'Add Products'}
-                </Button>
               </div>
             </div>
 
@@ -814,6 +796,27 @@ export const CreateInvoiceForm = React.forwardRef<CreateInvoiceFormRef, {
                   </Button>
                 </div>
               ))}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-4 border-t pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="min-w-[150px]"
+                onClick={() => append({ designation: '', quantity: 1, unitPrice: 0, reference: '', unit: 'pcs' })}
+              >
+                <PlusCircle className="me-2 h-4 w-4" />
+                {dictionary?.createInvoiceForm?.addItem || 'Add Item'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="min-w-[150px]"
+                onClick={() => setBatchDialogOpen(true)}
+              >
+                <ListPlus className="me-2 h-4 w-4" />
+                {dictionary?.createInvoiceForm?.batchAddProducts || 'Add Products'}
+              </Button>
             </div>
 
             <BatchAddProductsDialog
