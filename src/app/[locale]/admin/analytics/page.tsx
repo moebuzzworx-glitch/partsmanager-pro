@@ -2,21 +2,27 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatsCard } from "@/components/dashboard/stats-card";
-import { Loader2, Users, Activity, Globe, Server } from "lucide-react";
+import { Loader2, Users, Activity, Globe, Server, CreditCard } from "lucide-react";
 import { useFirebase } from "@/firebase/provider";
 import { useEffect, useState } from "react";
 import {
   fetchAnalyticsData,
   fetchUserGrowthMetrics,
+  fetchSubscriptionStats,
+  fetchActivityByHour,
   AnalyticsData,
-  UserGrowthMetric
+  UserGrowthMetric,
+  SubscriptionStats,
+  ActivityByHour
 } from "@/lib/admin-analytics";
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar } from 'recharts';
 
 export default function AdminAnalyticsPage() {
   const { firestore } = useFirebase();
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [userGrowth, setUserGrowth] = useState<UserGrowthMetric[]>([]);
+  const [subStats, setSubStats] = useState<SubscriptionStats | null>(null);
+  const [trafficData, setTrafficData] = useState<ActivityByHour[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -24,13 +30,17 @@ export default function AdminAnalyticsPage() {
 
     const loadData = async () => {
       try {
-        const [analytics, growth] = await Promise.all([
+        const [analytics, growth, subs, traffic] = await Promise.all([
           fetchAnalyticsData(firestore),
-          fetchUserGrowthMetrics(firestore)
+          fetchUserGrowthMetrics(firestore),
+          fetchSubscriptionStats(firestore),
+          fetchActivityByHour(firestore)
         ]);
 
         setAnalyticsData(analytics);
         setUserGrowth(growth);
+        setSubStats(subs);
+        setTrafficData(traffic);
       } catch (error) {
         console.error('Error loading analytics:', error);
       } finally {
@@ -41,13 +51,22 @@ export default function AdminAnalyticsPage() {
     loadData();
   }, [firestore]);
 
-  if (isLoading || !analyticsData) {
+  if (isLoading || !analyticsData || !subStats) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
+
+  // Calculate percentages for subscription bars
+  const totalUsers = subStats.trial + subStats.premium + subStats.expired;
+  const trialPct = totalUsers ? Math.round((subStats.trial / totalUsers) * 100) : 0;
+  // const premiumPct = totalUsers ? Math.round((subStats.premium / totalUsers) * 100) : 0; // Breakdown below
+  const expiredPct = totalUsers ? Math.round((subStats.expired / totalUsers) * 100) : 0;
+
+  const epayPct = totalUsers ? Math.round((subStats.paymentDistribution.epay / totalUsers) * 100) : 0;
+  const cashPct = totalUsers ? Math.round((subStats.paymentDistribution.cash / totalUsers) * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -71,16 +90,16 @@ export default function AdminAnalyticsPage() {
           description="New users this month"
         />
         <StatsCard
-          title="Active Sessions"
-          value="124"
-          icon={<Globe className="h-4 w-4" />}
-          description="Avg. daily active users"
+          title="Premium Users"
+          value={subStats.premium.toString()}
+          icon={<CreditCard className="h-4 w-4" />}
+          description={`${epayPct}% Epay, ${cashPct}% Cash`}
         />
         <StatsCard
-          title="System Uptime"
-          value="99.9%"
+          title="System Status"
+          value={analyticsData.systemStatus === 'healthy' ? "Operational" : "Degraded"}
           icon={<Server className="h-4 w-4" />}
-          description="Last 30 days"
+          description="API & Database"
         />
       </div>
 
@@ -136,20 +155,30 @@ export default function AdminAnalyticsPage() {
         </CardContent>
       </Card>
 
-      {/* Traffic Distribution (Placeholder for now until we have real logs) */}
       <div className="grid gap-4 md:grid-cols-2">
+        {/* Traffic Distribution (Real Data) */}
         <Card>
           <CardHeader>
             <CardTitle>Peak Traffic Times</CardTitle>
-            <CardDescription>Activity by time of day (UTC)</CardDescription>
+            <CardDescription>Activity by time of day (24h)</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[200px] flex items-end gap-2 justify-between px-4">
-              {[30, 45, 20, 60, 80, 100, 70, 40, 25, 45, 90, 55].map((h, i) => (
-                <div key={i} className="w-full bg-primary/20 hover:bg-primary/50 transition-colors rounded-t-sm relative group" style={{ height: `${h}%` }}>
-                  <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs opacity-0 group-hover:opacity-100 transition-opacity">{h}%</span>
+            <div className="h-[200px] w-full">
+              {trafficData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={trafficData}>
+                    <Tooltip
+                      cursor={{ fill: 'transparent' }}
+                      contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
+                    />
+                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-muted-foreground">
+                  Not enough activity data.
                 </div>
-              ))}
+              )}
             </div>
             <div className="flex justify-between mt-2 text-xs text-muted-foreground px-2">
               <span>00:00</span>
@@ -159,37 +188,62 @@ export default function AdminAnalyticsPage() {
           </CardContent>
         </Card>
 
+        {/* Subscription Distribution (Real Data) */}
         <Card>
           <CardHeader>
-            <CardTitle>Geographic Distribution</CardTitle>
-            <CardDescription>Top active regions</CardDescription>
+            <CardTitle>Subscription Status</CardTitle>
+            <CardDescription>User base distribution</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span>North America</span>
-                <span className="font-bold">45%</span>
+                <span className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-blue-500" />
+                  Premium (Epay)
+                </span>
+                <span className="font-bold">{subStats.paymentDistribution.epay} ({epayPct}%)</span>
               </div>
               <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500 w-[45%]" />
+                <div className="h-full bg-blue-500 transition-all duration-500" style={{ width: `${epayPct}%` }} />
               </div>
             </div>
+
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span>Europe</span>
-                <span className="font-bold">30%</span>
+                <span className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-indigo-500" />
+                  Premium (Cash)
+                </span>
+                <span className="font-bold">{subStats.paymentDistribution.cash} ({cashPct}%)</span>
               </div>
               <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-purple-500 w-[30%]" />
+                <div className="h-full bg-indigo-500 transition-all duration-500" style={{ width: `${cashPct}%` }} />
               </div>
             </div>
+
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span>Asia Pacific</span>
-                <span className="font-bold">15%</span>
+                <span className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-green-500" />
+                  Free Trial
+                </span>
+                <span className="font-bold">{subStats.trial} ({trialPct}%)</span>
               </div>
               <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-green-500 w-[15%]" />
+                <div className="h-full bg-green-500 transition-all duration-500" style={{ width: `${trialPct}%` }} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-orange-500" />
+                  Expired / Free
+                </span>
+                <span className="font-bold">{subStats.expired} ({expiredPct}%)</span>
+              </div>
+              <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-orange-500 transition-all duration-500" style={{ width: `${expiredPct}%` }} />
               </div>
             </div>
           </CardContent>

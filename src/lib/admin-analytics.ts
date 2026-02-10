@@ -94,6 +94,125 @@ export async function fetchUserGrowthMetrics(firestore: Firestore): Promise<User
 // Removing fetchSalesMetrics, fetchInventoryMetrics, fetchUserMetrics (redundant)
 // Keeping core utility like logging.
 
+
+export interface SubscriptionStats {
+  trial: number;
+  premium: number;
+  expired: number;
+  paymentDistribution: {
+    epay: number;
+    cash: number;
+  };
+}
+
+export interface ActivityByHour {
+  hour: number;
+  count: number;
+}
+
+/**
+ * Fetch subscription distribution
+ */
+export async function fetchSubscriptionStats(firestore: Firestore): Promise<SubscriptionStats> {
+  try {
+    const usersRef = collection(firestore, 'users');
+    const usersSnap = await getDocs(usersRef);
+
+    // Initialize stats with explicit typing
+    const stats: SubscriptionStats = {
+      trial: 0,
+      premium: 0,
+      expired: 0,
+      paymentDistribution: {
+        epay: 0,
+        cash: 0
+      }
+    };
+
+    usersSnap.forEach(doc => {
+      const data = doc.data();
+      const rawStatus = data.subscription || 'trial';
+      // Ensure status is valid
+      const status: keyof Omit<SubscriptionStats, 'paymentDistribution'> =
+        (rawStatus === 'premium' || rawStatus === 'expired') ? rawStatus : 'trial';
+
+      stats[status]++;
+
+      if (status === 'premium') {
+        // Logic: If chargily/paymentMethod exists -> epay. Else -> cash (manual)
+        const isEpay = data.paymentMethod === 'chargily' ||
+          data.subscriptionSource === 'chargily' ||
+          !!data.chargilyCustomerId ||
+          data.lastPaymentMethod === 'epay';
+
+        if (isEpay) {
+          stats.paymentDistribution.epay++;
+        } else {
+          stats.paymentDistribution.cash++;
+        }
+      }
+    });
+
+    return stats;
+  } catch (error) {
+    console.error('Error fetching subscription stats:', error);
+    return {
+      trial: 0,
+      premium: 0,
+      expired: 0,
+      paymentDistribution: { epay: 0, cash: 0 }
+    };
+  }
+}
+
+/**
+ * Fetch system activity by hour (based on User creation and Sales timestamps)
+ * to allow Admins to see "Peak Load" times.
+ */
+export async function fetchActivityByHour(firestore: Firestore): Promise<ActivityByHour[]> {
+  try {
+    const hours = new Array(24).fill(0);
+
+    // 1. Count User Registrations by hour
+    const usersRef = collection(firestore, 'users');
+    const usersSnap = await getDocs(usersRef);
+
+    usersSnap.forEach(doc => {
+      const data = doc.data();
+      if (data.createdAt?.toDate) {
+        const hour = data.createdAt.toDate().getHours();
+        hours[hour]++;
+      }
+    });
+
+    // 2. Count Sales by hour (if accessible) to better represent "Load"
+    // This gives a truer picture of when the system is actually being USED vs just signups
+    try {
+      const salesRef = collection(firestore, 'sales');
+      // Limit to recent sales if possible, but for now just fetching all for distribution pattern
+      const salesSnap = await getDocs(salesRef);
+      salesSnap.forEach(doc => {
+        const data = doc.data();
+        if (data.date?.toDate) {
+          const hour = data.date.toDate().getHours();
+          hours[hour]++;
+        } else if (data.saleDate?.toDate) {
+          const hour = data.saleDate.toDate().getHours();
+          hours[hour]++;
+        }
+      });
+    } catch (e) {
+      // Ignore sales fetch error if permissions deny, just show user activity
+      console.warn('Could not fetch sales for activity metric', e);
+    }
+
+    return hours.map((count, hour) => ({ hour, count }));
+  } catch (error) {
+    console.error('Error fetching activity logs:', error);
+    return [];
+  }
+}
+
 /**
  * Log an audit event
  */
