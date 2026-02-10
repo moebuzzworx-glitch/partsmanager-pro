@@ -122,10 +122,15 @@ function AdminUsersPageContent() {
   }).length;
 
   const onlineUsers = users.filter(u => {
+    // @ts-ignore - lastActiveAt might not be in the interface yet
+    const lastActive = u.lastActiveAt?.toDate?.() || u.lastActiveAt;
     const lastLogin = u.lastLoginAt?.toDate?.() || u.lastLoginAt;
-    if (!lastLogin) return false;
+
+    const recentActivity = lastActive || lastLogin;
+    if (!recentActivity) return false;
+
     const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000);
-    return lastLogin > fifteenMinsAgo;
+    return recentActivity > fifteenMinsAgo;
   }).length;
 
   const premiumUsers = users.filter(u => u.subscription === 'premium').length;

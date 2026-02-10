@@ -2,7 +2,7 @@
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
-import { Firestore } from 'firebase/firestore';
+import { Firestore, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Auth, User, onIdTokenChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 
@@ -87,6 +87,33 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     return () => unsubscribe(); // Cleanup
   }, [auth]); // Depends on the auth instance
 
+  // Heartbeat to update lastActiveAt
+  useEffect(() => {
+    if (!userAuthState.user || !firestore) return;
+
+    const updateHeartbeat = async () => {
+      try {
+        const userRef = doc(firestore, 'users', userAuthState.user!.uid);
+        await updateDoc(userRef, {
+          lastActiveAt: serverTimestamp(),
+          // Ensure lastLoginAt is set if missing, but primarily rely on lastActiveAt for online status
+          ...(userAuthState.user?.metadata.lastSignInTime ? { lastLoginAt: new Date(userAuthState.user.metadata.lastSignInTime) } : {})
+        });
+      } catch (error) {
+        // Silent fail for permissions or network issues to avoid console spam
+        // console.warn('Failed to update heartbeat:', error); 
+      }
+    };
+
+    // Initial update
+    updateHeartbeat();
+
+    // Interval update every 2 minutes
+    const intervalId = setInterval(updateHeartbeat, 2 * 60 * 1000);
+
+    return () => clearInterval(intervalId);
+  }, [userAuthState.user, firestore]);
+
   // Memoize the context value
   const contextValue = useMemo((): FirebaseContextState => {
     const servicesAvailable = !!(firebaseApp && firestore && auth && !userAuthState.isUserLoading);
@@ -151,25 +178,25 @@ export const useAuth = (): Auth | null => {
 
 /** Hook to access Firestore instance. */
 export const useFirestore = (): Firestore | null => {
-    const context = useContext(FirebaseContext);
-    return context?.firestore ?? null;
+  const context = useContext(FirebaseContext);
+  return context?.firestore ?? null;
 };
 
 /** Hook to access Firebase App instance. */
 export const useFirebaseApp = (): FirebaseApp | null => {
-    const context = useContext(FirebaseContext);
-    return context?.firebaseApp ?? null;
+  const context = useContext(FirebaseContext);
+  return context?.firebaseApp ?? null;
 };
 
-type MemoFirebase <T> = T & {__memo?: boolean};
+type MemoFirebase<T> = T & { __memo?: boolean };
 
 export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | (MemoFirebase<T>) | null {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoized = useMemo(factory, deps);
-  
-  if(typeof memoized !== 'object' || memoized === null) return memoized;
+
+  if (typeof memoized !== 'object' || memoized === null) return memoized;
   (memoized as MemoFirebase<T>).__memo = true;
-  
+
   return memoized;
 }
 

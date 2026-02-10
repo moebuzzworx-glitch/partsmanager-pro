@@ -40,9 +40,12 @@ export async function fetchAnalyticsData(firestore: Firestore): Promise<Analytic
     usersSnap.forEach(doc => {
       const data = doc.data();
       const lastLogin = data.lastLoginAt?.toDate?.() || data.lastLoginAt;
+      const lastActive = data.lastActiveAt?.toDate?.() || data.lastActiveAt;
       const createdAt = data.createdAt?.toDate?.() || data.createdAt;
 
-      if (lastLogin && lastLogin > fifteenMinutesAgo) {
+      // Check either lastActive or lastLogin
+      const recentActivity = lastActive || lastLogin;
+      if (recentActivity && recentActivity > fifteenMinutesAgo) {
         onlineUsers++;
       }
 
