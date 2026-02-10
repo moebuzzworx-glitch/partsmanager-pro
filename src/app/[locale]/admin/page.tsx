@@ -4,17 +4,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { Button } from "@/components/ui/button";
 import {
-  BarChart3,
   Users,
-  Package,
-  DollarSign,
   Activity,
-  HardDrive,
   FileText,
   Lock,
   AlertTriangle,
   CheckCircle,
   Loader2,
+  Globe,
+  Server
 } from "lucide-react";
 import Link from "next/link";
 import { Locale } from "@/lib/config";
@@ -25,7 +23,7 @@ import { useEffect, useState } from "react";
 export default function AdminDashboard({ params }: { params: { locale: Locale } }) {
   const { locale } = params;
   const { firestore } = useFirebase();
-  const [analyticsData, setAnalyticsData] = useState<any | null>(null);
+  const [platformData, setPlatformData] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -34,17 +32,12 @@ export default function AdminDashboard({ params }: { params: { locale: Locale } 
     const loadData = async () => {
       try {
         const data = await fetchAnalyticsData(firestore);
-        setAnalyticsData(data);
+        setPlatformData(data);
       } catch (error) {
         console.error('Failed to fetch analytics:', error);
-        setAnalyticsData({
-          totalRevenue: 0,
-          totalOrders: 0,
+        setPlatformData({
           activeUsers: 0,
-          totalProducts: 0,
-          lowStockProducts: 0,
-          totalCustomers: 0,
-          totalSuppliers: 0,
+          totalUsers: 0,
           systemStatus: 'error',
         });
       } finally {
@@ -55,7 +48,7 @@ export default function AdminDashboard({ params }: { params: { locale: Locale } 
     loadData();
   }, [firestore]);
 
-  if (isLoading || !analyticsData) {
+  if (isLoading || !platformData) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -63,84 +56,82 @@ export default function AdminDashboard({ params }: { params: { locale: Locale } 
     );
   }
 
-  const statusIcon = analyticsData.systemStatus === 'healthy' 
+  const statusIcon = platformData.systemStatus === 'healthy'
     ? <CheckCircle className="h-4 w-4 text-green-500" />
     : <AlertTriangle className="h-4 w-4 text-yellow-500" />;
 
-  const statusText = analyticsData.systemStatus === 'healthy' 
+  const statusText = platformData.systemStatus === 'healthy'
     ? 'All systems operational'
-    : analyticsData.systemStatus === 'warning'
-    ? 'Low stock warning'
-    : 'Critical inventory issues';
+    : 'System degradation detected';
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-headline font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground mt-2">Overview of business health and system status</p>
+          <h1 className="text-3xl font-headline font-bold">Platform Overview</h1>
+          <p className="text-muted-foreground mt-2">Monitor application health and user activity</p>
         </div>
       </div>
 
-      {/* Key Metrics */}
+      {/* Key Key Metrics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
-          title="Total Revenue"
-          value={`$${analyticsData.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          icon={<DollarSign className="h-4 w-4" />}
-          description={`${analyticsData.totalOrders} total orders`}
+          title="Online Users"
+          value="12"
+          icon={<Globe className="h-4 w-4" />}
+          description="Active in last 15 min"
         />
         <StatsCard
-          title="Active Users"
-          value={analyticsData.activeUsers.toString()}
+          title="Total Users"
+          value={platformData.activeUsers.toString()}
           icon={<Users className="h-4 w-4" />}
           description="Registered accounts"
         />
         <StatsCard
-          title="Total Products"
-          value={analyticsData.totalProducts.toString()}
-          icon={<Package className="h-4 w-4" />}
-          description={`${analyticsData.lowStockProducts} low stock`}
+          title="Server Health"
+          value={platformData.systemStatus === 'healthy' ? "99.9%" : "Warnings"}
+          icon={<Server className="h-4 w-4" />}
+          description={statusText}
         />
         <StatsCard
           title="System Status"
-          value={analyticsData.systemStatus.charAt(0).toUpperCase() + analyticsData.systemStatus.slice(1)}
+          value={platformData.systemStatus.charAt(0).toUpperCase() + platformData.systemStatus.slice(1)}
           icon={statusIcon}
-          description={statusText}
+          description="API & Database"
         />
       </div>
 
       {/* Quick Actions */}
       <Card>
         <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Common admin tasks</CardDescription>
+          <CardTitle>Platform Actions</CardTitle>
+          <CardDescription>Moderation and system controls</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Button asChild variant="outline" className="w-full justify-start">
               <Link href={`/${locale}/admin/users`}>
                 <Users className="mr-2 h-4 w-4" />
-                Manage Users
+                Moderate Users
               </Link>
             </Button>
             <Button asChild variant="outline" className="w-full justify-start">
-              <Link href={`/${locale}/admin/analytics`}>
-                <BarChart3 className="mr-2 h-4 w-4" />
-                View Analytics
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full justify-start">
-              <Link href={`/${locale}/admin/backup`}>
-                <HardDrive className="mr-2 h-4 w-4" />
-                Backup Data
+              <Link href={`/${locale}/admin/system-settings`}>
+                <Lock className="mr-2 h-4 w-4" />
+                Maintenance Mode
               </Link>
             </Button>
             <Button asChild variant="outline" className="w-full justify-start">
               <Link href={`/${locale}/admin/audit-logs`}>
                 <Activity className="mr-2 h-4 w-4" />
-                View Logs
+                Security Logs
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full justify-start">
+              <Link href={`/${locale}/admin/security`}>
+                <Lock className="mr-2 h-4 w-4" />
+                Security Policy
               </Link>
             </Button>
           </div>
@@ -150,101 +141,38 @@ export default function AdminDashboard({ params }: { params: { locale: Locale } 
       {/* Admin Sections Grid */}
       <div className="grid gap-4 md:grid-cols-2">
         {/* User Management */}
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
+        <Card className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-blue-500">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              User Management
+              User Moderation
             </CardTitle>
-            <CardDescription>Manage users, roles, and permissions</CardDescription>
+            <CardDescription>Manage access and permissions</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              View all users, manage roles, permissions, and activity tracking.
+              Review new registrations, ban suspicious accounts, and manage user roles.
             </p>
             <Button asChild variant="ghost" className="w-full justify-start">
               <Link href={`/${locale}/admin/users`}>
-                Go to Users →
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Analytics */}
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Analytics & Reports
-            </CardTitle>
-            <CardDescription>Business metrics and insights</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              View sales trends, revenue analysis, inventory metrics, and financial summaries.
-            </p>
-            <Button asChild variant="ghost" className="w-full justify-start">
-              <Link href={`/${locale}/admin/analytics`}>
-                View Analytics →
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Audit Logs */}
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              Audit Logs
-            </CardTitle>
-            <CardDescription>Track all system activity</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              View user activities, data changes, system events, and security logs.
-            </p>
-            <Button asChild variant="ghost" className="w-full justify-start">
-              <Link href={`/${locale}/admin/audit-logs`}>
-                View Logs →
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Data Management */}
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <HardDrive className="h-5 w-5" />
-              Data Management
-            </CardTitle>
-            <CardDescription>Backup, export, and import</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Manage backups, export data, import records, and maintain system health.
-            </p>
-            <Button asChild variant="ghost" className="w-full justify-start">
-              <Link href={`/${locale}/admin/backup`}>
-                Manage Data →
+                Manage Users →
               </Link>
             </Button>
           </CardContent>
         </Card>
 
         {/* System Settings */}
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
+        <Card className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-slate-500">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              System Settings
+              Platform Settings
             </CardTitle>
             <CardDescription>Global configuration</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              Configure company info, business rules, tax settings, and templates.
+              Configure maintenance windows, registration policies, and system-wide announcements.
             </p>
             <Button asChild variant="ghost" className="w-full justify-start">
               <Link href={`/${locale}/admin/system-settings`}>
@@ -254,54 +182,39 @@ export default function AdminDashboard({ params }: { params: { locale: Locale } 
           </CardContent>
         </Card>
 
-        {/* Security */}
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
+        {/* Audit Logs */}
+        <Card className="hover:shadow-md transition-shadow cursor-pointer md:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Lock className="h-5 w-5" />
-              Security
+              <Activity className="h-5 w-5" />
+              Security Audit
             </CardTitle>
-            <CardDescription>API keys and integrations</CardDescription>
+            <CardDescription>Recent system activity</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Manage API keys, webhooks, integrations, and security policies.
-            </p>
-            <Button asChild variant="ghost" className="w-full justify-start">
-              <Link href={`/${locale}/admin/security`}>
-                Security Settings →
-              </Link>
-            </Button>
+            {/* We can re-use the activity feed logic here later, simplified for now */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-green-500" />
+                  <span className="text-sm font-medium">System Online</span>
+                </div>
+                <span className="text-xs text-muted-foreground">Now</span>
+              </div>
+              <div className="flex items-center justify-between border-b pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-blue-500" />
+                  <span className="text-sm font-medium">New User Registration</span>
+                </div>
+                <span className="text-xs text-muted-foreground">5 mins ago</span>
+              </div>
+              <Button asChild variant="link" className="px-0">
+                <Link href={`/${locale}/admin/audit-logs`}>View Full Log</Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-          <CardDescription>Last 10 system events</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {[
-              { user: "admin1", action: "Created user", resource: "john.doe", time: "2 hours ago" },
-              { user: "manager", action: "Generated invoice", resource: "FAC-2025-0142", time: "4 hours ago" },
-              { user: "admin1", action: "Backup completed", resource: "System", time: "1 day ago" },
-              { user: "employee", action: "Updated product", resource: "SKU-001", time: "2 days ago" },
-              { user: "admin1", action: "Imported data", resource: "250 products", time: "3 days ago" },
-            ].map((activity, idx) => (
-              <div key={idx} className="flex items-center justify-between py-2 border-b last:border-0">
-                <div className="text-sm">
-                  <p className="font-medium">{activity.user}</p>
-                  <p className="text-muted-foreground text-xs">{activity.action} • {activity.resource}</p>
-                </div>
-                <span className="text-xs text-muted-foreground">{activity.time}</span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
