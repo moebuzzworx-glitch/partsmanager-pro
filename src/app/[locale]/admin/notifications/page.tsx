@@ -10,10 +10,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { sendTargetedNotificationsAction, TargetAudience } from '@/app/actions/admin-notifications';
-import { Loader2, Send, Sparkles, Pin } from 'lucide-react';
+import { Loader2, Send, Sparkles, Pin, Search, X, User } from 'lucide-react';
 import { enhanceAndTranslateNotification } from '@/app/actions/notification-ai';
 import { Switch } from '@/components/ui/switch';
 import { UserRole } from '@/lib/types';
+import { searchUsersAction, UserSearchResult } from '@/app/actions/user-search';
+import { Badge } from '@/components/ui/badge';
 
 export default function NotificationsPage() {
     const { firestore } = useFirebase();
@@ -24,6 +26,13 @@ export default function NotificationsPage() {
     const [type, setType] = useState<'info' | 'success' | 'warning' | 'error' | 'alert'>('info');
     const [targetAudience, setTargetAudience] = useState<TargetAudience>('all');
     const [targetRole, setTargetRole] = useState<UserRole>('user');
+    const [targetMode, setTargetMode] = useState<'broadcast' | 'specific'>('broadcast');
+
+    // User Search State
+    const [userSearchQuery, setUserSearchQuery] = useState('');
+    const [userSearchResults, setUserSearchResults] = useState<UserSearchResult[]>([]);
+    const [selectedUsers, setSelectedUsers] = useState<UserSearchResult[]>([]);
+    const [isSearchingUsers, setIsSearchingUsers] = useState(false);
 
     // Pinning state
     const [isPinned, setIsPinned] = useState(false);
@@ -73,6 +82,34 @@ export default function NotificationsPage() {
         }
     };
 
+    // Debounced User Search
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (userSearchQuery.trim().length >= 2) {
+                setIsSearchingUsers(true);
+                const results = await searchUsersAction(userSearchQuery);
+                setUserSearchResults(results);
+                setIsSearchingUsers(false);
+            } else {
+                setUserSearchResults([]);
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [userSearchQuery]);
+
+    const handleSelectUser = (user: UserSearchResult) => {
+        if (!selectedUsers.find(u => u.uid === user.uid)) {
+            setSelectedUsers([...selectedUsers, user]);
+        }
+        setUserSearchQuery('');
+        setUserSearchResults([]);
+    };
+
+    const handleRemoveUser = (uid: string) => {
+        setSelectedUsers(selectedUsers.filter(u => u.uid !== uid));
+    };
+
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -80,6 +117,15 @@ export default function NotificationsPage() {
             toast({
                 title: "Validation Error",
                 description: "Please fill in all required fields.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        if (targetMode === 'specific' && selectedUsers.length === 0) {
+            toast({
+                title: "Validation Error",
+                description: "Please select at least one user.",
                 variant: "destructive",
             });
             return;
@@ -103,8 +149,9 @@ export default function NotificationsPage() {
                 message,
                 type,
                 {
-                    subscription: targetAudience,
-                    role: targetRole,
+                    subscription: targetMode === 'broadcast' ? targetAudience : undefined,
+                    role: targetMode === 'broadcast' ? targetRole : undefined,
+                    specificUserIds: targetMode === 'specific' ? selectedUsers.map(u => u.uid) : undefined
                 },
                 {
                     translations: translations || undefined,
@@ -245,33 +292,116 @@ export default function NotificationsPage() {
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="audience">Target Audience (Subscription)</Label>
-                                    <Select value={targetAudience} onValueChange={(v: any) => setTargetAudience(v)}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select audience" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">All Subscriptions</SelectItem>
-                                            <SelectItem value="trial">Trial Users</SelectItem>
-                                            <SelectItem value="premium">Premium Users</SelectItem>
-                                            <SelectItem value="expired">Expired Users</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                            <div className="space-y-4 pt-4 border-t">
+                                <Label>Targeting Mode</Label>
+                                <div className="flex gap-4">
+                                    <Button
+                                        type="button"
+                                        variant={targetMode === 'broadcast' ? 'default' : 'outline'}
+                                        onClick={() => setTargetMode('broadcast')}
+                                        className="flex-1"
+                                    >
+                                        Broadcast (Filter)
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant={targetMode === 'specific' ? 'default' : 'outline'}
+                                        onClick={() => setTargetMode('specific')}
+                                        className="flex-1"
+                                    >
+                                        Specific Users
+                                    </Button>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="role">Target Role</Label>
-                                    <Select value={targetRole} onValueChange={(v: any) => setTargetRole(v)}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select role" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="user">User</SelectItem>
-                                            <SelectItem value="admin">Admin</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+
+                                {targetMode === 'broadcast' ? (
+                                    <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="audience">Target Audience (Subscription)</Label>
+                                            <Select value={targetAudience} onValueChange={(v: any) => setTargetAudience(v)}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select audience" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">All Subscriptions</SelectItem>
+                                                    <SelectItem value="trial">Trial Users</SelectItem>
+                                                    <SelectItem value="premium">Premium Users</SelectItem>
+                                                    <SelectItem value="expired">Expired Users</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="role">Target Role</Label>
+                                            <Select value={targetRole} onValueChange={(v: any) => setTargetRole(v)}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select role" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="user">User</SelectItem>
+                                                    <SelectItem value="admin">Admin</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <div className="space-y-2 relative">
+                                            <Label htmlFor="user-search">Search User by Email</Label>
+                                            <div className="relative">
+                                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                <Input
+                                                    id="user-search"
+                                                    placeholder="Start typing email..."
+                                                    value={userSearchQuery}
+                                                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                                                    className="pl-8"
+                                                />
+                                                {isSearchingUsers && (
+                                                    <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                                                )}
+                                            </div>
+
+                                            {/* Search Results Dropdown */}
+                                            {userSearchResults.length > 0 && (
+                                                <div className="absolute z-10 w-full mt-1 bg-popover text-popover-foreground rounded-md border shadow-md max-h-48 overflow-y-auto">
+                                                    {userSearchResults.map(user => (
+                                                        <div
+                                                            key={user.uid}
+                                                            className="flex flex-col px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground"
+                                                            onClick={() => handleSelectUser(user)}
+                                                        >
+                                                            <span className="font-medium text-sm">{user.email}</span>
+                                                            <span className="text-xs text-muted-foreground">{user.displayName}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label>Selected Users ({selectedUsers.length})</Label>
+                                            <div className="flex flex-wrap gap-2 min-h-[40px] p-2 border rounded-md">
+                                                {selectedUsers.length === 0 && (
+                                                    <span className="text-sm text-muted-foreground italic">No users selected</span>
+                                                )}
+                                                {selectedUsers.map(user => (
+                                                    <Badge key={user.uid} variant="secondary" className="gap-1 pr-1">
+                                                        <User className="h-3 w-3" />
+                                                        {user.email}
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-4 w-4 rounded-full hover:bg-destructive hover:text-destructive-foreground ml-1"
+                                                            onClick={() => handleRemoveUser(user.uid)}
+                                                        >
+                                                            <X className="h-3 w-3" />
+                                                        </Button>
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <Button type="submit" disabled={isSending} className="w-full">
@@ -305,8 +435,19 @@ export default function NotificationsPage() {
                                     type === 'warning' ? 'text-yellow-500' :
                                         type === 'success' ? 'text-green-500' : 'text-blue-500'
                                     }`}>{type}</span></li>
-                                <li><strong>Role:</strong> {targetRole === 'user' ? 'Regular Users' : 'Administrators'}</li>
-                                <li><strong>Subscription:</strong> {targetAudience === 'all' ? 'All Plans' : targetAudience.charAt(0).toUpperCase() + targetAudience.slice(1)}</li>
+
+                                {targetMode === 'broadcast' ? (
+                                    <>
+                                        <li><strong>Role:</strong> {targetRole === 'user' ? 'Regular Users' : 'Administrators'}</li>
+                                        <li><strong>Subscription:</strong> {targetAudience === 'all' ? 'All Plans' : targetAudience.charAt(0).toUpperCase() + targetAudience.slice(1)}</li>
+                                    </>
+                                ) : (
+                                    <li><strong>Target:</strong> {selectedUsers.length} Specific User{selectedUsers.length !== 1 ? 's' : ''}</li>
+                                )}
+
+                                {isPinned && (
+                                    <li><strong>Pinned:</strong> {pinDuration === 'permanent' ? 'Permanently' : pinDuration}</li>
+                                )}
                             </ul>
                         </div>
 

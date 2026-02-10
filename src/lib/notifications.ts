@@ -49,9 +49,85 @@ export async function fetchUserNotifications(
     ];
 
     if (!includeRead) {
-      constraints.push(where('read', '==', false));
+      // If we only want unread, we MUST also fetch "Pinned" notifications even if they are read.
+      // Firestore does not support OR queries across different fields easily in this context without composite indexes.
+      // Strategy: Run two queries in parallel.
+      // 1. Unread notifications
+      const unreadQuery = query(
+        notificationsRef,
+        where('userId', '==', userId),
+        where('read', '==', false),
+        limit(50)
+      );
+
+      // 2. Pinned notifications (active) - we fetch all pinned for this user and filter in memory for expiry
+      // We assume the number of pinned items is small.
+      const pinnedQuery = query(
+        notificationsRef,
+        where('userId', '==', userId),
+        where('pinned', '==', true)
+      );
+
+      const [unreadSnap, pinnedSnap] = await Promise.all([
+        getDocs(unreadQuery),
+        getDocs(pinnedQuery)
+      ]);
+
+      const notificationMap = new Map<string, Notification>();
+
+      // function to process doc
+      const processDoc = (doc: any) => {
+        const data = doc.data();
+        if (data) {
+          const processedData = {
+            ...data,
+            ...(data.products ? { products: Array.isArray(data.products) ? data.products : [] } : {}),
+          };
+          return { id: doc.id, ...processedData } as Notification;
+        }
+        return null;
+      };
+
+      // Add unread
+      unreadSnap.forEach(doc => {
+        const n = processDoc(doc);
+        if (n) notificationMap.set(n.id, n);
+      });
+
+      // Add pinned (if active)
+      const now = Date.now();
+      pinnedSnap.forEach(doc => {
+        const n = processDoc(doc);
+        if (n) {
+          // Check if pin is still valid
+          const isPinValid = !n.pinExpiresAt || (n.pinExpiresAt.toMillis && n.pinExpiresAt.toMillis() > now);
+          if (isPinValid) {
+            notificationMap.set(n.id, n);
+          }
+        }
+      });
+
+      const notifications = Array.from(notificationMap.values());
+
+      // Sort logic below...
+      notifications.sort((a, b) => {
+        const aTime = a.createdAt?.toMillis?.() || 0;
+        const bTime = b.createdAt?.toMillis?.() || 0;
+
+        // Check pin status
+        const aIsPinned = a.pinned && (!a.pinExpiresAt || (a.pinExpiresAt.toMillis && a.pinExpiresAt.toMillis() > now));
+        const bIsPinned = b.pinned && (!b.pinExpiresAt || (b.pinExpiresAt.toMillis && b.pinExpiresAt.toMillis() > now));
+
+        if (aIsPinned && !bIsPinned) return -1;
+        if (!aIsPinned && bIsPinned) return 1;
+
+        return bTime - aTime;
+      });
+
+      return notifications;
     }
 
+    // Default behavior if includeRead is true (fetch all)
     // Note: orderBy removed to avoid requiring composite index
     // Sorting will be done in memory instead
     constraints.push(limit(50));

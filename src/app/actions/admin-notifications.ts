@@ -9,6 +9,7 @@ export type TargetAudience = 'all' | UserSubscription;
 interface TargetCriteria {
     subscription?: TargetAudience;
     role?: UserRole;
+    specificUserIds?: string[];
 }
 
 export async function sendTargetedNotificationsAction(
@@ -26,21 +27,35 @@ export async function sendTargetedNotificationsAction(
         const db = getFirebaseAdmin();
         const usersRef = db.collection('users');
 
-        let query: FirebaseFirestore.Query = usersRef;
+        let userDocs: FirebaseFirestore.DocumentData[] = [];
 
-        // Filter by role if specified
-        if (criteria.role) {
-            query = query.where('role', '==', criteria.role);
+        // Check for specific users first
+        if (criteria.specificUserIds && criteria.specificUserIds.length > 0) {
+            // Fetch these users specifically
+            // We can use getAll but we need doc refs
+            const refs = criteria.specificUserIds.map(id => usersRef.doc(id));
+            const snapshots = await db.getAll(...refs);
+            // Filter out non-existent
+            userDocs = snapshots.filter(snap => snap.exists);
+        } else {
+            // Use existing filter logic
+            let query: FirebaseFirestore.Query = usersRef;
+
+            // Filter by role if specified
+            if (criteria.role) {
+                query = query.where('role', '==', criteria.role);
+            }
+
+            // Filter by subscription
+            if (criteria.subscription && criteria.subscription !== 'all') {
+                query = query.where('subscription', '==', criteria.subscription);
+            }
+
+            const usersSnap = await query.get();
+            userDocs = usersSnap.docs;
         }
 
-        // Filter by subscription
-        if (criteria.subscription && criteria.subscription !== 'all') {
-            query = query.where('subscription', '==', criteria.subscription);
-        }
-
-        const usersSnap = await query.get();
-
-        if (usersSnap.empty) {
+        if (userDocs.length === 0) {
             return { success: true, count: 0 };
         }
 
@@ -62,7 +77,7 @@ export async function sendTargetedNotificationsAction(
             pinExpiresAt = expiryDate;
         }
 
-        for (const userDoc of usersSnap.docs) {
+        for (const userDoc of userDocs) {
             const newNotifRef = notificationsRef.doc();
 
             batch.set(newNotifRef, {
