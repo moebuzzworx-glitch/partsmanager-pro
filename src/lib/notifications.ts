@@ -30,6 +30,8 @@ export interface Notification {
   translations?: {
     [key: string]: { title: string; message: string };
   };
+  pinned?: boolean;
+  pinExpiresAt?: any; // Firestore Timestamp
 }
 
 /**
@@ -73,10 +75,19 @@ export async function fetchUserNotifications(
       }
     });
 
-    // Sort by createdAt in memory (descending)
+    // Sort: Pinned first (if active), then by createdAt desc
+    const now = Date.now();
     notifications.sort((a, b) => {
       const aTime = a.createdAt?.toMillis?.() || 0;
       const bTime = b.createdAt?.toMillis?.() || 0;
+
+      // Check pin status
+      const aIsPinned = a.pinned && (!a.pinExpiresAt || (a.pinExpiresAt.toMillis && a.pinExpiresAt.toMillis() > now));
+      const bIsPinned = b.pinned && (!b.pinExpiresAt || (b.pinExpiresAt.toMillis && b.pinExpiresAt.toMillis() > now));
+
+      if (aIsPinned && !bIsPinned) return -1;
+      if (!aIsPinned && bIsPinned) return 1;
+
       return bTime - aTime;
     });
 

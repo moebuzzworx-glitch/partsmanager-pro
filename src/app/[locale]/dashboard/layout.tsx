@@ -32,6 +32,7 @@ import {
   Headphones,
   Printer,
   Camera,
+  Pin,
 } from 'lucide-react';
 import { useBotStore } from '@/hooks/use-bot-store';
 import { getDictionary } from '@/lib/dictionaries';
@@ -189,18 +190,24 @@ export default function DashboardLayout({
                       }
                     };
 
+                    const isPinned = notification.pinned && (!notification.pinExpiresAt || (notification.pinExpiresAt.toDate?.() || new Date(notification.pinExpiresAt as any)).getTime() > Date.now());
+
                     return (
                       <DropdownMenuItem
                         key={notification.id}
-                        className="flex flex-col items-start gap-2 p-3 rounded-md bg-secondary/50 hover:bg-secondary cursor-pointer"
+                        className={`flex flex-col items-start gap-2 p-3 rounded-md cursor-pointer ${isPinned ? 'bg-amber-50/50 hover:bg-amber-100/50 border-l-2 border-amber-400' : 'bg-secondary/50 hover:bg-secondary'
+                          }`}
                         onClick={() => markAsRead(notification.id)}
                       >
                         <div className="flex gap-2 w-full">
                           {getIcon()}
                           <div className="flex-1">
-                            <p className="font-medium text-sm">
-                              {notification.translations?.[locale as string]?.title || notification.title}
-                            </p>
+                            <div className="flex items-center gap-1.5">
+                              {isPinned && <Pin className="h-3 w-3 text-amber-500 fill-amber-500 rotate-45 shrink-0" />}
+                              <p className="font-medium text-sm">
+                                {notification.translations?.[locale as string]?.title || notification.title}
+                              </p>
+                            </div>
                             <p className="text-xs text-muted-foreground">
                               {notification.translations?.[locale as string]?.message || notification.message}
                             </p>

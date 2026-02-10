@@ -10,8 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { sendTargetedNotificationsAction, TargetAudience } from '@/app/actions/admin-notifications';
-import { Loader2, Send, Sparkles } from 'lucide-react';
+import { Loader2, Send, Sparkles, Pin } from 'lucide-react';
 import { enhanceAndTranslateNotification } from '@/app/actions/notification-ai';
+import { Switch } from '@/components/ui/switch';
 import { UserRole } from '@/lib/types';
 
 export default function NotificationsPage() {
@@ -23,6 +24,10 @@ export default function NotificationsPage() {
     const [type, setType] = useState<'info' | 'success' | 'warning' | 'error' | 'alert'>('info');
     const [targetAudience, setTargetAudience] = useState<TargetAudience>('all');
     const [targetRole, setTargetRole] = useState<UserRole>('user');
+
+    // Pinning state
+    const [isPinned, setIsPinned] = useState(false);
+    const [pinDuration, setPinDuration] = useState('24h');
 
     const [isSending, setIsSending] = useState(false);
     const [isEnhancing, setIsEnhancing] = useState(false);
@@ -85,6 +90,14 @@ export default function NotificationsPage() {
         setIsSending(true);
 
         try {
+            let pinOptions: { durationHours?: number } | undefined = undefined;
+            if (isPinned) {
+                if (pinDuration === '24h') pinOptions = { durationHours: 24 };
+                else if (pinDuration === '3d') pinOptions = { durationHours: 72 };
+                else if (pinDuration === '7d') pinOptions = { durationHours: 168 };
+                else if (pinDuration === 'permanent') pinOptions = { durationHours: undefined };
+            }
+
             const result = await sendTargetedNotificationsAction(
                 title,
                 message,
@@ -94,7 +107,8 @@ export default function NotificationsPage() {
                     role: targetRole,
                 },
                 {
-                    translations: translations || undefined
+                    translations: translations || undefined,
+                    pin: pinOptions
                 }
             );
 
@@ -194,6 +208,41 @@ export default function NotificationsPage() {
                                         <SelectItem value="alert">Alert</SelectItem>
                                     </SelectContent>
                                 </Select>
+                            </div>
+
+                            <div className="flex flex-col gap-4 p-4 border rounded-md bg-muted/20">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-0.5">
+                                        <Label htmlFor="pinned" className="text-base font-medium flex items-center gap-2">
+                                            <Pin className="h-4 w-4" />
+                                            Pin Notification
+                                        </Label>
+                                        <p className="text-sm text-muted-foreground">
+                                            Keep this on top of user lists
+                                        </p>
+                                    </div>
+                                    <Switch
+                                        id="pinned"
+                                        checked={isPinned}
+                                        onCheckedChange={setIsPinned}
+                                    />
+                                </div>
+                                {isPinned && (
+                                    <div className="flex items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <Label htmlFor="duration" className="whitespace-nowrap min-w-fit">Pin Duration:</Label>
+                                        <Select value={pinDuration} onValueChange={setPinDuration}>
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="24h">24 Hours</SelectItem>
+                                                <SelectItem value="3d">3 Days</SelectItem>
+                                                <SelectItem value="7d">1 Week</SelectItem>
+                                                <SelectItem value="permanent">Permanent (Until unpinned)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">

@@ -19,6 +19,7 @@ export async function sendTargetedNotificationsAction(
     options?: {
         action?: { label: string; href: string };
         translations?: Record<string, { title: string; message: string }>;
+        pin?: { durationHours?: number }; // If undefined, permanent pin
     }
 ): Promise<{ success: boolean; count: number; error?: string }> {
     try {
@@ -51,6 +52,16 @@ export async function sendTargetedNotificationsAction(
         const notificationsRef = db.collection('notifications');
         const now = FieldValue.serverTimestamp(); // Use server timestamp
 
+        // Calculate pin expiration if provided
+        let pinExpiresAt: Date | null = null;
+        const isPinned = !!options?.pin;
+
+        if (isPinned && options!.pin!.durationHours) {
+            const expiryDate = new Date();
+            expiryDate.setHours(expiryDate.getHours() + options!.pin!.durationHours!);
+            pinExpiresAt = expiryDate;
+        }
+
         for (const userDoc of usersSnap.docs) {
             const newNotifRef = notificationsRef.doc();
 
@@ -63,6 +74,8 @@ export async function sendTargetedNotificationsAction(
                 createdAt: now,
                 action: options?.action || null,
                 translations: options?.translations || null,
+                pinned: isPinned,
+                pinExpiresAt: pinExpiresAt, // Can be null if permanent
             });
 
             operationCount++;
