@@ -3,12 +3,13 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, Users, UserPlus, Globe, Crown } from "lucide-react"; // Added icons
 import { useFirebase } from "@/firebase/provider";
 import { useEffect, useState } from "react";
 import { fetchAllUsers, deleteUser, UserProfile } from "@/lib/user-management";
 import { EditUserDialog } from "@/components/admin/edit-user-dialog";
 import { CreateUserDialog } from "@/components/admin/create-user-dialog";
+import { StatsCard } from "@/components/dashboard/stats-card"; // Added StatsCard
 import { Input } from "@/components/ui/input";
 import { collection, getDocs } from "firebase/firestore";
 import type { AccessRightProfile } from "@/lib/access-rights";
@@ -48,7 +49,7 @@ function AdminUsersPageContent() {
       setIsLoading(true);
       const fetchedUsers = await fetchAllUsers(firestore);
       setUsers(fetchedUsers);
-      
+
       // Load access rights
       const accessRightsRef = collection(firestore, 'accessRights');
       const snapshot = await getDocs(accessRightsRef);
@@ -110,6 +111,25 @@ function AdminUsersPageContent() {
     user.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Calculate quick stats
+  const totalUsers = users.length;
+  const newUsersToday = users.filter(u => {
+    const created = u.createdAt?.toDate?.() || u.createdAt;
+    if (!created) return false;
+    const now = new Date();
+    const today = new Date(now.setHours(0, 0, 0, 0));
+    return created >= today;
+  }).length;
+
+  const onlineUsers = users.filter(u => {
+    const lastLogin = u.lastLoginAt?.toDate?.() || u.lastLoginAt;
+    if (!lastLogin) return false;
+    const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000);
+    return lastLogin > fifteenMinsAgo;
+  }).length;
+
+  const premiumUsers = users.filter(u => u.subscription === 'premium').length;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -123,6 +143,33 @@ function AdminUsersPageContent() {
       <div>
         <h1 className="text-3xl font-headline font-bold">User Management</h1>
         <p className="text-muted-foreground mt-2">Manage users, roles, subscriptions, and permissions</p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatsCard
+          title="Total Users"
+          value={totalUsers.toString()}
+          icon={<Users className="h-4 w-4" />}
+          description="All registered accounts"
+        />
+        <StatsCard
+          title="New Today"
+          value={`+${newUsersToday}`}
+          icon={<UserPlus className="h-4 w-4 text-green-500" />}
+          description="Registrations today"
+        />
+        <StatsCard
+          title="Online Now"
+          value={onlineUsers.toString()}
+          icon={<Globe className="h-4 w-4 text-blue-500" />}
+          description="Active in last 15m"
+        />
+        <StatsCard
+          title="Premium Members"
+          value={premiumUsers.toString()}
+          icon={<Crown className="h-4 w-4 text-yellow-500" />}
+          description="Active subscriptions"
+        />
       </div>
 
       <Card>
@@ -194,7 +241,7 @@ function AdminUsersPageContent() {
                       </TableCell>
                       <TableCell className="text-right space-x-2">
                         <EditUserDialog user={user} onUserUpdated={loadUsers} />
-                        
+
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button

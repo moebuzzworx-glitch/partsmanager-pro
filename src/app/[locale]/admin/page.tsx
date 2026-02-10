@@ -29,6 +29,7 @@ export default function AdminDashboard({ params }: { params: { locale: Locale } 
   useEffect(() => {
     if (!firestore) return;
 
+
     const loadData = async () => {
       try {
         const data = await fetchAnalyticsData(firestore);
@@ -37,6 +38,7 @@ export default function AdminDashboard({ params }: { params: { locale: Locale } 
         console.error('Failed to fetch analytics:', error);
         setPlatformData({
           activeUsers: 0,
+          onlineUsers: 0,
           totalUsers: 0,
           systemStatus: 'error',
         });
@@ -78,7 +80,7 @@ export default function AdminDashboard({ params }: { params: { locale: Locale } 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Online Users"
-          value="12"
+          value={platformData.onlineUsers.toString()}
           icon={<Globe className="h-4 w-4" />}
           description="Active in last 15 min"
         />

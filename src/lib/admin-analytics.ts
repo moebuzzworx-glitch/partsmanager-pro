@@ -9,7 +9,9 @@ import {
 } from 'firebase/firestore';
 
 export interface AnalyticsData {
-  activeUsers: number;
+  activeUsers: number; // This is actually Total Users
+  onlineUsers: number;
+  newUsersToday: number;
   systemStatus: 'healthy' | 'warning' | 'error';
 }
 
@@ -29,6 +31,26 @@ export async function fetchAnalyticsData(firestore: Firestore): Promise<Analytic
     const usersSnap = await getDocs(usersRef);
     const activeUsers = usersSnap.size;
 
+    let onlineUsers = 0;
+    let newUsersToday = 0;
+    const now = new Date();
+    const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
+    const startOfDay = new Date(now.setHours(0, 0, 0, 0));
+
+    usersSnap.forEach(doc => {
+      const data = doc.data();
+      const lastLogin = data.lastLoginAt?.toDate?.() || data.lastLoginAt;
+      const createdAt = data.createdAt?.toDate?.() || data.createdAt;
+
+      if (lastLogin && lastLogin > fifteenMinutesAgo) {
+        onlineUsers++;
+      }
+
+      if (createdAt && createdAt > startOfDay) {
+        newUsersToday++;
+      }
+    });
+
     // Simulate system check (in real app, check API health)
     let systemStatus: 'healthy' | 'warning' | 'error' = 'healthy';
 
@@ -37,12 +59,16 @@ export async function fetchAnalyticsData(firestore: Firestore): Promise<Analytic
 
     return {
       activeUsers,
+      onlineUsers,
+      newUsersToday,
       systemStatus,
     };
   } catch (error) {
     console.error('Error fetching analytics data:', error);
     return {
       activeUsers: 0,
+      onlineUsers: 0,
+      newUsersToday: 0,
       systemStatus: 'error',
     };
   }
