@@ -6,43 +6,12 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { Locale } from "@/lib/config";
 import { getDictionary } from "@/lib/dictionaries";
-import { Logo } from "@/components/logo";
-import { UserNav } from "@/components/dashboard/user-nav";
-import { LanguageSwitcher } from "@/components/language-switcher";
-import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Button } from "@/components/ui/button";
-import { Sun, Moon, Bell, Loader2, CheckCircle, AlertCircle, Info, Headphones } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useFirebase } from "@/firebase/provider";
 import { doc, getDoc } from 'firebase/firestore';
 import { User as AppUser } from "@/lib/types";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useNotifications } from "@/hooks/use-notifications";
-import { useBotStore } from '@/hooks/use-bot-store';
-
-function SupportButton() {
-  const { openBot } = useBotStore();
-
-  useEffect(() => {
-    console.log('Admin SupportButton mounted');
-  }, []);
-
-  return (
-    <Button variant="ghost" size="icon" onClick={() => {
-      console.log('Admin SupportButton clicked');
-      openBot();
-    }}>
-      <Headphones className="h-[1.2rem] w-[1.2rem]" />
-      <span className="sr-only">Support</span>
-    </Button>
-  );
-}
+import { AdminHeader } from '@/components/admin/admin-header';
 
 export function AdminLayoutClient({
   children,
@@ -58,7 +27,6 @@ export function AdminLayoutClient({
   const [userDoc, setUserDoc] = useState<AppUser | null>(null);
   const [isChecking, setIsChecking] = useState(true);
   const [dictionary, setDictionary] = useState<any>(null);
-  const { notifications, unreadCount, markAsRead } = useNotifications();
 
   // Keep router ref updated
   useEffect(() => {
@@ -198,136 +166,20 @@ export function AdminLayoutClient({
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
-        <Logo />
-        <div className="flex-1">
-          {/* Search can go here */}
-        </div>
-        <SupportButton />
-        <LanguageSwitcher />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon">
-              <span className="sr-only">Toggle theme</span>
-              <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <ThemeSwitcher />
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel className="flex justify-between items-center">
-              <span>Notifications</span>
-              {unreadCount > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-auto p-0 text-xs"
-                  onClick={() => {
-                    // Mark all as read
-                  }}
-                >
-                  Mark all as read
-                </Button>
-              )}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {notifications.length > 0 ? (
-              <div className="max-h-96 overflow-y-auto space-y-2 p-2">
-                {notifications.map((notification) => {
-                  const getIcon = () => {
-                    switch (notification.type) {
-                      case 'success':
-                        return <CheckCircle className="h-4 w-4 text-green-600" />;
-                      case 'error':
-                      case 'alert':
-                      case 'low-stock-alert':
-                        return <AlertCircle className="h-4 w-4 text-red-600" />;
-                      case 'warning':
-                        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
-                      default:
-                        return <Info className="h-4 w-4 text-blue-600" />;
-                    }
-                  };
-
-                  return (
-                    <DropdownMenuItem
-                      key={notification.id}
-                      className="flex flex-col items-start gap-2 p-3 rounded-md bg-secondary/50 hover:bg-secondary cursor-pointer"
-                      onClick={() => markAsRead(notification.id)}
-                    >
-                      <div className="flex gap-2 w-full">
-                        {getIcon()}
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">
-                            {notification.translations?.[locale as string]?.title || notification.title}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {notification.translations?.[locale as string]?.message || notification.message}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {notification.createdAt
-                              ? new Date(
-                                notification.createdAt.toDate?.() || notification.createdAt
-                              ).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
-                              : 'Just now'}
-                          </p>
-                        </div>
-                        {!notification.read && (
-                          <div className="h-2 w-2 bg-blue-600 rounded-full mt-1 flex-shrink-0"></div>
-                        )}
-                      </div>
-                    </DropdownMenuItem>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                No notifications
-              </div>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {userDoc && dictionary && (
-          <UserNav
-            user={{
-              ...userDoc,
-              name: userDoc.email,
-              avatarUrl: '',
-              createdAt: userDoc.createdAt as any
-            }}
-            dictionary={dictionary.auth}
+    <div className="flex flex-col h-screen bg-background dark:bg-zinc-950">
+      <SidebarProvider>
+        <AdminSidebar locale={locale} />
+        <SidebarInset>
+          <AdminHeader
+            user={userDoc}
             locale={locale}
+            dictionary={dictionary}
           />
-        )}
-      </header>
-      <div className='flex flex-1 overflow-hidden'>
-        <SidebarProvider>
-          <AdminSidebar locale={locale} />
-          <SidebarInset>
-            <main className="flex-1 overflow-y-auto p-4 md:p-8 pt-6">
-              {children}
-            </main>
-          </SidebarInset>
-        </SidebarProvider>
-      </div>
+          <main className="flex-1 overflow-y-auto p-4 md:p-8 pt-6 bg-muted/10 dark:bg-zinc-900/50">
+            {children}
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
     </div>
   );
 }
