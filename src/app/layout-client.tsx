@@ -12,6 +12,7 @@ import { createTrialCountdownNotification } from '@/lib/subscription-notificatio
 import { initNotificationSound } from '@/lib/notification-sound';
 
 import dynamic from 'next/dynamic';
+import { OfflineReady } from '@/components/OfflineReady';
 
 // Dynamically import the bot widget to ensure it only renders on client
 const GlobalBotWidget = dynamic(() => import('@/components/chat-bot/bot-widget'), {
@@ -53,6 +54,7 @@ export function RootLayoutClient({ children }: { children: React.ReactNode }) {
 
   // Start background sync (push) and pull services when user is authenticated
   useEffect(() => {
+    if (!auth) return;
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       if (authUser && firestore) {
         console.log('User authenticated, starting Git-like sync services...');
@@ -71,7 +73,7 @@ export function RootLayoutClient({ children }: { children: React.ReactNode }) {
 
             // Send trial countdown notification if user is in trial
             if (userData.subscription === 'trial') {
-              const daysRemaining = calculateTrialDaysRemaining(userData);
+              const daysRemaining = calculateTrialDaysRemaining(userData as any);
 
               if (daysRemaining !== null) {
                 console.log(`[Trial] ${daysRemaining} days remaining in trial`);
@@ -122,10 +124,15 @@ export function RootLayoutClient({ children }: { children: React.ReactNode }) {
   }, [firestore]);
 
   return (
-    <FirebaseProvider firebaseApp={firebaseApp} firestore={firestore} auth={auth}>
+    <FirebaseProvider
+      firebaseApp={firebaseApp as any}
+      firestore={firestore as any}
+      auth={auth as any}
+    >
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         {children}
         <GlobalBotWidget />
+        <OfflineReady />
       </ThemeProvider>
     </FirebaseProvider>
   );
