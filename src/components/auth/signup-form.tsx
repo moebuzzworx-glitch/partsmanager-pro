@@ -20,6 +20,7 @@ import { type getDictionary } from "@/lib/dictionaries"
 import { useFirebase } from "@/firebase/provider"
 import { signUpWithEmail, signInWithGoogle } from "@/firebase/auth-functions"
 import { Loader2 } from "lucide-react"
+import { GoogleIcon } from "@/components/icons/google-icon"
 
 const formSchema = z.object({
   email: z.string().email(),
@@ -46,12 +47,12 @@ export function SignupForm({ dictionary, locale = 'en' }: { dictionary: Awaited<
     try {
       setIsLoading(true)
       await signUpWithEmail(auth, firestore, values.email, values.password)
-      
+
       toast({
         title: "Signup Successful",
         description: "Check your email to verify your account.",
       })
-      
+
       // Redirect to verification page
       router.push(`/${locale}/verify-email`)
     } catch (error: any) {
@@ -72,12 +73,12 @@ export function SignupForm({ dictionary, locale = 'en' }: { dictionary: Awaited<
     try {
       setIsLoading(true)
       const user = await signInWithGoogle(auth, firestore)
-      
+
       toast({
         title: "Signup Successful",
         description: `Welcome, ${user.displayName || user.email}!`,
       })
-      
+
       // Redirect to dashboard
       router.push(`/${locale}/dashboard`)
     } catch (error: any) {
@@ -95,14 +96,19 @@ export function SignupForm({ dictionary, locale = 'en' }: { dictionary: Awaited<
   return (
     <div className="space-y-6">
       {/* Google Sign-up Button */}
-      <Button 
+      {/* Google Sign-up Button */}
+      <Button
         type="button"
         onClick={handleGoogleSignup}
         disabled={isLoading || isUserLoading}
         variant="outline"
-        className="w-full"
+        className="w-full relative h-11 border-slate-200 hover:bg-slate-50 hover:text-slate-900 font-medium text-base transition-all active:scale-[0.98]"
       >
-        {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+        {isLoading ? (
+          <Loader2 className="me-2 h-4 w-4 animate-spin" />
+        ) : (
+          <GoogleIcon className="mr-2 h-5 w-5" />
+        )}
         Sign up with Google
       </Button>
 
@@ -145,8 +151,8 @@ export function SignupForm({ dictionary, locale = 'en' }: { dictionary: Awaited<
               </FormItem>
             )}
           />
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             className="w-full"
             disabled={isLoading || isUserLoading}
           >

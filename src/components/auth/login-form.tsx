@@ -21,6 +21,7 @@ import { type getDictionary } from "@/lib/dictionaries"
 import { useFirebase } from "@/firebase/provider"
 import { signInWithEmail, signInWithGoogle } from "@/firebase/auth-functions"
 import { Loader2 } from "lucide-react"
+import { GoogleIcon } from "@/components/icons/google-icon"
 import { doc, getDoc } from "firebase/firestore"
 
 const formSchema = z.object({
@@ -48,7 +49,7 @@ export function LoginForm({ dictionary, locale = 'en' }: { dictionary: Awaited<R
     try {
       setIsLoading(true)
       const user = await signInWithEmail(auth, values.email, values.password)
-      
+
       // Check user role in Firestore
       let userRole = 'user';
       try {
@@ -59,12 +60,12 @@ export function LoginForm({ dictionary, locale = 'en' }: { dictionary: Awaited<R
         console.error('Could not fetch user role from Firestore:', error);
         userRole = 'user';
       }
-      
+
       toast({
         title: "Login Successful",
         description: `Welcome back, ${user.email}!`,
       })
-      
+
       // Redirect based on role
       if (userRole === 'admin') {
         router.push(`/${locale}/admin`)
@@ -89,7 +90,7 @@ export function LoginForm({ dictionary, locale = 'en' }: { dictionary: Awaited<R
     try {
       setIsLoading(true)
       const user = await signInWithGoogle(auth, firestore)
-      
+
       // Check user role in Firestore
       let userRole = 'user';
       try {
@@ -100,12 +101,12 @@ export function LoginForm({ dictionary, locale = 'en' }: { dictionary: Awaited<R
         console.error('Could not fetch user role from Firestore:', error);
         userRole = 'user';
       }
-      
+
       toast({
         title: "Login Successful",
         description: `Welcome, ${user.displayName || user.email}!`,
       })
-      
+
       // Redirect based on role
       if (userRole === 'admin') {
         router.push(`/${locale}/admin`)
@@ -127,14 +128,19 @@ export function LoginForm({ dictionary, locale = 'en' }: { dictionary: Awaited<R
   return (
     <div className="space-y-6">
       {/* Google Login Button */}
-      <Button 
+      {/* Google Login Button */}
+      <Button
         type="button"
         onClick={handleGoogleLogin}
         disabled={isLoading || isUserLoading}
         variant="outline"
-        className="w-full"
+        className="w-full relative h-11 border-slate-200 hover:bg-slate-50 hover:text-slate-900 font-medium text-base transition-all active:scale-[0.98]"
       >
-        {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+        {isLoading ? (
+          <Loader2 className="me-2 h-4 w-4 animate-spin" />
+        ) : (
+          <GoogleIcon className="mr-2 h-5 w-5" />
+        )}
         Sign in with Google
       </Button>
 
@@ -185,8 +191,8 @@ export function LoginForm({ dictionary, locale = 'en' }: { dictionary: Awaited<R
               </FormItem>
             )}
           />
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             className="w-full"
             disabled={isLoading || isUserLoading}
           >

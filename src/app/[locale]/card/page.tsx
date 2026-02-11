@@ -39,6 +39,7 @@ export default function DigitalCardPage() {
         phone: '0660 570 370',
         address: 'POS I.S.L 2 B LOTIS 30 LGTS ILOT 14 BT C LOCAL 3 CNE EL KARMA W ORAN',
         website: 'https://partmanager.netlify.app',
+        mapUrl: 'https://maps.app.goo.gl/Pu5TLc7reJXCNzwr9', // Updated short link
         logoUrl: '/placeholder-logo.png' // Default, can be updated
     };
 
@@ -174,7 +175,7 @@ export default function DigitalCardPage() {
 
                     {/* Address */}
                     <a
-                        href={`https://maps.google.com/?q=${encodeURIComponent(cardData.address)}`}
+                        href={cardData.mapUrl}
                         target="_blank"
                         rel="noreferrer"
                         className="block group"
