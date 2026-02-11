@@ -38,7 +38,7 @@ export default function DigitalCardPage() {
         email: 'algeosys@gmail.com',
         phone: '0660 570 370',
         address: 'POS I.S.L 2 B LOTIS 30 LGTS ILOT 14 BT C LOCAL 3 CNE EL KARMA W ORAN',
-        website: 'https://algeosys.com', // Assuming this, can be updated
+        website: 'https://partmanager.netlify.app',
         logoUrl: '/placeholder-logo.png' // Default, can be updated
     };
 
